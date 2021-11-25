@@ -1,2 +1,2 @@
-# scripts
-A collection of scripts for Agent.
+# Scripts
+A collection of scripts for [Agent](https://github.com/0xDC00/agent).
