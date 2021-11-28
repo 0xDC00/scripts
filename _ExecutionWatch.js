@@ -14,7 +14,7 @@
     //while (Process.isDebuggerAttached()) prompt('Please exit the debugger!');
     Patch_OutputDebugString();
     
-    _main_();
+    setImmediate(_main_);
 
     function filters_text(s) { // String block may contain controls code, that will need a custom parser.
         return s
