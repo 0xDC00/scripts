@@ -1,13 +1,17 @@
 // @name         RPCS3 LLVM Hooker
-// @version      
+// @version      0.0.20-13234+ - https://github.com/RPCS3/rpcs3-binaries-win/releases?q=0.0.20&expanded=true
 // @author       [DC]
-// @description  TODO: linux
+// @description  TODO: linux, macM1
 
 const __e = Process.enumerateModules()[0];
-const installFunctionPatt1 = '0F86 ???????? 488D?? ?0010000 E8 ???????? 4883C? 68'; // MSVC
+if (Process.platform !== 'windows') {
+    throw 'TODO: ' + Process.platform + ' ' + Process.arch;
+}
+
+const installFunctionPatt1 = '0F8? ???????? 488D?? ?00?0000 E8 ???????? 4883C? 68'; // MSVC
 let DoJitMatch = Memory.scanSync(__e.base, __e.size, installFunctionPatt1)[0];
 if (!DoJitMatch) {
-    const installFunctionPatt2 = '660F 1F440000 488D?? ?0010000 E8 ???????? 4883C? 68'; // patched
+    const installFunctionPatt2 = '660F 1F440000 488D?? ?00?0000 E8 ???????? 4883C? 68'; // patched
     DoJitMatch = Memory.scanSync(__e.base, __e.size, installFunctionPatt2)[0];
     if (!DoJitMatch) throw new Error('DoJit not found!');
 }
@@ -22,11 +26,14 @@ const {_emReg, _jitReg} = (function() {
     p = Instruction.parse(p.next);       // call 0x00
     p = Instruction.parse(p.next);       // add r?x, 0x68
     const _emReg = p.operands[0].value;
-    p = Instruction.parse(DoJitPtr.sub(0x16)); // lea rdx, ds:[rax+rcx*2]
-    const _jitReg = p.operands[0].value;
 
     // nop jbe & je:
-    const isPPUDebugIfPtr = DoJitPtr.sub(0x21);
+    let isPPUDebugIfPtr = Memory.scanSync(DoJitPtr.sub(0x40), 0x40, '84C0 ???? 8B')[0]; // je
+    if (!isPPUDebugIfPtr) throw new Error('DoJit not found 2!');
+    isPPUDebugIfPtr = isPPUDebugIfPtr.address.add(2);
+    p = Instruction.parse(isPPUDebugIfPtr.add(0xB)); // lea rdx, ds:[rax+rcx*2]
+    const _jitReg = p.operands[0].value;
+
     Memory.protect(isPPUDebugIfPtr, 0x40, 'rwx');
     DoJitPtr.writeByteArray([0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00]); // 6bytes nop
     isPPUDebugIfPtr.writeByteArray([0x66, 0x90]); // 2bytes nop

@@ -12,17 +12,19 @@ const { setHook } = require('./libYuzu.js');
 const { readString } = require('./libPCMAGES.js');
 
 const table = createTable();
-const mainHandler = trans.send(handler, '200+'); // line + name => join
+const mainHandler = trans.send(handler, '200+'); // join 200ms (line + name)
 const directHandler = trans.send(handler);
 
+const base100 = {
+    0x8048cc8: mainHandler, // line + name => join
+    0x804f44c: directHandler, // fast trophy
+    0x804f474: directHandler, // prompt
+    0x8039dc0: mainHandler  // choice
+};
+
 setHook({
-    '1.0.0': {
-        0x8048cc8: mainHandler, // line + name => join
-        0x804f44c: directHandler, // fast trophy
-        0x804f474: directHandler, // prompt
-        0x8039dc0: mainHandler  // choice
-    },
-    '1.0.1': this['1.0.0'] // same binary
+    '1.0.0': base100,
+    '1.0.1': base100 // same exe
 }[globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {

@@ -1,5 +1,5 @@
 // @name         PC KiriKiriZ ENGINES
-// @version      
+// @version      textrender.dll (msvc)
 // @author       [DC]
 // @description  
 

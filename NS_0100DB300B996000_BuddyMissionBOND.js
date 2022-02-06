@@ -12,7 +12,7 @@ const { setHook } = require('./libYuzu.js');
 
 const encoder = new TextEncoder('shift_jis');
 const decoder = new TextDecoder('shift_jis');
-const mainHandler = trans.send(handler, 100); // prevent double
+const mainHandler = trans.send(handler, 100); // debounce trailing (prevent double)
 
 setHook({
     '1.0.0': {

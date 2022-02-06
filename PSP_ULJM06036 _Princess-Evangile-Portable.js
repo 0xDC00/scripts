@@ -8,7 +8,7 @@
 // ==/UserScript==
 const { setHook } = require("./libPPSSPP.js");
 
-const mainHandler = trans.send(handler.bind_(null, 2), '200+'); 
+const mainHandler = trans.send(handler.bind_(null, 2), '200+'); // join 200ms
 
 setHook({
     0x88506d0: mainHandler, // [0x88506d0(2)...0x088507C0(?)] // name text text (line doubled)

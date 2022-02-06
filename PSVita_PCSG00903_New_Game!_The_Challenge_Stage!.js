@@ -4,13 +4,13 @@
 // @author       [DC]
 // @description  Vita3k
 // * MAGES. GAME
-// *
+// * 5pb.
 // ==/UserScript==
 const { setHook } = require("./libVita3k.js");
 
 setHook({
     // 0x0022b738(2) 0x0022b74c(0)
-    0x0022b74c: trans.send(handler.bind_(null, 0), '200+') // dialouge + choice + ... => join \n
+    0x0022b74c: trans.send(handler.bind_(null, 0), '200+') // join 200ms (dialouge + choice + ...; \n); x0
 });
 
 function handler(regs, index) {

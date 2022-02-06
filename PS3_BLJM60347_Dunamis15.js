@@ -9,7 +9,7 @@
 const { setHook } = require("./libRPCS3.js");
 
 setHook({
-    0x42c90: trans.send(handler, '200') // all text, leading+trailing 200ms (name text text text..)
+    0x42c90: trans.send(handler, '200') // join leading+trailing 200ms (all text: name text text text..)
 });
 
 function handler(regs) {

@@ -8,7 +8,7 @@
 // ==/UserScript==
 const { setHook } = require("./libPPSSPP.js");
 
-const mainHandler = trans.send(handler, '100+');
+const mainHandler = trans.send(handler, '100+'); // join 100ms
 
 setHook({
     0x0891D72C: mainHandler // all
