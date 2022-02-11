@@ -4,7 +4,7 @@
 // @author       [DC]
 // @description  Yuzu
 // * Idea Factory (アイディアファクトリー)
-// * il2cpp
+// * Unity (il2cpp)
 // ==/UserScript==
 const gameVer = '1.0.0';
 // trans.replace(function(s) {
@@ -34,7 +34,7 @@ function handler(regs, index) {
     /* processString */
     const len = address.add(0x10).readU32() * 2;
     let s = address.add(0x14).readUtf16String(len);
-    s = s.replace(/\n+|(\\n)+/g, ' ')
+    s = s.replace(/\n+|(\\n)+/g, ' ');
     
     return s;
 }

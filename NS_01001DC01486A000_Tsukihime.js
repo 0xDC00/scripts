@@ -5,6 +5,7 @@
 // @description  Yuzu, Tsukihime
 // * Aniplex (アニプレックス)
 // * 
+// KnowIssue: Prologue video (missed)
 // ==/UserScript==
 const gameVer = '1.0.1';
 trans.replace(function (s) {
