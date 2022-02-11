@@ -119,7 +119,7 @@ function createFunction_buildRegs() {
     // arm32: 0->15 (r0->r15) + TODO...
     // arm64: 0->30 (x0->lr) + sp + pc
     body += 'const args = [';
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 31; i++) {
         let offset = i * 8;
         body += '{';
         body += `_vm: regs.add(${offset}).readU64().toNumber(),`;
