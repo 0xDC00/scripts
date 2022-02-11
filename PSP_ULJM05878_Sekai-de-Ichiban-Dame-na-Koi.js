@@ -11,8 +11,8 @@ const { setHook } = require("./libPPSSPP.js");
 const mainHandler = trans.send(handler);
 
 setHook({
-    0x8814adc: mainHandler,
-    0x8850b2c: mainHandler,
+    0x8814adc: mainHandler, // name + dialouge
+    0x8850b2c: mainHandler, // onscreen toast
 });
 
 function handler(regs) {
@@ -30,10 +30,10 @@ function handler(regs) {
         ;
 
     // reformat name
-    let name = s.match(/^[^「]+/);
+    let name = s.match(/(^[^「]+)「/);
     if (name !== null) {
         s = s.replace(/^[^「]+/, '');
-        s = name + '\n' + s;
+        s = name[1] + '\n' + s;
     }
 
     return s;
