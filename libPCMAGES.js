@@ -150,15 +150,21 @@ function mages_decode(charCode, table) {
 const __e = Process.enumerateModules()[0];
 function setHookDialog(callback) {
     // https://discord.com/channels/867944111557201980/867944111557201983/889822721242972200
-    const dialogSig = '85?? 74?? 83??01 74?? 83??04 74?? C705 ???????? 01000000';
-    const results = Memory.scanSync(__e.base, __e.size, dialogSig);
+    let dialogSigOffset = 2;
+    const dialogSig1 = '85?? 74?? 83??01 74?? 83??04 74?? C705 ???????? 01000000';
+    let results = Memory.scanSync(__e.base, __e.size, dialogSig1);
     if (results.length === 0) {
-        console.error('[DialoguesPattern] no result!!');
-        return null;
+        dialogSigOffset = 3;
+        const dialogSig2 = '57 85?? 74?? 83??01 74?? 83??04'; // it's same but need debounce; test & merge with dialogSig1?
+        results = Memory.scanSync(__e.base, __e.size, dialogSig2);
+        if (results.length === 0) {
+            console.error('[DialoguesPattern] no result!!');
+            return null;
+        }
     }
 
     // get hook address
-    let pos = results[0].address.add(2); // skip (test reg,reg)
+    let pos = results[0].address.add(dialogSigOffset); // skip (test reg,reg)
     let ins = Instruction.parse(pos);    // parse (je 0x431d57)
     let hookAddress = ins.opStr;         // 0x431d57 (mov mem, reg)
     pos = ins.next;
