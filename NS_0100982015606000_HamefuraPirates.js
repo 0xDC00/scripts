@@ -12,11 +12,13 @@ const gameVer = '1.0.0';
 
 const { setHook } = require('./libYuzu.js');
 
-const mainHandler = trans.send(handler);
+const mainHandler = trans.send(handler, '200+');
 
 setHook({
     '1.0.0': {
-        0x9F98520: mainHandler, // Hamekai.BacklogService$$AddMessage
+        0x9E75940: mainHandler, // Hamekai.TalkPresenter$$AddMessageBacklog
+        0x9C9AE60: mainHandler, // Hamekai.ChoicesText$$SetText
+        0x9EB7DC0: mainHandler, // Hamekai.ShortStoryTextView$$AddText
     }
 }[globalThis.gameVer ?? gameVer]);
 
