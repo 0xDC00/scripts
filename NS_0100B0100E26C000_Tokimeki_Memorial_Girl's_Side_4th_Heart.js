@@ -20,10 +20,20 @@ const helpHandler = trans.send(handler.bind_(null, 1, 2)); // x1
 setHook({
     '1.0.0': {
         0x97e7da8: mainHandler,   // name (x1) + dialogue (x2)
-        0x9429f54: choiceHandler, // choice (x0), TODO: merge mainHandler
+        0x9429f54: choiceHandler, // choice (x0)
         0x980633c: helpHandler,   // help (x1)
     }
 }[globalThis.gameVer ?? gameVer]);
+
+let currentType = -1;
+let previousType = -1;
+let previousString = '';
+trans.replace(s => {
+    if (currentType === 1 && previousType === 0) {
+        s = previousString + '\n' + s;  // text + choice
+    }
+    return s;
+});
 
 function handler(regs, index, type) {
     let address = regs[index].value;
@@ -40,12 +50,21 @@ function handler(regs, index, type) {
     s = s.replace(/\n+|(\\n)+/g, ' ');
 
     if (type === 0) {
+        // backup for choice (without name)
+        previousString = s;
+
+        // add name
         const nameAdr = regs[1].value;
         const nameLen = nameAdr.add(0x10).readU32() * 2;
         if (nameLen !== 0) {
             const name = nameAdr.add(0x14).readUtf16String(nameLen);
             s = name + "\n" + s;
         }
+    }
+
+    if (currentType !== type) {
+        previousType = currentType;
+        currentType = type;
     }
 
     return s;
