@@ -13,8 +13,8 @@
 //  - Set the text speed to max.
 //
 //  - [Electron] Does not support 'app.asar' hook.
-//      Fix: You'd have to extract file 'resources/app.asar' to folder 'resources/app'
-//      Tool: https://github.com/aardio/WinAsar/raw/master/dist/WinAsar.7z
+//      Solution: You'd have to extract file 'resources/app.asar' to folder 'resources/app'
+//      step-by-step: https://discord.com/channels/867944111557201980/888396325345964092/944732282038648852
 //
 // ==/UserScript==
 
