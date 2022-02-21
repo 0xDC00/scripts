@@ -6,7 +6,7 @@
 // ** Runtime: Electron, NW.js (node-webkit)
 // ** Engines:
 //  - Tyrano: https://github.com/ShikemokuMK/tyranoscript
-//  - RPG Maker MV (experiment)
+//  - RPG Maker MV, MZ (experiment)
 //
 // Limitation:
 //  - AGENT RUN (does not support Attach/Detach; Select path to EXE instead drag-n-drop).
@@ -176,10 +176,15 @@ function readAllText(path) {
 }
 
 function writeAllText(path, content) {
-    const file = new File(path, 'w+');
-    file.write(content);
-    file.flush();
-    file.close();
+    if (globalThis.fs_writeFileSync instanceof Function) {
+        fs_writeFileSync(path, content);
+    }
+    else {
+        const file = new File(path, 'w+');
+        file.write(content);
+        file.flush();
+        file.close();
+    }
 }
 
 function isElectronProcess() {
@@ -236,7 +241,8 @@ function __initNWjs() {
     return send;
 }
 
-function __inject() {
+function __inject(tryAgain) {
+    const delay = tryAgain === true ? 0 : 4000;
     if (window.tyrano && tyrano.plugin) {
         function getTyranoHook() {
             try {
@@ -276,7 +282,7 @@ function __inject() {
             else {
                 send('[Error] Tyrano');
             }
-        }, 4000);
+        }, delay);
     }
     else if (window.Utils && Utils.RPGMAKER_NAME) {
         function getRpgMakerHook() {
@@ -307,9 +313,12 @@ function __inject() {
             else {
                 send('[Error] ' + title);
             }
-        }, 4000);
+        }, delay);
     }
     else {
-        send('[Error] Unsupported engine!');
+        if (tryAgain === true) {
+            send('[Error] Unsupported engine!');
+        }
+        else setTimeout(__inject, delay, true);
     }
 }
