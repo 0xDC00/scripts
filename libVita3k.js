@@ -3,6 +3,10 @@
 // @author       [DC]
 // @description  
 
+if (module.parent === null) {
+    throw "I'm not a text hooker!";
+}
+
 const DoJitPtr = getDoJitAddress();
 const buildRegs = createFunction_buildRegs();
 const operations = Object.create(null);

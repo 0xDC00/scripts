@@ -27,6 +27,10 @@ if (method2 !== null) {
 }
 */
 
+if (module.parent === null) {
+    throw "I'm not a text hooker!";
+}
+
 class ExNativeFunction extends NativeFunction {
     constructor(address, retType = 'void', argTypes = [], abiOrOptions = 'default') {
         super(address, retType, argTypes, abiOrOptions);

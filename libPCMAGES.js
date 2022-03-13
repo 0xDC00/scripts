@@ -9,6 +9,9 @@ https://github.com/CommitteeOfZero/impacto
 compound_chars
 https://github.com/CommitteeOfZero/sc3tools
 */
+if (module.parent === null) {
+    throw "I'm not a text hooker!";
+}
 
 function readString(address, table) {
     let s = '', bottom = '', c;

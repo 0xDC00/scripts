@@ -3,6 +3,10 @@
 // @author       [DC]
 // @description  TODO: linux, macM1
 
+if (module.parent === null) {
+    throw "I'm not a text hooker!";
+}
+
 const __e = Process.enumerateModules()[0];
 if (Process.platform !== 'windows') {
     throw 'TODO: ' + Process.platform + ' ' + Process.arch;
