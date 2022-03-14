@@ -143,7 +143,7 @@ if (_isAot === false) {
         mono_field_get_offset: createNativeFunction('mono_field_get_offset', 'int', ['pointer']),
     }
     const mono_class_from_name_case = Module.findExportByName(_mod.name, 'mono_class_from_name_case');
-    if (!mono_class_from_name_case) {
+    if (mono_class_from_name_case !== null) {
         MonoApi.mono_class_from_name = new ExNativeFunction(mono_class_from_name_case, 'pointer', ['pointer', 'pointer', 'pointer']);
     }
 
