@@ -15,6 +15,7 @@
 //  - [Electron] Does not support 'app.asar' hook.
 //      Solution: You'd have to extract file 'resources/app.asar' to folder 'resources/app'
 //      step-by-step: https://discord.com/channels/867944111557201980/888396325345964092/944732282038648852
+//      Video: https://youtu.be/yMPVHY5Ndn8
 //
 // ==/UserScript==
 
