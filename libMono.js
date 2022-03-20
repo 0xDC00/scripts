@@ -9,6 +9,7 @@ TODO:
 - cleanup
 - method.invoke vs method.createFunction
    (no-param invoke better)
+- libFlash like: asm|namspace.class|method: onEnter | {}
 
 Ex:
 const kclass2 = findClass(imageName, className);            //

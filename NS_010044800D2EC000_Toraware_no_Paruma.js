@@ -17,6 +17,8 @@ setHook({
         0x815b7a8: mainHandler, // text x0
         0x815b46c: mainHandler, // name x1
         // choice?
+        // alert?
+        // prompt?
     }
 }[globalThis.gameVer ?? gameVer]);
 

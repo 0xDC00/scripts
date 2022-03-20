@@ -1,7 +1,7 @@
 // @name         Vita3k JIT Hooker
 // @version      0.1.3.2285+ - 
 // @author       [DC]
-// @description  
+// @description  windows, linux, macOS (x64)
 
 if (module.parent === null) {
     throw "I'm not a text hooker!";
@@ -39,8 +39,8 @@ Interceptor.attach(DoJitPtr, {
                 const thiz = Object.create(null);
                 thiz.context = Object.create(null);
                 thiz.context.pc = em_address;
-                const regs = buildRegs(this.context); // x0 x1 x2 ...
-
+                const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
+                //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
                 op.call(thiz, regs);
             });
         }
@@ -56,9 +56,9 @@ function getDoJitAddress() {
             '__ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m' // macOS x64
         ];
         for (const name of names) {
-            const sym = DebugSymbol.fromName(name);
-            if (sym.name !== null) {
-                return sym.address;
+            const addresss = DebugSymbol.findFunctionsNamed(name);
+            if (addresss.length !== 0) {
+                return addresss[0];
             }
         }
     }
@@ -77,18 +77,18 @@ function getDoJitAddress() {
 function createFunction_buildRegs() {
     let body = '';
 
-    /* fasemem */
+    /* fastmem */
     // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
     body += 'const base = context.r13;';
 
     // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
     body += 'const regs = context.r15;';
 
-    /* TODO: pagetable */
+    /* pagetable */
     // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L831
 
-    // arm32: 0->15 (r0->r15) + TODO...
-    // arm64: 0->30 (x0->lr) + sp + pc
+    // arm32: 0->15 (r0->r15)
+    // arm64: 0->30 (x0->lr) + sp (x31) + pc (x32)
     body += 'const args = [';
     for (let i = 0; i < 16; i++) {
         let offset = i * 4;
@@ -97,12 +97,20 @@ function createFunction_buildRegs() {
         body += `get value() { return base.add(this._vm); },`; // host address
         body += `set vm(val) { this._vm = val; },`;
         body += `get vm() { return this._vm },`;
-        body += `save() {regs.add(${offset}).writeU32(this._vm); return this; }`
+        body += `save() {regs.add(${offset}).writeU32(this._vm); return this; }`;
         body += '},';
     }
-    body += '];'
+    body += '];';
+
+    //body += 'thiz.context.pc = regs.add(60).readU32();'; // r15 0x3c 60
+    //body += 'thiz.context.sp = regs.add(52).readU32();'; // r13 0x34 52; useless?
+    body += 'thiz.returnAddress = regs.add(56).readU32();'; // r14 0x38 56; lr
+    body += 'thiz.context.lr = args[14];';
+    body += 'thiz.context.fp = args[11];'; // r11 (FP): Frame pointer.
+    body += 'thiz.context.sp = args[13];'; // r13
+
     body += 'return args;';
-    return new Function('context', body);
+    return new Function('context', 'thiz', body);
 };
 
 function setHook(object) {

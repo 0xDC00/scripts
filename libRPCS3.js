@@ -1,7 +1,7 @@
 // @name         RPCS3 LLVM Hooker
 // @version      0.0.20-13234+ - https://github.com/RPCS3/rpcs3-binaries-win/releases?q=0.0.20&expanded=true
 // @author       [DC]
-// @description  TODO: linux, macM1
+// @description  windows, TODO: linux, mac (arm64)
 
 if (module.parent === null) {
     throw "I'm not a text hooker!";
@@ -24,7 +24,8 @@ const DoJitPtr = DoJitMatch.address;
 const operations = Object.create(null);
 const buildRegs = createFunction_buildRegs();
 
-const {_emReg, _jitReg} = (function() {
+// https://github.com/RPCS3/rpcs3/blob/ab50e5483ed428d79bccf0a37b58415f9c8456fd/rpcs3/Emu/Cell/PPUThread.cpp#L3405
+const { _emReg, _jitReg } = (function () {
     let p = Instruction.parse(DoJitPtr); // jbe 0x00 ; long jump
     p = Instruction.parse(p.next);       // lea r?x, ss:[rbp+0x1?0]
     p = Instruction.parse(p.next);       // call 0x00
@@ -42,10 +43,8 @@ const {_emReg, _jitReg} = (function() {
     DoJitPtr.writeByteArray([0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00]); // 6bytes nop
     isPPUDebugIfPtr.writeByteArray([0x66, 0x90]); // 2bytes nop
 
-    return {_emReg, _jitReg};
+    return { _emReg, _jitReg };
 })();
-
-// https://github.com/RPCS3/rpcs3/blob/ab50e5483ed428d79bccf0a37b58415f9c8456fd/rpcs3/Emu/Cell/PPUThread.cpp#L3405
 
 Interceptor.attach(DoJitPtr.add(6), {
     onEnter: function (args) {
@@ -58,8 +57,8 @@ Interceptor.attach(DoJitPtr.add(6), {
                 const thiz = Object.create(null);
                 thiz.context = Object.create(null);
                 thiz.context.pc = em_address;
-                const regs = buildRegs(this.context); // x0 x1 x2 ...
-
+                const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
+                //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
                 op.call(thiz, regs);
             });
         }
@@ -70,29 +69,45 @@ function createFunction_buildRegs() {
     let body = '';
 
     body += 'const base = context.rbx;'; // 0x0000000300000000
-    body += 'const regs = context.rbp.add(0x18);';
+    body += 'const regs = context.rbp.add(0x18);'; // 0x18 24
 
     // ppc64: https://www.ibm.com/docs/en/aix/7.1?topic=overview-register-usage-conventions
     // r0: In function prologs.
-    // r1: 	Stack pointer.
+    // r1: Stack pointer.
     // r2: Table of Contents (TOC) pointer.
     // r3: First word of a function's argument list; first word of a scalar function return.
     // r4: Second word of a function's argument list; second word of a scalar function return.
     // ... r12 (glink)
     body += 'const args = [';
-    for (let i = 3; i < 13; i++) {
+    for (let i = 3; i < 13; i++) { // skip r0 r1 r2
         let offset = i * 8;
         body += '{';
-        body += `_vm: regs.add(${offset}).readU64().toNumber(),`
+        body += `_vm: regs.add(${offset}).readU64().toNumber(),`;
         body += `get value() { return base.add(this._vm); },`; // host address
         body += `set vm(val) { this._vm = val; },`;
         body += `get vm() { return this._vm },`;
-        body += `save() {regs.add(${offset}).writeU64(this._vm); return this; }`
+        body += `save() {regs.add(${offset}).writeU64(this._vm); return this; }`;
         body += '},';
     }
-    body += '];'
+    body += '];';
+
+    // https://github.com/RPCS3/rpcs3/blob/dcfd29c2d9e911d96b1da5d6dced5443c525de52/rpcs3/Emu/Cell/lv2/sys_ppu_thread.h#L33
+    body += `thiz.returnAddress = regs.add(${0x460 - 0x18}).readU64().toNumber();`; // lr
+    //body += `thiz.context.ctr = regs.add(${0x468-0x18}).readU64().toNumber();`; // ctr
+    //body += `thiz.context.pc = regs.add(${0x474-0x18}).readU64().toNumber();`; // pc (0x470 = VRSAVE 4byte)
+    // fp?
+    //body += 'thiz.context.sp = args[1];'; // r1 = sp (skiped)
+    body += 'thiz.context.sp = ';
+    body += '{';
+    body += `_vm: regs.add(${1 * 8}).readU64().toNumber(),`;
+    body += `get value() { return base.add(this._vm); },`; // host address
+    body += `set vm(val) { this._vm = val; },`;
+    body += `get vm() { return this._vm },`;
+    body += `save() {regs.add(${1 * 8}).writeU64(this._vm); return this; }`;
+    body += '};';
+
     body += 'return args;';
-    return new Function('context', body);
+    return new Function('context', 'thiz', body);
 };
 
 function setHook(object) {

@@ -1,7 +1,7 @@
 // @name         PPSSPP JIT Hooker
 // @version      1.12.3-867+
 // @author       [DC]
-// @description  
+// @description  windows, linux, mac (x64, arm64)
 
 if (module.parent === null) {
     throw "I'm not a text hooker!";
@@ -30,8 +30,8 @@ Interceptor.attach(DoJitPtr, {
                 const thiz = Object.create(null);
                 thiz.context = Object.create(null);
                 thiz.context.pc = em_address;
-                const regs = buildRegs(this.context); // a0 a1 a2 ...
-
+                const regs = buildRegs(this.context, thiz); // a0 a1 a2 ...
+                //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
                 op.call(thiz, regs);
             });
         }
@@ -49,9 +49,9 @@ function getDoJitAddress() {
             '__ZN8MIPSComp8Arm64Jit5DoJitEjP8JitBlock' // macOS arm64
         ];
         for (const name of names) {
-            const sym = DebugSymbol.fromName(name);
-            if (sym.name !== null) {
-                return sym.address;
+            const addresss = DebugSymbol.findFunctionsNamed(name);
+            if (addresss.length !== 0) {
+                return addresss[0];
             }
         }
     }
@@ -64,7 +64,7 @@ function getDoJitAddress() {
         if (first) return first.address;
     }
 
-    throw new Error('RegisterBlock not found!')
+    throw new Error('RegisterBlock not found!');
 }
 
 function createFunction_buildRegs() {
@@ -90,8 +90,7 @@ function createFunction_buildRegs() {
     else {
         throw new Error('CTXREG: ' + arch);
     }
-
-    // mips: 0->3 (a0->a3)
+    // mips: 0->3 (a0->a3), t0...t7, s0...s7, t8, t9
     body += 'const args = [';
     for (let i = 0; i < 4; i++) {
         // https://github.com/hrydgard/ppsspp/blob/0c40e918c92b897f745abee0d09cf033a1572337/Core/MIPS/MIPS.h#L190
@@ -101,12 +100,35 @@ function createFunction_buildRegs() {
         body += `get value() { return base.add(this._vm); },`; // host address
         body += `set vm(val) { this._vm = val; },`;
         body += `get vm() { return this._vm },`;
-        body += `save() {regs.add(${offset}).writeU32(this._vm); return this; }`
+        body += `save() {regs.add(${offset}).writeU32(this._vm); return this; }`;
         body += '},';
     }
-    body += '];'
+    body += '];';
+
+    // https://github.com/hrydgard/ppsspp/blob/0c40e918c92b897f745abee0d09cf033a1572337/Core/MIPS/MIPS.h#L53
+    body += `thiz.returnAddress = regs.add(${-0x80 + 4 * 31}).readU32();`; // ra=31
+    //body += 'thiz.context.ra = args[30];'; // ra=31 (far) <=> lr
+    //body += 'thiz.context.fp = args[30];'; // fp=30 (far)
+    body += 'thiz.context.fp = ';
+    body += '{';
+    body += `_vm: regs.add(${-0x80 + 4 * 30}).readU32(),`;
+    body += `get value() { return base.add(this._vm); },`; // host address
+    body += `set vm(val) { this._vm = val; },`;
+    body += `get vm() { return this._vm },`;
+    body += `save() {regs.add(${-0x80 + 4 * 30}).writeU32(this._vm); return this; }`;
+    body += '};';
+    //body += 'thiz.context.sp = args[29];'; // sp=29 (far)
+    body += 'thiz.context.sp = ';
+    body += '{';
+    body += `_vm: regs.add(${-0x80 + 4 * 29}).readU32(),`;
+    body += `get value() { return base.add(this._vm); },`; // host address
+    body += `set vm(val) { this._vm = val; },`;
+    body += `get vm() { return this._vm },`;
+    body += `save() {regs.add(${-0x80 + 4 * 29}).writeU32(this._vm); return this; }`;
+    body += '};';
+
     body += 'return args;';
-    return new Function('context', body);
+    return new Function('context', 'thiz', body);
 };
 
 function setHook(object) {
