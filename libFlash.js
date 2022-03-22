@@ -117,7 +117,7 @@ function init() {
                 else {
                     ptr = this.add(0xC).readPointer();
 
-                    return ptr.readFlashString(len);
+                    return ptr.readFlashStringUtf8(len);
                 }
             }
 
@@ -156,7 +156,7 @@ function init() {
                 else {
                     ptr = this.add(0x14).readPointer(); // void, int, void
 
-                    return ptr.readFlashString(len);
+                    return ptr.readFlashStringUtf8(len);
                 }
             }
 
