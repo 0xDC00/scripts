@@ -19,6 +19,7 @@ function handler(regs) {
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     /* processString */
+    /** @type { String } */
     let s = address.readShiftJisString();
 
     // print rubi
@@ -29,6 +30,9 @@ function handler(regs) {
     }
     // remove rubi
     s = s.replace(/#RUBS(#[A-Z0-9]+)*[^#]+/g, '');
+
+    // hidden rubi #[男][ヤツ]#   => 男
+
     // replace user
     s = s.replace(/#FAMILY/g, '$FAMILY');
     s = s.replace(/#GIVE/g, '$GIVE');
@@ -38,6 +42,9 @@ function handler(regs) {
     
     // remove control
     s = s.replace(/(#[A-Z0-9\-]+)+/g, '');
+
+    // single line
+    s = s.replace(/\n+/g, ' ');
     
     return s;
 }
