@@ -102,10 +102,8 @@ function getDoJitAddress() {
     }
     else {
         const __e = Process.enumerateModules()[0];
-        // Windows MSVC x64
-        // TODO: DebugSymbol.fromName?
-        // yuzu win msvc  ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
-        const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 48 8B ?? 08 E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4?';
+        // Windows MSVC x64 2019 (v996-) + 2022 (v997+)
+        const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
         const first = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
         if (first) {
             const beginSubSig1 = 'CC CC 40 5? 5? 5?';
@@ -115,6 +113,13 @@ function getDoJitAddress() {
             if (subs.length > 0) {
                 return subs[subs.length - 1].address.add(2);
             }
+        }
+
+        // slower
+        // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
+        const symbols = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::RegisterBlock');
+        if (symbols.length !== 0) {
+            return symbols[0];
         }
     }
 
