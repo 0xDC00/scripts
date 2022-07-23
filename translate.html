@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <style>
+        #app {
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-size: 1.25em;
+            background-color: rgb(100 100 100 / 60%);
+            color: rgb(255 255 0 / 70%);
+        }
+    </style>
+    <script src="./libTranslateDeepL.js"></script>
+</head>
+
+<body style="margin: 0; height: 100%;">
+    <div id="app" style="height: 100%;">
+        <p id='trans' style="margin: 0;"></p>
+        <p id='orig' style="margin: 0;">Hi, こんにちは!</p>
+    </div>
+    <script>
+        const txtOrig = document.getElementById('orig');
+        const txtTrans = document.getElementById('trans');
+
+        var timer = null;
+        globalThis.trans = function (src) {
+            if (src === undefined) src = txtOrig.innerText;
+            else if (src.length == 0) return;
+            else txtOrig.innerText = src;
+            txtTrans.innerText = '...';
+            
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                globalThis._trans(src).then(x => txtTrans.innerText = x);
+            }, 50);
+        }
+    </script>
+</body>
+
+</html>
