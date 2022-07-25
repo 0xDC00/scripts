@@ -326,7 +326,7 @@ if (_isAot === false) {
                 argCnt = methodName;
                 methodName = className;
             }
-            else if (Object.keys(image_name).length !== 0) {
+            else if (image_name.info !== undefined) {
                 kclass = image_name.info; // kclass object
             }
             else {
@@ -360,7 +360,7 @@ if (_isAot === false) {
         if (image_name === null) return console.warn('Skip');
 
         let isPtr = false;
-        if ((isPtr = image_name instanceof NativePointer) === true || Object.keys(image_name).length !== 0) {
+        if ((isPtr = image_name instanceof NativePointer) === true || image_name.info !== undefined) {
             if (isPtr === false) {
                 ShowMethodInfo(image_name.info);
                 image_name = image_name.address;
@@ -606,7 +606,7 @@ else {
                 argCnt = methodName;
                 methodName = className;
             }
-            else if (Object.keys(image_name).length !== 0) {
+            else if (image_name.info !== undefined) {
                 kclass = image_name.info; // kclass object
             }
             else {
@@ -639,7 +639,7 @@ else {
         if (image_name === null) return console.warn('Skip');
 
         let isPtr = false;
-        if ((isPtr = image_name instanceof NativePointer) === true || Object.keys(image_name).length !== 0) {
+        if ((isPtr = image_name instanceof NativePointer) === true || image_name.info !== undefined) {
             if (isPtr === false) {
                 ShowMethodInfo(image_name.info);
                 image_name = image_name.address;
