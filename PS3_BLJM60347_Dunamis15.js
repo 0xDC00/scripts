@@ -4,7 +4,7 @@
 // @author       [DC]
 // @description  RPCS3
 // * Division ZERO & MAGES. GAME
-// * 
+// * Kaleido ADV Workshop
 // ==/UserScript==
 const { setHook } = require("./libRPCS3.js");
 
@@ -27,10 +27,10 @@ function handler(regs) {
     const rubis = s.matchAll(patt);
     for (const rubi of rubis) {
         const ruby = rubi[0];
-        const n = parseInt(rubi.match(/\d+\]$/) ?? 0) + 1;
+        const n = parseInt(ruby.match(/\d+\]$/) ?? 0) + 1;
         let q = ruby.indexOf(',');
         q = q !== -1 ? q : ruby.length-2;
-        console.log('rubi', ruby.substring(1, q));
+        console.log('rubi', ruby.substr(1, q));
         console.log('rube', s.substr(rubi.index + ruby.length, n));
     }
 
