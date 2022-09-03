@@ -8,7 +8,7 @@
 const engine = require('./libPCMAGES.js');
 
 const table = createTable();
-const mainHandler = trans.send(handler, 250);
+const mainHandler = trans.send(handler, '250+'); // trailing->concat: 250
 
 engine.setHookDialog(mainHandler);
 
