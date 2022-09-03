@@ -16,6 +16,11 @@ if (module.parent === null) {
 function readString(address, table) {
     let s = '', bottom = '', c;
     while ((c = address.readU8()) !== 0xFF) { // terminated
+        if (c >= 0xb0) {
+             // b4: next page?
+            address = address.add(1);
+            continue;
+        }
         if (c >= 0x80) {  // readChar
             const charCode = address.readU16();
             address = address.add(2);
@@ -51,7 +56,7 @@ function readString(address, table) {
                 // do nothing -> back to readChar
             }
             else if (c === 4 || c === 0x15) { // SetColor, EvaluateExpression => SKIP
-                console.log('Warning: ', c);
+                if (c !== 4) console.log('Warning: ', c);
                 // https://github.com/CommitteeOfZero/SciAdv.Net/blob/32489cd21921079975291dbdce9151ad66f1b06a/src/SciAdvNet.SC3/Text/SC3StringDecoder.cs#L98
                 //   https://github.com/CommitteeOfZero/SciAdv.Net/blob/32489cd21921079975291dbdce9151ad66f1b06a/src/SciAdvNet.SC3/Text/StringSegmentCodes.cs#L3
                 // https://github.com/shiiion/steinsgate_textractor/blob/master/steinsgatetextractor/sg_text_extractor.cpp#L46
