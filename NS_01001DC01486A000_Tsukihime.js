@@ -190,7 +190,7 @@ function processBinaryString(address, condition) {
         const fromHook = condition === undefined; // hook or delay
         if (fromHook) {
             if (previousString === s) return console.log('>' + s);
-            const currentTime = new Date().getTime();
+            const currentTime = Date.now();
             s = previousString = currentTime - previousTime < 300 ? previousString + '\n' + s : s; // join fast string (choise)
             previousTime = currentTime;
         } else previousString = s;

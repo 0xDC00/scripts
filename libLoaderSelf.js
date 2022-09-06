@@ -37,7 +37,7 @@ function main() {
 
 /** @return {ArrayBuffer} */
 function getDex() {
-    const key = new Date().getTime();
+    const key = Date.now();
     send({
         cmd: 'eval',
         func: 'fs_readFileSync',
