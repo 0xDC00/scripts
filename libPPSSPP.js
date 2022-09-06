@@ -47,9 +47,11 @@ function getDoJitAddress() {
         // not __ZN8MIPSComp10IRFrontend5DoJitEjRNSt3__16vectorI6IRInstNS1_9allocatorIS3_EEEERjb
         const names = [
             '_ZN8MIPSComp3Jit5DoJitEjP8JitBlock', // linux x64
-            '__ZN8MIPSComp3Jit5DoJitEjP8JitBlock', // macOS x64
+            // __ZN8MIPSComp3Jit5DoJitEjP8JitBlock
+            'MIPSComp::Jit::DoJit(unsigned int, JitBlock*)', // macOS x64 (demangle)
             '_ZN8MIPSComp8Arm64Jit5DoJitEjP8JitBlock', // android arm64
-            '__ZN8MIPSComp8Arm64Jit5DoJitEjP8JitBlock' // macOS arm64
+            // __ZN8MIPSComp8Arm64Jit5DoJitEjP8JitBlock
+            'MIPSComp::Arm64Jit::DoJit(unsigned int, JitBlock*)' // macOS arm64 (demangle)
         ];
         for (const name of names) {
             const addresss = DebugSymbol.findFunctionsNamed(name);
