@@ -91,7 +91,8 @@ function getDoJitAddress() {
         // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m.cold
         const names = [
             '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m', // linux x64
-            '__ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m' // macOS x64
+            // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
+            'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, void const*, unsigned long)' // macOS x64 (demangle)
         ];
         for (const name of names) {
             const addresss = DebugSymbol.findFunctionsNamed(name);
@@ -106,12 +107,12 @@ function getDoJitAddress() {
         const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
         const first = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
         if (first) {
-            const beginSubSig1 = 'CC CC 40 5? 5? 5?';
+            const beginSubSig1 = 'CC 40 5? 5? 5?';
             const lookbackSize = 0x400;
             const address = first.address.sub(lookbackSize);
             const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
-            if (subs.length > 0) {
-                return subs[subs.length - 1].address.add(2);
+            if (subs.length !== 0) {
+                return subs[subs.length - 1].address.add(1);
             }
         }
 
