@@ -11,6 +11,7 @@ const table = createTable();
 const mainHandler = trans.send(handler, '250+');
 
 engine.setHookDialog(mainHandler);
+engine.setHookMail(table, trans.send);
 
 function handler(regs, index) {
     const address = regs[index];
@@ -21,6 +22,73 @@ function handler(regs, index) {
 
     return s;
 }
+
+/* More Hooks */
+const __e = Process.enumerateModules()[0];
+
+//// TODO: Mail
+
+
+//// TIPS: 0xC75EC
+// TODO: title
+(function () {
+    const sigDialogueTIPS = '6A00 0??? 3??? 6A07 E8 ???????? A1';
+    const results = Memory.scanSync(__e.base, __e.size, sigDialogueTIPS);
+    if (results.length === 0) {
+        return console.warn('[TIPSPattern] no result!');
+    }
+
+    const match = results[results.length - 1]; // [dialogue, tips]
+    const target = match.address.add(match.size - 6);
+    console.log('Attach TIPS: ' + target);
+    Breakpoint.add(target, function () {
+        mainHandler.call(this, this.context, 'ecx');
+    });
+})();
+
+//// Computer: 0xE77CA->0xE781F (__e.base.add(0xE781F))
+// TODO: single hook (too many request)
+(function () {
+    const sigComputer = 'C1E2 08 03D7 803C11 03 75 ?? 8B';
+    const results = Memory.scanSync(__e.base, __e.size, sigComputer);
+    if (results.length === 0) {
+        return console.warn('[ComputerPattern] no result!');
+    }
+    const match = results[0];
+    const target = match.address.add(match.size - 1);
+    console.log('Attach Computer: ' + target);
+    Breakpoint.add(target, function () {
+        let s = '';
+        let address = this.context.ecx.add(this.context.edx);
+        console.log('---');
+
+        address = address.add(2); // skip 03 FF
+        const [name, next1] = engine.readString(address, table, true);
+        const [id, next2] = engine.readString(next1, table, true);
+        address = next2;
+
+        while (address.readU8() !== 3) {
+            const [line, next3] = engine.readString(address, table, true);
+            address = next3;
+
+            const c = s[s.length - 1];
+            if (c === '\n') {
+                s += line;
+            }
+            else if (c === ' ') {
+                s += line === '' ? '\r\n\r\n' : line;
+            }
+            else {
+                s += s.length === 0 ? line : ' ' + line; // line break, nospace
+            }
+        }
+
+        s = name + '\r\n' + s;
+
+        //trans.send(s);
+        console.log(s);
+    });
+})();
 
 //-------------------------------------------------
 function createTable() {
