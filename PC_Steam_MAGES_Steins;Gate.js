@@ -11,6 +11,7 @@ const table = createTable();
 const mainHandler = trans.send(handler, '250+');
 
 engine.setHookDialog(mainHandler);
+engine.setHookMail(table, trans.send);
 
 function handler(regs, index) {
     const address = regs[index];
