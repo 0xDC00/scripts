@@ -13,11 +13,18 @@ if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
 
-function readString(address, table) {
+/**
+ * Mail: inbox, outbox, send
+ * @param {NativePointer} address 
+ * @param {string[]} table
+ * @param {boolean} isOut
+ * @returns {string}
+ */
+function readString(address, table, isOut) {
     let s = '', bottom = '', c;
     while ((c = address.readU8()) !== 0xFF) { // terminated
         if (c >= 0xb0) {
-             // b4: next page?
+            // b4: next page?
             address = address.add(1);
             continue;
         }
@@ -138,15 +145,18 @@ function readString(address, table) {
                         s += c;
                     }
                 }
-                console.log('rubi: ', rubi);
-                console.log('char: ', bottom);
+                if (rubi !== '') {
+                    console.log('rubi: ', rubi);
+                    console.log('char: ', bottom);
+                }
             }
             else {
                 // do nothing (one byte control)
             }
         }
     }
-    return s;
+
+    return isOut === true ? [s, address.add(1)] : s;
 }
 
 function mages_decode(charCode, table) {
@@ -166,7 +176,7 @@ function setHookDialog(callback) {
         const dialogSig2 = '57 85?? 74?? 83??01 74?? 83??04'; // it's same but need debounce; test & merge with dialogSig1?
         results = Memory.scanSync(__e.base, __e.size, dialogSig2);
         if (results.length === 0) {
-            console.error('[DialoguesPattern] no result!!');
+            console.error('[DialoguesPattern] no result!');
             return null;
         }
     }
@@ -196,15 +206,65 @@ function setHookDialog(callback) {
         return null;
     }
 
-    console.log('Attach:', hookAddress, expr);
-    Breakpoint.add(ptr(hookAddress), function() {
+    console.log('Attach Dialog:', hookAddress, expr);
+    Breakpoint.add(ptr(hookAddress), function () {
         callback.call(this, this.context, expr);
     });
 
     return hookAddress;
 }
 
+/**
+ * Mail: inbox, outbox, send,...
+ * @param {string[]} table 
+ * @param {Function} cb 
+ * @returns 
+ */
+function setHookMail(table, cb) {
+    const sig1 = 'E8 ??????00 6A18 50 68 ??010000 E8 ???????? 8B'; // sghd, darling, linear
+    let results = Memory.scanSync(__e.base, __e.size, sig1);
+    if (results.length === 0) {
+        const sig2 = 'E8 ??????00 6A18 ???? B9 ??010000 E8 ???????? 8B'; // sg ellie (calling convention)
+        results = Memory.scanSync(__e.base, __e.size, sig2);
+        if (results.length === 0) {
+            console.warn('[MailPattern] no result!');
+            return null;
+        }
+    }
+
+    results.forEach(result => {
+        const pBody = result.address.add(result.size - 6);
+        const target = Instruction.parse(pBody);
+
+        console.log('Attach Mail.Body:   ' + pBody);
+        let body;
+        Breakpoint.add(pBody, function () {
+            body = readString(this.context.eax, table);
+        });
+
+        let next = target.next;
+        while (true) {
+            const ins = Instruction.parse(next);
+            if (ins.opStr === target.opStr) {
+                console.log('Attach Mail.Header: ' + ins.address);
+                Breakpoint.add(ins.address, function () {
+                    const [subject, nextAddress] = readString(this.context.eax, table, true);
+                    const sender = readString(nextAddress, table);
+                    const s = 'From: ' + sender + '\r\nSubject: ' + subject + '\r\n' + body;
+                    body = '';
+                    cb.call(trans, s);
+                });
+                break;
+            }
+            next = ins.next;
+        }
+    });
+
+    return true;
+}
+
 module.exports = exports = {
     readString,
-    setHookDialog
+    setHookDialog,
+    setHookMail
 }
