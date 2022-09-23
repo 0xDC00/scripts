@@ -18,8 +18,20 @@ const base100 = {
     // sig (from SINce): 05 00 00 14 (mov x21, x0)
     // 0x80466dc, 0x8046700 (better?)
     0x8046700: mainHandler,
-    // 0x803A2c0 // choice?
-    0x803A2c0: mainHandler, // TODO: test
+    0x803A2c0: mainHandler, // TODO: choice?, test
+    0x803EAB0: mainHandler, // TIPS list (menu)
+    // TODO: ...
+    //0x804773C: mainHandler,
+    //0x8047EA8: mainHandler,
+    // 0x8048A88: mainHandler, // dialogue (not show) => skip
+    //0x8048AB0: mainHandler,
+    //0x8048AE0: mainHandler,
+    //0x8048B3C: mainHandler,
+    0x804C648: mainHandler, // system message
+    //0x804C66C: mainHandler,
+    0x8050374: mainHandler, // TIPS (red)
+    //0x8050A50: mainHandler,
+
 };
 
 setHook({
@@ -30,7 +42,7 @@ function handler(regs) {
     const address = regs[0].value; // x0
 
     console.log('onEnter');
-    console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+    //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     let s = readString(address, table);
 
