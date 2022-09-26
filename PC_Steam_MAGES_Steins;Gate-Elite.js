@@ -26,8 +26,103 @@ function handler(regs, index) {
 /* More Hooks */
 const __e = Process.enumerateModules()[0];
 
-//// TODO: Mail
+//// Mail
+(function () {
+    //// Init
+    const sigNonStopMail = 'E8 ???????? 5?5? 6a07 E8';
+    const results = Memory.scanSync(__e.base, __e.size, sigNonStopMail);
+    if (results.length === 0) {
+        return console.warn('[MailPattern] no result!');
+    }
 
+    const result = results[0];
+    const target = Instruction.parse(result.address);
+    let next = target.next;
+
+    const pSender = result.address.add(5);
+    const pSubject = findNext();
+    const pBody = findNext();
+
+    function findNext() {
+        while (true) {
+            const ins = Instruction.parse(next);
+            next = ins.next;
+            if (ins.opStr === target.opStr) {
+                return next;
+            }
+        }
+    }
+
+    //// Recv
+    const sigRecv = 'C78? ??6?0000 00000000 C780 ??6?0000 FF000000 C7';
+    const recvResults = Memory.scanSync(__e.base, __e.size, sigRecv);
+    if (recvResults.length === 0) {
+        return console.warn('[MailRecvPattern] no result!');
+    }
+    const pRecv = recvResults[0].address;
+    console.log('Attach Mail.Recv:   ' + pRecv);
+    Breakpoint.add(pRecv, function () {
+        pickMail();
+    });
+
+    //// Send
+    const sigSend = 'C78? ??6?0000 01000000 5? 5?';
+    const sendResults = Memory.scanSync(__e.base, __e.size, sigSend);
+    if (sendResults.length === 0) {
+        return console.warn('[MailSendPattern] no result!');
+    }
+    const pSend = sendResults[0].address;
+    console.log('Attach Mail.Send:   ' + pSend);
+    Breakpoint.add(pSend, function () {
+        pickMail(true);
+    });
+
+    console.log(' - Sender:  ' + pSender);
+    console.log(' - Subject: ' + pSubject);
+    console.log(' - Body:    ' + pBody);
+
+    //// Debugger
+    let current;
+    function pickMail(isSend) {
+        let sender;
+        const bp1 = Breakpoint.add(pSender, function () {
+            sender = engine.readString(this.context.eax, table);
+        });
+
+        let subject;
+        const bp2 = Breakpoint.add(pSubject, function () {
+            subject = engine.readString(this.context.eax, table);
+        });
+
+        let body;
+        const bp3 = Breakpoint.add(pBody, function () {
+            body = engine.readString(this.context.eax, table);
+
+            const s = sender + '\r\nSubject: ' + subject + '\r\n' + body;
+            if (isSend !== true) {
+                current = s;
+                bp1.remove();
+                bp2.remove();
+                bp3.remove();
+                trans.send('From: ' + s);
+            }
+            else {
+                if (current === undefined) {
+                    current = s;
+                }
+                else if (current !== s) {
+                    bp1.remove();
+                    bp2.remove();
+                    bp3.remove();
+                    trans.send('To: ' + s);
+                }
+                else {
+                    //console.log('Skip: ' + s);
+                }
+            }
+        });
+    }
+})();
 
 //// TIPS: 0xC75EC
 // TODO: title
@@ -57,10 +152,13 @@ const __e = Process.enumerateModules()[0];
     const match = results[0];
     const target = match.address.add(match.size - 1);
     console.log('Attach Computer: ' + target);
+    let i = 0, timer;
     Breakpoint.add(target, function () {
         let s = '';
         let address = this.context.ecx.add(this.context.edx);
-        console.log('---');
+        console.log('---: ' + i++);
+        clearTimeout(timer);
+        timer = setTimeout(() => i = 0, 500);
 
         address = address.add(2); // skip 03 FF
         const [name, next1] = engine.readString(address, table, true);
