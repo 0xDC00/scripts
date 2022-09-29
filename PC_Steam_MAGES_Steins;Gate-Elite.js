@@ -29,7 +29,7 @@ const __e = Process.enumerateModules()[0];
 //// Mail
 (function () {
     //// Init
-    const sigNonStopMail = 'E8 ???????? 5?5? 6a07 E8';
+    const sigNonStopMail = 'E8 ???????? 5?5? 6A07 E8';
     const results = Memory.scanSync(__e.base, __e.size, sigNonStopMail);
     if (results.length === 0) {
         return console.warn('[MailPattern] no result!');
@@ -39,7 +39,7 @@ const __e = Process.enumerateModules()[0];
     const target = Instruction.parse(result.address);
     let next = target.next;
 
-    const pSender = result.address.add(5);
+    const pSender = next;
     const pSubject = findNext();
     const pBody = findNext();
 
@@ -54,12 +54,12 @@ const __e = Process.enumerateModules()[0];
     }
 
     //// Recv
-    const sigRecv = 'C78? ??6?0000 00000000 C780 ??6?0000 FF000000 C7';
+    const sigRecv = 'C78? ??6?0000 00000000 C78? ??6?0000 FF000000 C7';
     const recvResults = Memory.scanSync(__e.base, __e.size, sigRecv);
     if (recvResults.length === 0) {
         return console.warn('[MailRecvPattern] no result!');
     }
-    const pRecv = recvResults[0].address;
+    const pRecv = recvResults[0].address; // [set, init]
     console.log('Attach Mail.Recv:   ' + pRecv);
     Breakpoint.add(pRecv, function () {
         pickMail();
