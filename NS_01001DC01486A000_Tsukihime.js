@@ -98,7 +98,7 @@ trans.replace(function (s) {
         ;
 });
 //------------------------------------------------
-const { setHook } = require('./libyuzu.js');
+const { setHook } = require('./libYuzu.js');
 
 const mainHandler = handler;
 
