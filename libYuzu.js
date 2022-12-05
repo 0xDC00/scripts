@@ -6,6 +6,13 @@
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
+console.warn(`
+  The new Yuzu (12??+) broke some scripts.
+  FIX: Yuzu -> Configuration -> General -> Debug:
+    Tab Debug => check 'Enable CPU Debugging' (Advanced section)
+    Tab CPU   => uncheck 'Enable block linking'
+   -> OK (apply changes -> restart game)
+`);
 
 const isFastMem = true;
 const DoJitPtr = getDoJitAddress();
@@ -90,9 +97,10 @@ function getDoJitAddress() {
         // Unix
         // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m.cold
         const names = [
+            '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm', // linux 64 new
             '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m', // linux x64
             // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
-            'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, void const*, unsigned long)' // macOS x64 (demangle)
+            'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)' // macOS x64 (demangle)
         ];
         for (const name of names) {
             const addresss = DebugSymbol.findFunctionsNamed(name);
@@ -118,6 +126,7 @@ function getDoJitAddress() {
 
         // slower
         // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
+        // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX_K@Z <- new
         const symbols = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::RegisterBlock');
         if (symbols.length !== 0) {
             return symbols[0];
