@@ -1,0 +1,49 @@
+<html>
+
+<head>
+    <title>Agent - WebSocket</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+
+<body style="overflow: hidden;">
+    <div id="app-mount">
+        <div><a></a><a></a><div class="overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden;">
+            <div style="width: 100%; height: 100%; background-color: #4f5660cc; position: absolute;"></div>
+            <div class="layoutUnlocked layoutLocked">
+            </div>
+            <div></div>
+            <!--inject-->
+        </div></div>
+        <h1>Agent</h1>
+        <script>
+            var __OVERLAY__ = false;
+            {
+                let show = true;
+                const _layoutLocked = document.getElementsByClassName('layoutLocked')[0];
+                const _overlay = _layoutLocked.parentElement;
+                window.addEventListener('keydown', function(e) {
+                    if (e.ctrlKey === true && e.altKey === true) {
+                        if (show === true) {
+                            show = false;
+                            _layoutLocked.classList.remove("layoutUnlocked");
+                            _layoutLocked.style.visibility = 'hidden';
+                            _layoutLocked.previousElementSibling.style.visibility = 'hidden';
+                            _overlay.style.pointerEvents = 'none';
+                        }
+                        else {
+                            show = true;
+                            _layoutLocked.classList.add("layoutUnlocked");
+                            _layoutLocked.style.visibility = 'visible';
+                            _layoutLocked.previousElementSibling.style.visibility = 'visible';
+                            _overlay.style.pointerEvents = 'auto';
+                        }
+                    }
+                }, false);
+            }
+        </script>
+        <script src="./libOverlay.js"></script>
+    </div>
+</body>
+
+</html>
