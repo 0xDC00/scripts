@@ -2,9 +2,9 @@
 // tl=en
 (function () {
     var sourceLanguage, targetLanguage;
-    function init(src, dst) {
-        setSrc(src)
-        setDst(dst);
+    function init(sl, tl) {
+        setSrc(sl)
+        setDst(tl);
     }
 
     function translate(str, sl, tl) {
@@ -18,13 +18,13 @@
             });
     }
 
-    function createRequest(str, f, t) {
+    function createRequest(str, sl, tl) {
         const tkk = getTTK(str);
         let from = sourceLanguage;
         let to = targetLanguage;
-        if (f && t) {
-            from = f;
-            to = t;
+        if (sl && tl) {
+            from = sl;
+            to = tl;
         }
         const options = {
             method: "GET",
@@ -49,7 +49,7 @@
     }
 
     function setDst(v) {
-        targetLanguage = typeof v === 'string' ? v : 'en';
+        targetLanguage = (typeof v === 'string' && v !== 'auto') ? v : 'en';
     }
 
     if (typeof module !== 'undefined') {

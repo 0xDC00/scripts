@@ -1,12 +1,11 @@
 // "source_lang_user_selected":"ja"
 // "target_lang" "en"
 (function () {
-    var sourceLanguage, targetLanguage, regionVar;
-    var id;
-    function init(src, dst) {
+    var sourceLanguage, targetLanguage, regionVar, id;
+    function init(sl, tl) {
         id = 1e4 * Math.round(1e4 * Math.random()); // from utils
-        setSrc(src)
-        setDst(dst);
+        setSrc(sl)
+        setDst(tl);
     }
 
     function translate(str, sl, tl, stop) {
@@ -33,12 +32,12 @@
             });;
     }
 
-    function createRequest(str, f, t) {
+    function createRequest(str, sl, tl) {
         let from = sourceLanguage;
         let to = targetLanguage;
-        if (f && t) {
-            from = fixSrc(f);
-            to = fixDst(t);
+        if (sl && tl) {
+            from = fixSrc(sl);
+            to = fixDst(tl);
         }
         let n = 1; id++;
         for (let i = 0; i < str.length; i++)
@@ -77,7 +76,7 @@
     }
 
     function fixDst(v) {
-        if (v === 'vi') v = 'en'; // Vietnamese is not supported
+        if (v === 'vi' || v === 'auto') v = 'en'; // Vietnamese is not supported
         else if (v === 'zh-CN') v = 'zh';
         else if (v === 'zh-TW') v = 'zh';
         else if (v === 'ko') v = 'en'; // Korean is not supported
