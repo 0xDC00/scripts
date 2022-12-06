@@ -24,20 +24,20 @@
                 const _overlay = _layoutLocked.parentElement;
                 window.addEventListener('keydown', function(e) {
                     if (e.ctrlKey === true && e.altKey === true) {
+                        show = !show;
                         if (show === true) {
-                            show = false;
-                            _layoutLocked.classList.remove("layoutUnlocked");
-                            _layoutLocked.style.visibility = 'hidden';
-                            _layoutLocked.previousElementSibling.style.visibility = 'hidden';
-                            _overlay.style.pointerEvents = 'none';
-                        }
-                        else {
-                            show = true;
                             _layoutLocked.classList.add("layoutUnlocked");
                             _layoutLocked.style.visibility = 'visible';
                             _layoutLocked.previousElementSibling.style.visibility = 'visible';
                             _overlay.style.pointerEvents = 'auto';
                         }
+                        else {
+                            _layoutLocked.classList.remove("layoutUnlocked");
+                            _layoutLocked.style.visibility = 'hidden';
+                            _layoutLocked.previousElementSibling.style.visibility = 'hidden';
+                            _overlay.style.pointerEvents = 'none';
+                        }
+                        
                     }
                 }, false);
             }

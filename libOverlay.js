@@ -447,7 +447,6 @@
     }
 
     function initOptions() {
-        _divOptions = _divView.lastElementChild;
         /** @type HTMLInputElement */
         const inputShowDiscordLock = document.getElementById('otpUnlockShowDiscord');
         /** @type HTMLInputElement */
@@ -456,6 +455,7 @@
         const inputBacklog = document.getElementById('otpBacklog');
         /** @type HTMLInputElement */
         const inputOriginalText = document.getElementById('otpOriginalText');
+        _divOptions = inputBacklog.parentElement.parentElement;
 
         _options.otpLockShowOverlay = true;
         inputShowOverlayUnlock.checked = true;
@@ -479,14 +479,12 @@
     }
 
     function hideWidgets() {
-        _divOptions.style.visibility = 'hidden';
-        _divView.style.visibility = 'hidden';
-
         if (_layoutLocked.isConnected === false) {
             // TODO: lost root => try reload
             return __INJECT__();
         }
-
+        _divOptions.style.visibility = 'hidden';
+        _divView.style.visibility = 'hidden';
         _layoutLocked.style.visibility = 'hidden';
         _layoutLocked.previousElementSibling.style.visibility = 'hidden';
     }
