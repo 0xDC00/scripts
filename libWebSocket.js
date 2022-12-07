@@ -29,7 +29,7 @@ addEventListener('wssStart', function (e) {
 
     server = createServer(function (req, res) {
         const url = req.url;
-        if (url === '/') {
+        if (url === '/' || url.startsWith('/?') === true) {
             res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
             const stream = fs.createReadStream(__dirname + '/libOverlay.html');
             stream.on('error', () => res.end('Update scripts'));

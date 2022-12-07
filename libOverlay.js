@@ -117,9 +117,8 @@
         }
 
         function showDictGoogle(s, r) {
-            console.log(r);
             let url = 'http://127.0.0.1:9001/api/translate/Google?s=' + s;
-            if (r === true) url += '&r=1';
+            if (r === true) url += '&r=1'; // reverse translate
             fetch(url)
             .then(r => r.json())
             .then(r => {
@@ -263,7 +262,7 @@
                 h = _canvas.height;
             }
             else {
-                if ((w < 10 || h < 10)) {
+                if ((w < 30 || h < 30)) {
                     resolve();
                     return;
                 }
@@ -321,12 +320,10 @@
         _canvas.width = _rootDiv.clientWidth;
         _canvas.height = _rootDiv.clientHeight;
         globalThis.__CANVAS__ = _canvas;
-
-        if (!globalThis.__OVERLAY__) return;
-
         _canvasCtxText = _canvas.getContext("2d");
-
-        const ctx1 = _canvas.getContext("2d");
+        if (!globalThis.__OVERLAY__) return;
+        
+        const ctx1 = _canvasCtxText;
         var x = 0, y = 0, w = 0, h = 0;
         var sx, sy;
         function render(e) {
@@ -514,7 +511,8 @@
             }
         }
         else {
-            _layoutLocked.style.visibility = 'visible';
+            if (globalThis.__EXTERNAL__ !== true)
+                _layoutLocked.style.visibility = 'visible';
             _divView.style.visibility = _options.otpLockShowOverlay ? 'visible' : 'hidden';
             _divTextFlow.parentElement.classList.add('locked');
             _divTextFlow.style.overflowY = 'hidden';

@@ -10,36 +10,48 @@
     <div id="app-mount">
         <div><a></a><a></a><div class="overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden;">
             <div style="width: 100%; height: 100%; background-color: #4f5660cc; position: absolute;"></div>
-            <div class="layoutUnlocked layoutLocked">
+            <div class="layoutUnlocked layoutLocked" style="position: absolute;">
+                <h1>Agent</h1>
             </div>
             <div></div>
             <!--inject-->
         </div></div>
-        <h1>Agent</h1>
         <script>
-            var __OVERLAY__ = false;
+            var __OVERLAY__ = false, __EXTERNAL__;
             {
-                let show = true;
+                const urlParams = new URLSearchParams(window.location.search);
+                __EXTERNAL__ = urlParams.get('external') !== null; // skip shortcutKey
                 const _layoutLocked = document.getElementsByClassName('layoutLocked')[0];
                 const _overlay = _layoutLocked.parentElement;
-                window.addEventListener('keydown', function(e) {
-                    if (e.ctrlKey === true && e.altKey === true) {
-                        show = !show;
-                        if (show === true) {
-                            _layoutLocked.classList.add("layoutUnlocked");
-                            _layoutLocked.style.visibility = 'visible';
-                            _layoutLocked.previousElementSibling.style.visibility = 'visible';
-                            _overlay.style.pointerEvents = 'auto';
-                        }
-                        else {
-                            _layoutLocked.classList.remove("layoutUnlocked");
-                            _layoutLocked.style.visibility = 'hidden';
-                            _layoutLocked.previousElementSibling.style.visibility = 'hidden';
-                            _overlay.style.pointerEvents = 'none';
-                        }
-                        
+                let show = true;
+                window._toogleOverlay = function(v) {
+                    show = v ? v : !show;
+                    if (show === true) {
+                        _layoutLocked.classList.add("layoutUnlocked");
+                        _layoutLocked.style.visibility = 'visible';
+                        _layoutLocked.previousElementSibling.style.visibility = 'visible';
+                        _overlay.style.pointerEvents = 'auto';
                     }
-                }, false);
+                    else {
+                        _layoutLocked.classList.remove("layoutUnlocked");
+                        _layoutLocked.style.visibility = 'hidden';
+                        _layoutLocked.previousElementSibling.style.visibility = 'hidden';
+                        _overlay.style.pointerEvents = 'none';
+                    }
+                    return show;
+                }
+                
+                if (__EXTERNAL__ === false) {
+                    window.addEventListener('keydown', function(e) {
+                        if (e.ctrlKey === true && e.altKey === true) {
+                            _toogleOverlay();
+                        }
+                    }, false);
+                }
+                else {
+                    __OVERLAY__ = true;
+                    _layoutLocked.previousElementSibling.style.backgroundColor = '';
+                }
             }
         </script>
         <script src="./libOverlay.js"></script>
