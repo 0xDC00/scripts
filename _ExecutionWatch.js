@@ -33,7 +33,7 @@
 
     var previousString; // only submit new string
     function submitTranslate(dcode, buf) {
-        const str = filters_text(dcode.decoder.decode(buf));
+        const str = filters_text(dcode.decoder.decode(new Uint8Array(buf)));
         if (str) {
             if (str !== previousString) {
                 if (dcode.terminated) console.log('|\n' + hexdump(dcode.address, { header: false, length: buf.byteLength }));
