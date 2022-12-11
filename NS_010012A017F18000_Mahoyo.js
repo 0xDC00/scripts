@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [010012A017F18000] 魔法使いの夜 通常版
-// @version      1.0.0
+// @version      1.0.2
 // @author       Koukdw
 // @description  Yuzu, Mahoyo
 // * Aniplex (アニプレックス)
