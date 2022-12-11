@@ -7,18 +7,21 @@
 // * 
 // Same script as tsukihime just the offset is changing
 // ==/UserScript==
-const gameVer = '1.0.0';
+const gameVer = '1.0.2';
 //------------------------------------------------
 const { setHook } = require('./libYuzu.js');
 
 const mainHandler = handler;
 
-const udp101 = {
-    0x8086ba0: mainHandler
-};
 
+// e8 03 27 1e ? ? 41 a9 00 1d a8 4e
 setHook({
-    '1.0.0': udp101,
+    '1.0.0': {
+        0x8086ba0: mainHandler,
+    },
+    '1.0.2': {
+        0x8086e70: mainHandler,
+    },
 }[globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
