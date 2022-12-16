@@ -74,9 +74,13 @@
             if (s === '') return;
 
             rect = selection.getRangeAt(0).getBoundingClientRect();
-            const {x, y} = e;
+            const { x, y } = e;
+            if (rect.width == 0) {
+                rect.x = x;
+                rect.y = y - 12;
+            }
             const isInside = rect.x <= x && x <= rect.x + rect.width
-                            && rect.y <= y && y <= rect.y + rect.height;
+                && rect.y <= y && y <= rect.y + rect.height;
             if (isInside === true) {
                 control.style.top = e.y - 40 + 'px';
                 control.style.left = e.x - 12 + 'px';
@@ -108,7 +112,7 @@
         function oncontroldown(e) {
             if (e.button !== 0) return;
             document.getSelection().removeAllRanges();
-	        this.remove();
+            this.remove();
         }
 
         function onGoogleDown(e) {
@@ -117,61 +121,61 @@
         }
 
         function showDictGoogle(s, r) {
-            let url = 'http://127.0.0.1:9001/api/translate/Google?s=' + s;
+            let url = 'http://127.0.0.1:9001/api/translate/Google?s=' + encodeURI(s);
             if (r === true) url += '&r=1'; // reverse translate
             fetch(url)
-            .then(r => r.json())
-            .then(r => {
-                divDict.innerHTML = '';
-                const text = r.sentences.map(x => x.trans).join(' ');
-                const dict = r.dict;
+                .then(r => r.json())
+                .then(r => {
+                    divDict.innerHTML = '';
+                    const text = r.sentences.map(x => x.trans).join(' ');
+                    const dict = r.dict;
 
-                // translated text
-                const divTarget = document.createElement('div');
-                divTarget.innerText = text;
-                divTarget.setAttribute('data-tooltip', s);
-                divTarget.style.fontSize = '1.25em';
-                divDict.appendChild(divTarget);
-                
-                // dict...
-                if (dict) {
-                    try {
-                        for (const item of dict) {
-                            const divItem = document.createElement('div');
-                            divItem.style.marginTop = '0.1em';
+                    // translated text
+                    const divTarget = document.createElement('div');
+                    divTarget.innerText = text;
+                    divTarget.setAttribute('data-tooltip', s);
+                    divTarget.style.fontSize = '1.25em';
+                    divDict.appendChild(divTarget);
 
-                            const divItemTitle = document.createElement('div');
-                            divItemTitle.style.fontWeight = 'bold';
-                            divItemTitle.innerText = item.pos;
+                    // dict...
+                    if (dict) {
+                        try {
+                            for (const item of dict) {
+                                const divItem = document.createElement('div');
+                                divItem.style.marginTop = '0.1em';
 
-                            const divItemBody = document.createElement('div');
-                            for (const entry of item.entry) {
-                                const word = entry.word;
-                                const recv = entry.reverse_translation.join(', ');
-                                const span = document.createElement('span');
-                                span.innerText = word;
-                                //span.title = recv;
-                                span.setAttribute('data-tooltip', recv);
-                                span.style.backgroundColor = '#eeeeee';
-                                span.className = "dict-item";
-                                divItemBody.appendChild(span);
-                                divItemBody.append(', ');
+                                const divItemTitle = document.createElement('div');
+                                divItemTitle.style.fontWeight = 'bold';
+                                divItemTitle.innerText = item.pos;
 
+                                const divItemBody = document.createElement('div');
+                                for (const entry of item.entry) {
+                                    const word = entry.word;
+                                    const recv = entry.reverse_translation.join(', ');
+                                    const span = document.createElement('span');
+                                    span.innerText = word;
+                                    //span.title = recv;
+                                    span.setAttribute('data-tooltip', recv);
+                                    span.style.backgroundColor = '#eeeeee';
+                                    span.className = "dict-item";
+                                    divItemBody.appendChild(span);
+                                    divItemBody.append(', ');
+
+                                }
+                                divItemBody.lastChild.remove();
+
+                                divItem.appendChild(divItemTitle);
+                                divItem.appendChild(divItemBody);
+                                divDict.appendChild(divItem);
                             }
-                            divItemBody.lastChild.remove();
-        
-                            divItem.appendChild(divItemTitle);
-                            divItem.appendChild(divItemBody);
-                            divDict.appendChild(divItem);
                         }
+                        catch (e) { console.error(e, dict) }
                     }
-                    catch (e) { console.error(e, dict) }
-                }
 
-                divDict.style.top = parseInt(rect.top + 27) + 'px';
-                divDict.style.left = `calc(${rect.left}px + calc(${rect.width}px / 2) - 12px)`;
-                divDict.style.display = 'inherit';
-            });
+                    divDict.style.top = parseInt(rect.top + 27) + 'px';
+                    divDict.style.left = `calc(${rect.left}px + calc(${rect.width}px / 2) - 12px)`;
+                    divDict.style.display = 'inherit';
+                });
         }
     }
 
@@ -190,15 +194,10 @@
                 _divTextTran.value = '';
                 if (s === '') return;
 
-                flowScroll();
-                const id = Date.now();
-                const data = JSON.stringify({
-                    type: 'copyText',
-                    id: id,
-                    sentence: s
-                });
-                wsOnMessage({ data: data });
-                _ws.send(data.replace('copyText', 'translate'));
+                addTextItem(s);
+            }
+            else if (e.key === 'Escape') {
+                _divTextTran.value = '';
             }
         });
     }
@@ -207,16 +206,6 @@
         _ws = new WebSocket("ws://127.0.0.1:9001");
         _ws.onmessage = wsOnMessage;
         _ws.onclose = () => setTimeout(initSocket, 3000);
-    }
-
-    function drawOcrResult(s, d, sx, sy) {
-        if (!s || !d) return;
-        const rect = d.words[0].bounding_rect;
-        const x = rect.x + sx;
-        const y = rect.y + sy + parseInt(rect.height / 2);
-        _canvasCtxText.fillText(s, x, y, rect.w);
-
-        // TODO: dom vs canvas?
     }
 
     /** @param {MessageEvent} ev */
@@ -229,90 +218,8 @@
         }
         else if (data.type === 'translate') {
             setTextItemTranslate(data);
-
-            if (data.ocr !== undefined) {
-                _canvasCtxText.font = '24px Tahoma';
-                _canvasCtxText.fillStyle = "#00ff00";
-                const sx = data.ocr.sx;
-                const sy = data.ocr.sy;
-                const linesOri = data.ocr.lines;
-                if (data.ocr.mode === 'one') {
-                    drawOcrResult(data.sentence, linesOri[0], sx, sy);
-                }
-                else {
-                    const lines = data.sentence.split('\n');
-                    for (let i = 0; i < linesOri.length; i++) {
-                        drawOcrResult(lines[i], linesOri[i], sx, sy);
-                    }
-                }
-            }
         }
-        if (scroll === true) {
-            flowScroll();
-        };
-    }
-
-    function OCR(x, y, w, h, mode, sx, sy) {
-        return new Promise((resolve, reject) => {
-            //console.log(x, y, w, h, mode, sx, sy);
-            if (mode === 'full') {
-                x = 0; y = 0;
-                sx = 0; sy = 0;
-                w = _canvas.width;
-                h = _canvas.height;
-            }
-            else {
-                if ((w < 30 || h < 30)) {
-                    resolve();
-                    return;
-                }
-            }
-            
-            const id = Date.now();
-            fetch('http://127.0.0.1:9001/api/ocr?mode=' + mode
-                + '&x=' + x
-                + '&y=' + y
-                + '&w=' + w
-                + '&h=' + h
-                + '&sx=' + sx
-                + '&sy=' + sy
-            )
-                .then(r => r.json())
-                .then(z => {
-                    if (z.text === '')
-                        return;
-                    // only 1 line => force one
-                    if (z.lines.length === 1)
-                        mode = 'one';
-
-                    let str = '';
-                    if (mode === 'one') {
-                        str = z.text;
-                    }
-                    else {
-                        const arr = [];
-                        for (let i = 0; i < z.lines.length; i++) {
-                            arr.push(z.lines[i].text);
-                        }
-                        str = arr.join('\n');
-                    }
-
-                    // append original
-                    z.mode = mode;
-                    z.sx = x;
-                    z.sy = y;
-                    const msg = {
-                        type: 'copyText',
-                        id: id,
-                        sentence: str,
-                        ocr: z
-                    };
-                    const data = JSON.stringify(msg);
-                    wsOnMessage({ data: data });
-                    // append translate
-                    _ws.send(data.replace('copyText', 'translate'));
-                }).finally(resolve);
-        });
+        if (scroll === true) flowScroll();
     }
 
     function initCanvas() {
@@ -322,10 +229,41 @@
         globalThis.__CANVAS__ = _canvas;
         _canvasCtxText = _canvas.getContext("2d");
         if (!globalThis.__OVERLAY__) return;
-        
+
         const ctx1 = _canvasCtxText;
         var x = 0, y = 0, w = 0, h = 0;
         var sx, sy;
+        let timer;
+
+        async function loop() {
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+            const url = 'http://127.0.0.1:9001/api/ocr?mode=one'
+                + '&x=' + x
+                + '&y=' + y
+                + '&w=' + w
+                + '&h=' + h
+                + '&sx=' + sx
+                + '&sy=' + sy;
+            let pre;
+            while (timer === true) {
+                ctx1.beginPath();
+                ctx1.rect(sx, sy, w, h);
+                ctx1.stroke();
+                try {
+                    const r = await fetch(url);
+                    const j = await r.json();
+                    const s = j.text;
+                    if (s !== '' && s !== pre) {
+                        pre = s;
+                        addTextItem(s);
+                    };
+                    await sleep(500);
+                }
+                catch { }
+            }
+            addTextLog('LoopEnd');
+        }
+
         function render(e) {
             ctx1.clearRect(0, 0, _canvas.width, _canvas.height);
             w = e.offsetX - x;
@@ -339,55 +277,84 @@
             ctx1.rect(x, y, w, h);
             ctx1.stroke();
         }
-        let timer;
-        _canvas.onmouseup = function (e) {
-            if (e.button === 2) {
-                clearInterval(timer);
-                ctx1.clearRect(0, 0, _canvas.width, _canvas.height);
-                return;
-            }
+
+        function action(e) {
+            if (e.buttons !== 0) return;
             if (_canvas.onmousemove === null) return;
             _canvas.onmousemove = null;
+            _canvas.onmouseup = null;
+
             ctx1.clearRect(0, 0, _canvas.width, _canvas.height);
-
-            if (w < 0) {
-                sx += w;
-                x += w;
-                w = -w;
-            }
-            if (h < 0) {
-                sy += h;
-                y += h;
-                h = -h;
+            if (e.button === 2) {
+                timer = false;
+                showWidgets();
+                return;
             }
 
-            const mode = e.altKey ? 'full' : (e.shiftKey ? 'loop' : (e.ctrlKey ? 'one' : 'lines'));
+            const mode = e.altKey ? 'lines' : (e.shiftKey ? 'loop' : (e.ctrlKey ? 'lines' : 'one'));
 
+            if (mode === 'full') {
+                x = 0; y = 0;
+                sx = 0; sy = 0;
+                w = _canvas.width;
+                h = _canvas.height;
+            }
+            else {
+                if (w < 0) {
+                    sx += w;
+                    x += w;
+                    w = -w;
+                }
+                if (h < 0) {
+                    sy += h;
+                    y += h;
+                    h = -h;
+                }
+                if ((w < 20 || h < 20)) {
+                    showWidgets();
+                    return;
+                }
+
+                if (mode === 'loop') {
+                    timer = true;
+                    showWidgets();
+                    return requestAnimationFrame(loop);
+                }
+            }
             requestAnimationFrame(() => {
                 OCR(x, y, w, h, mode, sx, sy)
                     .finally(() => {
-                        x = 0, y = 0; w = 0, h = 0;
                         showWidgets();
                     });
             });
-
         };
+
         _canvas.onmousedown = function (e) {
+            if (_canvas.onmousemove !== null) return;
+            timer = false;
             if (e.button === 2) {
-                clearInterval(timer);
                 ctx1.clearRect(0, 0, _canvas.width, _canvas.height);
                 return;
             }
 
             ctx1.strokeStyle = "#00ff00";
+            w = 0;
+            h = 0;
             x = e.offsetX;
             y = e.offsetY;
-
-            // offscreen renderring, e.screenX, e.screenY is 0
+            // Overlay offscreen renderring, e.screenX, e.screenY is 0
             // we force full screen mode frist
             sx = x;
             sy = y;
-            // then try to get the current mouse position
+
+            if (globalThis.__EXTERNAL__ === true) {
+                _canvas.onmousemove = render;
+                _canvas.onmouseup = action;
+                hideWidgets();
+                return;
+            }
+
+            // the try to get the current mouse position
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 250)
             fetch('http://127.0.0.1:9001/api/position', { signal: controller.signal })
@@ -397,9 +364,49 @@
                     sy = z.y;
                 }).finally(() => {
                     _canvas.onmousemove = render;
+                    _canvas.onmouseup = action;
                     hideWidgets();
                 });
         };
+    }
+
+    function OCR(x, y, w, h, mode, sx, sy) {
+        return fetch('http://127.0.0.1:9001/api/ocr?mode=' + mode +
+            '&x=' + x +
+            '&y=' + y +
+            '&w=' + w +
+            '&h=' + h +
+            '&sx=' + sx +
+            '&sy=' + sy
+        )
+            .then(r => r.json())
+            .then(z => {
+                const s = z.text;
+                if (s === '') return;
+
+                addTextItem(s);
+            });
+    }
+
+    function addTextLog(s) {
+        const val = createTextItem(Date.now(), s);
+        _divTextFlow.appendChild(val[0]);
+        flowScroll();
+    }
+
+    function addTextItem(s) {
+        const scroll = _divTextFlow.offsetHeight + _divTextFlow.scrollTop >= _divTextFlow.scrollHeight;
+        const id = Date.now();
+        const val = createTextItem(id, s, '');
+        _divTextFlow.appendChild(val[0]);
+
+        fetch('http://127.0.0.1:9001/api/translate/?s=' + encodeURI(s))
+            .then(r => r.text())
+            .then(t => {
+                val[2].innerText = t;
+            }).finally(() => {
+                if (scroll === true) flowScroll();
+            });
     }
 
     function setTextItemTranslate(data) {
@@ -428,17 +435,16 @@
         if (txtOri !== undefined) {
             orig.innerText = txtOri;
         }
-        
+        item.id = 'text-item-' + id;
+        item.className = 'text-item';
+        item.appendChild(orig);
+
         let tran = null;
         if (txtTran !== undefined) {
             tran = document.createElement('p');
             tran.innerText = txtTran;
             item.appendChild(tran);
         }
-
-        item.id = 'text-item-' + id;
-        item.className = 'text-item';
-        item.appendChild(orig);
 
         return [item, orig, tran];
     }
@@ -504,7 +510,7 @@
             _divView.style.visibility = 'visible';
             _divTextFlow.parentElement.classList.remove('locked');
             _divTextFlow.style.overflowY = 'auto';
-            
+
             if (_options.otpBacklog === true) {
                 _divTextTran.parentElement.style.display = null;
                 _divTextTran.focus();
@@ -574,7 +580,7 @@ function makeResizableDiv(div) {
         const target = element;
         const sw = document.body.clientWidth;
         const sh = document.body.clientHeight;
-        let {x, y, width, height} = target.getBoundingClientRect();
+        let { x, y, width, height } = target.getBoundingClientRect();
 
         const overflowX = (x + width) - sw;
         if (overflowX > 0) {
@@ -873,6 +879,15 @@ function getViewHtml() {
     .resizable.text-view .resizers .text-flow.translated-only .text-item > :not(:last-child) {
         display: none;
     }
+    .resizable.text-view .resizers .text-flow.translated-only .text-item > :first-child {
+        visibility: hidden;
+        animation: 0s linear 1s forwards delayedShow;
+    }
+    @keyframes delayedShow {
+        to {
+            visibility: visible;
+        }
+    }
 
     .resizable.text-view .resizers .text-flow::-webkit-scrollbar {
         width: 12px;
@@ -980,14 +995,17 @@ function getViewHtml() {
         position: relative;
     }
     [data-tooltip]:after {
+        z-index: 2147483648;
         content: attr(data-tooltip);
         position: absolute;
         left: 0;
         bottom: 100%;
         background-color: lightsteelblue;
-        width: max-content;
         display: none;
         pointer-events: none;
+        border-radius: 5px;
+        padding: 0.2em;
+        width: max-content;
         max-width: 300px;
     }
     [data-tooltip]:hover:after {
