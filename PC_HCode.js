@@ -34,6 +34,41 @@
 // ==/UserScript==
 
 // TODO: cleanup
+//require('./libSubtitle.js'); // write subtitle
+
+const _mod0 = Process.enumerateModules()[0];
+//const mainHandler = trans.send((s) => s, '100+');
+const mainHandler = (function () {
+    let timer = null;
+    const separator = '\n';
+    let arr = [];
+
+    const delay = globalThis.HCODE_DELAY ?? 100;
+    const isLine = separator === '\n';
+    let preLine;
+    return function (s) {
+        clearTimeout(timer);
+        if (s !== null) {
+            if (isLine === true) {
+                if (s !== preLine) {
+                    preLine = s;
+                    arr.push(s);
+                }
+            }
+            else {
+                arr.push(s);
+            }
+        }
+        timer = setTimeout(function () {
+            if (arr.length !== 0) {
+                const finalStr = arr.join(separator);
+                if (finalStr) trans._copy(finalStr);
+                arr = [];
+            }
+            preLine = null
+        }, delay);
+    }
+})();
 
 // https://github.com/Artikash/Textractor/blob/master/include/const.h#L14
 // HookParamType
@@ -56,8 +91,6 @@ const HOOK_ENGINE = 0x8000;
 const HOOK_ADDITIONAL = 0x10000;
 const KNOWN_UNSTABLE = 0x20000;
 const CP_UTF8 = 65001;
-const mainHandler = trans.send((s) => s, '50+');
-const _mod0 = Process.enumerateModules()[0];
 
 if (module.parent === null) {
     setImmediate(() => {
@@ -67,6 +100,58 @@ if (module.parent === null) {
     });
 }
 
+/*
+// Polifils nodejs debugging
+const Process = {
+    pointerSize: 4,
+    findModuleByName() { return {}; }
+}
+const _mod0 = {
+    base: {
+        add() { return 0x22334455; }
+    }
+}
+const ptr = () => {
+    return {
+        add() { return 0x22334455; }
+    }
+};
+//setHook('/HW-4*14:-4*0@128648:', {});
+//setHook('/HWN-10*-2@12c3a7:', {});
+// USING_STRING (readPointer) only for stack?
+// TODO: hp.offset >= 0
+setHook('/HS-1C@005486:'); // test getAddress => esi
+//setHook('/HS0@005484:'); // test getAddress => [esp]
+//*/
+
+
+// /**
+//  * This callback is displayed as a global member.
+//  * @callback filterCallback
+//  * @param {string} s - result string
+//  * @return {string}
+//  */
+
+/**
+ * hcode advance config
+ * @typedef {Object} hcodeOptions
+ * @property {boolean} reorder - default: false, reoder thread (index priority)
+ * @property {boolean} blacklist - default: false (whitelist)
+ * @property {Object.<string, boolean>} threads - Thread filter <threadId, whiteList>
+ * @property {Object.<string, function(this:string[],string,Object.<string,string[]>,Object.<string,string[]>):string>} filters - Final string from a thread <threadId, callback> this=threadDatas
+ * @property {string} join - Thread Linker (default: 500ms, separator = empty)
+ * @property {function(this:InvocationContext):string} split - Thread spliter
+ * @property {function(this:InvocationContext):NativePointer} getTextAddress - custom text address
+ * @property {function(this:InvocationContext,NativePointer):string} readString - custom string reader
+ * 
+ */
+
+/**
+ * 
+ * @param {string} hcode 
+ * @param {hcodeOptions} options - {@link hcodeOptions} objects
+ * @returns {Object}
+ */
 function setHook(hcode, options) {
     console.log('HCODE: ' + hcode);
     try {
@@ -76,7 +161,7 @@ function setHook(hcode, options) {
             return false;
         }
 
-        return insertHookCmd(hp, options);
+        return insertHookCmd(hp, options ?? {});
     }
     catch (e) {
         console.error(e.stack ?? e);
@@ -88,6 +173,8 @@ const threads = {};
 // https://github.com/Artikash/Textractor/blob/e83579ed7cee61d39b94a9c550a8bbd6554b4774/texthook/texthook.cc#L102
 // https://github.com/Artikash/Textractor/blob/e83579ed7cee61d39b94a9c550a8bbd6554b4774/texthook/texthook.cc#L209
 function insertHookCmd(hp, options) {
+    hp.options = options; // exten hook params
+
     let address = ptr(hp.address);
     if (hp.type & USING_UTF8) hp.codepage = CP_UTF8;
     if (hp.type & MODULE_OFFSET) {
@@ -117,32 +204,57 @@ function insertHookCmd(hp, options) {
     console.log('  Context:     ' + useContext);
     console.log('  HookAddress: 0x' + _address);
 
-
-    const getTextAddress = genGetTextAddress(hp);
-    const readString = genReadString(hp);
+    const getTextAddress = options.getTextAddress ?? genGetTextAddress(hp);
+    const readString = options.readString ?? genReadString(hp);
     const processString = genProcessString(options, readString, useContext);
+    const fnSplit = options.split;
+    const split = fnSplit === undefined ? () => '' : function () { return ':' + fnSplit.call(this) };
 
     return Breakpoint.add(address, function () {
+        //const splitThread = fnSplit !== undefined ? (':' + fnSplit.call(this)) : '';
+        const splitThread = split.call(this);
+
         this.returnAddress = this.context.sp.readPointer();
-        let threadContext = threads[this.returnAddress];
+        const thread = this.returnAddress + splitThread;
+        let threadContext = threads[thread];
         if (threadContext === undefined) {
+            // try rva instead (aslr)
             const caller = Process.findModuleByAddress(this.returnAddress);
-            const name = caller.path === _mod0.path ? '' : caller.name;
-            threadContext = name + ':$' + this.returnAddress.sub(caller.base);
-            threads[this.returnAddress] = threadContext;
+            if (caller !== null) {
+                const name = caller.path === _mod0.path ? '' : caller.name;
+                threadContext = name + ':$' + this.returnAddress.sub(caller.base);
+            }
+            else {
+                // TODO: trace... first return?
+                threadContext = this.returnAddress.toString(16);
+            }
+
+            threadContext += splitThread;
+            threads[thread] = threadContext;
         }
 
-        const msg = `[onEnter] Thread: ${this.threadId.toString(16)}:${_address}:${this.returnAddress.toString(16)}  ${threadContext}`;
-        processString(getTextAddress.call(this), threadContext, msg);
+        const msg = `[onEnter] Thread: ${this.threadId.toString(16)}:${_address}:${thread}  ${threadContext}`;
+        processString.call(this, getTextAddress.call(this), useContext === true ? threadContext : '0' + splitThread, msg);
     });
 }
 
+/**
+ * 
+ * @param {hcodeOptions} options 
+ * @param {function} readString 
+ * @param {string} context 
+ * @returns {function}
+ */
 function genProcessString(options, readString, context) {
     options = options ?? {};
 
-    const threads = options.threads ?? {};
+    const oldthreads = options.threads ?? {};
+    const threadKeys = Object.keys(oldthreads);
+    const threads = options.blacklist === null ? {} : oldthreads;
+
     const flag = (Object.keys(threads).length !== 0
-        && options.blacklist !== true) ? true /* whitelist */ : undefined /* blacklist */;
+        && options.blacklist !== true)
+        ? true /* whitelist */ : undefined /* blacklist */;
 
     const { time, separator } = (() => {
         let t = 500;
@@ -158,15 +270,22 @@ function genProcessString(options, readString, context) {
     })();
     const isLine = separator === '\n';  // remove duplicate line
 
+    const filters = options.filters ?? {};
+    const threadSeparator = options.threadSeparator ?? '\n';
+    const isReOrder = options.reorder === true;
+
     console.log('  Blacklist:   ' + (flag === undefined));
     console.log('  Separator:   ' + JSON.stringify(separator));
 
+    // let attachAt = Date.now(), beginAt = 0, endAt = 0;
     let timer;
     let pre = null, count = 1;
+
     if (context) {
         let result = {};
         let skipped = {};
-        return (address, thread, msg) => {
+
+        return function (address, thread, msg) {
             if (pre === msg) {
                 console.log('\x1b[A' + msg + ' x' + ++count);
             }
@@ -175,51 +294,109 @@ function genProcessString(options, readString, context) {
                 pre = msg; count = 1;
             }
 
-            clearTimeout(timer);
+            // if (beginAt === 0) beginAt = Date.now() - attachAt;
+            // clearTimeout(timer);
+            // mainHandler(null); // dirty fix: hcode linker
+
             const target = (threads[thread] === flag || module.parent === null) ? result : skipped;
             let array = target[thread];
             if (array === undefined) {
                 array = [];
                 target[thread] = array;
             }
-            const s = readString(address);
-            array.push(s);
+
+            try {
+                const s = readString.call(this, address);
+                array.push(s);
+            }
+            catch (e) {
+                console.error(e);
+                pre = null;
+            }
 
             timer = setTimeout(() => {
                 // print list (debug ? skipped)
-                console.log('\x1b[2;37m' + JSON.stringify(module.parent === null ? result : skipped, null, 2) + '\x1B[0m');
-
+                let finalStr;
                 if (isLine === true) {
-                    // TODO: join by index?
+                    console.log('\x1b[2;37m' + JSON.stringify(module.parent === null ? result : skipped, null, 2) + '\x1B[0m');
+
+                    // TODO: test line reorder
+                    if (isReOrder === true) {
+                        const keys = Object.keys(result);
+                        const entries = keys.sort(function (a, b) {
+                            const idx1 = threadKeys.indexOf(a);
+                            const idx2 = threadKeys.indexOf(b);
+                            return (idx1 > -1 ? idx1 : Infinity) - (idx2 > -1 ? idx2 : Infinity);
+                        }).map(k => [k, result[k]]);
+                        result = Object.fromEntries(entries);
+                    }
+
                     const set = new Set();
                     for (const key in result) {
                         const array = result[key];
-                        const str = [...new Set(array)].join(separator);
+                        const arraz = [...new Set(array)];
+                        let str = arraz.join(separator); // \n
+
+                        // TODO: filter support
+                        const filter = filters[key];
+                        if (filter !== undefined) {
+                            str = filter.call(array, str, result, skipped);
+                        }
+
                         set.add(str);
                     }
-                    const final = [...set].join('\r\n');
-                    mainHandler(final);
+                    finalStr = [...set].join(threadSeparator);
                 }
                 else {
+                    console.log('\x1b[2;37m' + JSON.stringify(module.parent === null ? result : skipped) + '\x1B[0m');
+
+                    if (isReOrder === true) {
+                        const keys = Object.keys(result);
+                        const entries = keys.sort(function (a, b) {
+                            const idx1 = threadKeys.indexOf(a);
+                            const idx2 = threadKeys.indexOf(b);
+                            return (idx1 > -1 ? idx1 : Infinity) - (idx2 > -1 ? idx2 : Infinity);
+                        }).map(k => [k, result[k]]);
+                        result = Object.fromEntries(entries);
+                    }
+
                     const arr = [];
                     for (const key in result) {
                         const array = result[key];
-                        const str = array.join(separator);
+                        let str = array.join(separator); // space
+
+                        const filter = filters[key];
+                        if (filter !== undefined) {
+                            str = filter.call(array, str, result, skipped);
+                        }
+
                         arr.push(str);
                     }
-                    const final = arr.join('\r\n');
-                    mainHandler(final);
+                    finalStr = arr.join(threadSeparator);
                 }
 
-                result = {};
-                skipped = {};
+                if (finalStr !== '') {
+                    // // TODO: multiple hook, multiple block
+                    // endAt = Date.now() - attachAt;
+                    // globalThis.currentBlock = {
+                    //     beginAt: beginAt,
+                    //     endAt: endAt,
+                    //     result: result
+                    // };
+                    // beginAt = 0;
+
+                    mainHandler(finalStr);
+                }
+                result = {}; skipped = {};
                 pre = null; count = 1;
             }, time);
         }
     }
     else {
         let array = [];
-        return (address, _, msg) => {
+        let skipped = [];
+        const filter = filters[Object.keys(filters)[0]];
+        return function (address, thread, msg) {
             // if (pre === msg) {
             //     console.log('\x1b[A' + msg + ' x' + ++count);
             // }
@@ -228,24 +405,46 @@ function genProcessString(options, readString, context) {
             //     pre = msg; count = 1;
             // }
 
-            clearTimeout(timer);
-            const s = readString(address);
-            array.push(s);
+            // if (beginAt === 0) beginAt = Date.now() - attachAt;
+            // clearTimeout(timer);
+            // mainHandler(null); // dirty fix: hcode linker
+
+            // black list => push skiped ? array
+            // white list => push array ? skipped
+            const target = (threads[thread] === flag || module.parent === null) ? array : skipped;
+
+            const s = readString.call(this, address);
+            target.push(s);
 
             console.log(msg + ' \x1b[2;37m`' + s + '`\x1B[0m'); // debug
 
             timer = setTimeout(() => {
                 //console.log('\x1b[2;37m' + JSON.stringify(array, null, 2) + '\x1B[0m');
-                console.log('\x1b[2;37m{}\x1B[0m');
+                console.log('\x1b[2;37m{}\x1B[0m'); // print skiped
 
                 if (isLine === true) {
+                    // remove duplicate line
                     array = [...new Set(array)];
                 }
+                let finalStr = array.join(separator); // default = ''
 
-                const str = array.join(separator);
-                mainHandler(str);
+                if (finalStr !== '') {
+                    if (filter !== undefined) {
+                        finalStr = filter.call(array, finalStr, skipped);
+                    }
 
-                array = [];
+                    // endAt = Date.now() - attachAt;
+                    // globalThis.currentBlock = {
+                    //     beginAt: beginAt,
+                    //     endAt: endAt,
+                    //     result: array
+                    // };
+                    // beginAt = 0;
+
+                    mainHandler(finalStr);
+                }
+
+                array = []; skipped = [];
                 //pre = null; count = 1;
             }, time);
         }
@@ -305,8 +504,9 @@ function genReadString(hp) {
                 // A - BE & codepage
                 if (hp.codepage === 932) {
                     return (address) => {
-                        const buf = ArrayBuffer.wrap(address, 2);
-                        return [buf[1], buf[0]].unwrap().readShiftJisString(2)[0];
+                        const buf = new Uint8Array(ArrayBuffer.wrap(address, 2));
+                        const bufR = new Uint8Array([buf[1], buf[0]]).buffer;
+                        return bufR.unwrap().readShiftJisString(2)[0];
                     }
                 }
                 else {
@@ -317,6 +517,10 @@ function genReadString(hp) {
                 // B - LE & codepage
                 if (hp.codepage === 932) {
                     return (address) => address.readShiftJisString(2)[0]; // 1->2 byte
+                    // return (address) => {
+                    //     console.log(address, address.readU32().toString(16));
+                    //     return address.readShiftJisString(2)[0];
+                    // }
                 }
                 else {
                     throw new Error("TODO: codepage3: " + hp.codepage);
@@ -352,10 +556,15 @@ function getRegName(hp_offset) {
 function genGetTextAddress(hp) {
     let body = 'const address = this.context.';
     let exps = ''; // debug
-    if (hp.offset > 0) {
-        body += `sp.add(${hp.offset}).readPointer()`;
-        const idx = hp.offset === 0 ? '' : `${hp.offset > 0 ? '+' : '-'}0x${hp.offset.toString(16)}`;
-        exps = `[${Process.pointerSize === 4 ? 'esp' : 'rsp'}${idx}]`; // esp+4<=>args[0], esp+8<=>args[1]
+    if (hp.offset >= 0) {
+        // body += `sp.add(${hp.offset}).readPointer()`;
+        // const idx = hp.offset === 0 ? '' : `${hp.offset > 0 ? '+' : '-'}0x${hp.offset.toString(16)}`;
+        // exps = `[${Process.pointerSize === 4 ? 'esp' : 'rsp'}${idx}]`; // esp+4<=>args[0], esp+8<=>args[1]
+        //// || TODO: *1+
+        // address instead address<=>rawData
+        body += hp.offset === 0 ? 'sp' : `sp.add(${hp.offset})`;
+        const idx = hp.offset === 0 ? '' : `+0x${hp.offset.toString(16)}`;
+        exps = `${Process.pointerSize === 4 ? 'esp' : 'rsp'}${idx}`;
     }
     else {
         const reg = getRegName(hp.offset);
@@ -366,12 +575,24 @@ function genGetTextAddress(hp) {
     if (hp.type & DATA_INDIRECT) {
         if (hp.index !== 0) {
             body += `.add(${hp.index})`;
-            exps += (hp.index > 0 ? '+0x' : '-0x') + hp.index.toString(16);
+            exps += (hp.index > 0 ? '+0x' : '-0x') + Math.abs(hp.index).toString(16);
         }
-        if (hp.type & USING_STRING) {
+
+        // move outside
+        // if (hp.type & USING_STRING){
+        //     body += '.readPointer()';
+        //     exps = '[' + exps + ']';
+        // }
+        //// || TODO: (*1)+ (data offset)
+        if (hp.offset >= 0) {
             body += '.readPointer()';
             exps = '[' + exps + ']';
         }
+    }
+    //// || TODO: (*1), TODO: wrong? esp only?
+    if (hp.type & USING_STRING && hp.offset >= 0) {
+        body += '.readPointer()';
+        exps = '[' + exps + ']';
     }
     if (hp.padding !== 0) {
         body += `.add(${hp.padding})`;
@@ -382,29 +603,42 @@ function genGetTextAddress(hp) {
     console.log('  DataAddress: ' + exps);
     console.log('  DataType:    ' + ((hp.type & USING_UNICODE) ? 'wchar' : 'char') + (hp.type & USING_STRING ? '*' : ''));
 
-    if (hp.type & USING_SPLIT) console.warn("TODO: USING_SPLIT");
-
+    //if (hp.type & USING_SPLIT) console.warn("TODO: USING_SPLIT");
     ////// TODO: two address (split<=>offset, split_index<=>index, SPLIT_INDIRECT<=>DATA_INDIRECT)
-    // if (hp.type & USING_SPLIT) {
-    //     body += 'const address2 = this.context.';
-    //     if (hp.split > 0) {
-    //         body += `sp.add(${hp.split}).readPointer()`;
-    //     }
-    //     else {
-    //         body += getRegName(hp.split);
-    //     }
+    if (hp.type & USING_SPLIT && hp.options.split === undefined) {
+        let body2 = 'return this.context.';
+        let exps2 = '';
+        if (hp.split >= 0) {
+            body2 += hp.split === 0 ? 'sp' : `sp.add(${hp.split})`;
+            const idx = hp.split === 0 ? '' : `+0x${hp.split.toString(16)}`;
+            exps2 = `${Process.pointerSize === 4 ? 'esp' : 'rsp'}${idx}`;
 
-    //     if (hp.type & SPLIT_INDIRECT) {
-    //         if (hp.split_index !== 0) {
-    //             body += `.add(${hp.split_index})`;
-    //         }
-    //
-    //         if (hp.type & USING_STRING) {
-    //             body += '.readPointer()';
-    //         }
-    //     }
-    //     body += ';\n';
-    // }
+            // TODO: sp readPointer ? (*2)
+        }
+        else {
+            const reg = getRegName(hp.split);
+            body2 += reg;
+            exps2 = reg;
+        }
+
+        if (hp.type & SPLIT_INDIRECT) {
+            if (hp.split_index !== 0) {
+                body2 += `.add(${hp.split_index})`;
+                exps2 += (hp.split_index > 0 ? '+0x' : '-0x') + Math.abs(hp.split_index).toString(16);
+            }
+
+            // split does not support offset like data
+            // TODO: is USING_STRING affect split?  (*2)
+            body2 += '.readPointer()';
+            exps2 = '[' + exps2 + ']';
+        }
+
+        body2 += ';';
+
+        console.log('  SplitAddress: ' + exps2);
+
+        hp.options.split = new Function(body2);
+    }
 
     return new Function(body);
 }
