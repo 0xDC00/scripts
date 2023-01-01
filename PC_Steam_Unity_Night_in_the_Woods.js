@@ -43,9 +43,10 @@ setHook('', '.DialogueImplementation', 'Say', -1, {
 // System.Collections.Generic.List<System.String>
 var listStringGetItem = null;
 var listStringGetCount = null;
-const argsZ = Memory.alloc(8 + 8);
-const args0 = argsZ.add(8);
-argsZ.writePointer(args0);
+
+// const argsZ = Memory.alloc(8 + 8);
+// const args0 = argsZ.add(8);
+// argsZ.writePointer(args0);
 
 // public IEnumerator RunOptions(DialogueUI dialogueUI, List<string> options)
 setHook('', '.DialogueImplementation', 'RunOptions', -1, {
@@ -57,11 +58,19 @@ setHook('', '.DialogueImplementation', 'RunOptions', -1, {
             listStringGetCount = obj.get_Count;
         }
 
+        // const options = args[2];
+        // const N = listStringGetCount.invoke(options).unbox().readS32();
+        // for (let i = 0; i < N; i++) {
+        //     args0.writeS32(i);
+        //     const item = listStringGetItem.invoke(options, argsZ).readMonoString();
+        //     const s = ' - ' + item;
+        //     handlerLine(s);
+        // }
+
         const options = args[2];
-        const N = listStringGetCount(options).unbox().readS32();
+        const N = listStringGetCount.invoke(options).unbox().readS32();
         for (let i = 0; i < N; i++) {
-            args0.writeS32(i);
-            const item = listStringGetItem(options, argsZ).readMonoString();
+            const item = listStringGetItem.call(options, i).readMonoString();
             const s = ' - ' + item;
             handlerLine(s);
         }
