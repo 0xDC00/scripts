@@ -15,6 +15,10 @@ console.warn(`
 `);
 
 const isFastMem = true;
+
+const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
+let idxDescriptor = isVirtual === true ? 2 : 1;
+let idxEntrypoint = idxDescriptor + 1;
 const DoJitPtr = getDoJitAddress();
 const buildRegs = createFunction_buildRegs();
 const operations = Object.create(null);
@@ -47,9 +51,6 @@ EmitX64::BlockDescriptor *__fastcall EmitX64::RegisterBlock(
 TODO:
 Arm64? https://github.com/merryhime/dynarmic/blob/arm64/src/dynarmic/backend/arm64/a32_address_space.cpp#L104
 */
-const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
-const idxDescriptor = isVirtual === true ? 2 : 1;
-const idxEntrypoint = idxDescriptor + 1;
 Interceptor.attach(DoJitPtr, {
     onEnter: function (args) {
         //EmitX64_vftable = args[0]; // rcx
@@ -61,7 +62,7 @@ Interceptor.attach(DoJitPtr, {
 
         const em_address = descriptor.readU64().toNumber();
         const op = operations[em_address];
-        if (op !== undefined) {
+        if (op !== undefined && entrypoint.isNull() === false) {
             console.log('Attach:', ptr(em_address), entrypoint);
             // Breakpoint.add (slower)
             Breakpoint.add(entrypoint, function () {
@@ -111,25 +112,50 @@ function getDoJitAddress() {
     }
     else {
         const __e = Process.enumerateModules()[0];
+
         // Windows MSVC x64 2019 (v996-) + 2022 (v997+)
         const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
-        const first = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
-        if (first) {
+        const RegisterBlock = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
+        if (RegisterBlock) {
             const beginSubSig1 = 'CC 40 5? 5? 5?';
             const lookbackSize = 0x400;
-            const address = first.address.sub(lookbackSize);
+            const address = RegisterBlock.address.sub(lookbackSize);
             const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
             if (subs.length !== 0) {
                 return subs[subs.length - 1].address.add(1);
             }
         }
 
-        // slower
-        // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
+        // fallback to Patch when RegisterBlock not found (wrong signature or target inlined)
+        const PatchSig1 = '4????? 4????? 4????? FF?? ?? 4????? ?? 4????? 75 ?? 4????? ?? 4?';
+        const Patch = Memory.scanSync(__e.base, __e.size, PatchSig1)[0];
+        if (Patch) {
+            const beginSubSig1 = '4883EC ?? 48';
+            const lookbackSize = 0x80;
+            const address = Patch.address.sub(lookbackSize);
+            const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
+            if (subs.length !== 0) {
+                idxDescriptor = 1;
+                idxEntrypoint = 2;
+                return subs[subs.length - 1].address;
+            }
+        }
+
+        // DebugSymbol: RegisterBlock
         // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX_K@Z <- new
+        // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
         const symbols = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::RegisterBlock');
         if (symbols.length !== 0) {
             return symbols[0];
+        }
+
+        // DebugSymbol: Patch
+        // ?Patch@EmitX64@X64@Backend@Dynarmic@@IEAAXAEBVLocationDescriptor@IR@4@PEBX@Z
+        const patchs = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::Patch');
+        if (patchs.length !== 0) {
+            idxDescriptor = 1;
+            idxEntrypoint = 2;
+            return patchs[0];
         }
     }
 
