@@ -457,6 +457,8 @@
         /** @type HTMLInputElement */
         const inputBacklog = document.getElementById('otpBacklog');
         /** @type HTMLInputElement */
+        const inputLeftRight = document.getElementById('otpLeftRight');
+        /** @type HTMLInputElement */
         const inputOriginalText = document.getElementById('otpOriginalText');
         _divOptions = inputBacklog.parentElement.parentElement;
 
@@ -479,6 +481,11 @@
         inputShowOverlayUnlock.parentElement.onclick = onClick;
         inputBacklog.parentElement.onclick = onClick;
         inputOriginalText.parentElement.onclick = onClick;
+        inputLeftRight.parentElement.onclick = onClick;
+
+        if (globalThis.__EXTERNAL__ === true) {
+            inputShowDiscordLock.parentElement.style.display = 'none';
+        }
     }
 
     function hideWidgets() {
@@ -540,6 +547,14 @@
         else {
             _divTextFlow.classList.add('single');
             _divTextTran.parentElement.style.display = 'none';
+        }
+
+        if (_options.otpLeftRight === true) {
+            _divTextFlow.classList.add('left-right');
+            flowScroll();
+        }
+        else {
+            _divTextFlow.classList.remove('left-right');
         }
     }
 
@@ -825,6 +840,7 @@ function getViewHtml() {
         cursor: nwse-resize;
     }
 
+    /* Text-view style */
     .resizable.text-view {
         overflow: hidden;
         user-select: text;
@@ -832,7 +848,7 @@ function getViewHtml() {
         color: #adff2f;
         line-height: normal;
         font-family: "gg sans","Noto Sans","Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
-        font-size: 1.1em;
+        font-size: 1.0em;
     }
     .resizable.text-view .resizers .text-flow {
         width: 100%;
@@ -873,6 +889,17 @@ function getViewHtml() {
         /*margin-top: auto;*/
         background-color: inherit;
         border-bottom: none;
+    }
+
+    /* row mode (left-right) */
+    .resizable.text-view .resizers .text-flow.left-right:not(.single):not(.translated-only) .text-item,
+    .resizable.text-view .resizers .text-flow.single.left-right:not(.translated-only) > :last-child {
+        display: flex;
+        flex-direction: row;
+    }
+    .resizable.text-view .resizers .text-flow.left-right:not(.single):not(.translated-only) .text-item > p,
+    .resizable.text-view .resizers .text-flow.single.left-right:not(.translated-only) > :last-child > p {
+        width: 50%;
     }
 
     /* translated view */
@@ -951,6 +978,9 @@ function getViewHtml() {
         </div>
         <div style="cursor: pointer;">
             <input type="checkbox" id="otpBacklog"> Backlog mode
+        </div>
+        <div style="cursor: pointer;">
+            <input type="checkbox" id="otpLeftRight"> Left-Right
         </div>
     </div>
     <!-- translate button -->
