@@ -20,7 +20,7 @@ const breakpoints = {};  // Fix Interceptor freeze (rejit same address)
 Interceptor.attach(DoJitPtr, {
     onEnter: function (args) {
         //const Jit_handle = args[0]; // rcx | rdi | x0
-        this.em_address = args[1].toInt32(); // rdx | rsi | x1
+        this.em_address = args[1].toUInt32(); // rdx | rsi | x1
     },
     onLeave: function (entrypoint) {
         const em_address = this.em_address;
@@ -64,9 +64,17 @@ function getDoJitAddress() {
         // Windows MSVC x64
         // TODO: retroarch, DebugSymbol.fromName?
         const __e = Process.enumerateModules()[0];
-        const DoJitSig1 = '48 89 5C 24 10 48 89 74 24 18 48 89 7C 24 20 55 41 54 41 55 41 56 41 57 48 8D AC 24 E0 F5 FF FF 48 81 EC 20 0B 00 00 48 8B 81 30 2A 00 00';
+        const DoJitSig1 = 'C7 83 ?? 0? 00 00 11 00 00 00 F6 83 ?? 0? 00 00 01 C7 83 ?? 0? 00 00 E4 00 00 00';
         const first = Memory.scanSync(__e.base, __e.size, DoJitSig1)[0];
-        if (first) return first.address;
+        if (first) {
+            const beginSubSig1 = '55 41 ?? 41 ?? 41';
+            const lookbackSize = 0x100;
+            const address = first.address.sub(lookbackSize);
+            const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
+            if (subs.length !== 0) {
+                return subs[subs.length - 1].address;
+            }
+        };
     }
 
     throw new Error('RegisterBlock not found!');
