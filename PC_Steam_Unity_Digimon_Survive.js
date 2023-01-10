@@ -10,10 +10,11 @@
 //
 // ==/UserScript==
 
+const Mono = require('./libMono.js');
 const {
     setHook,
-    createFunction,
-} = require('./libMono.js');
+    createFunction
+} = Mono;
 
 const handlerChar = trans.send((s) => s, '200++');
 
@@ -56,7 +57,7 @@ setHook('', 'uiAdvSelect', 'AddSelect', -1, {
     }
 })
 
-const DBHelpText_GetString = createFunction('', 'Game.Databases.DBHelpText', 'GetString', -1, 'pointer', ['pointer', 'pointer']);
+const DBHelpText_GetString = Mono.use('', 'Game.Databases.DBHelpText').GetString.implementation;
 console.log('DBHelpText_GetString', DBHelpText_GetString);
 
 //void MainMenuTutorialDetailView::SetData(DBHelpText dbHelpText, Sprite sprite, string detailKey, bool isAnim)
@@ -86,7 +87,7 @@ function createLabelStringId(str_id_ptr){
                 .replace("_xb", "")
                 .replace("DETAIL", "NAME");
 
-    const ptr = Memory.createMonoString(str_id);
+    const ptr = Memory.allocMonoString(str_id);
     return ptr;
 }
 
