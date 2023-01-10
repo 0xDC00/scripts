@@ -9,15 +9,15 @@
 // https://store.steampowered.com/app/1162650/Ken_ga_Kimi/
 // https://store.steampowered.com/app/1387350/Ken_ga_Kimi_Momoyo_Tsuzuri/
 // ==/UserScript==
-
+const Mono = require('./libMono.js');
 const {
     setHook,
     findClass,
     // findMethod,
     // findFunction,
     // findField,
-    createFunction
-} = require('./libMono.js');
+    // createFunction
+} = Mono;
 
 const handlerChar = trans.send((s) => s, '200++');
 
@@ -63,8 +63,7 @@ setHook('', 'Objects.Text', 'AddString', -1, {
 //// public virtual void AddLetter(char character, string fontName, uint fontColor, uint withShadow, uint withLine, uint foreColor, uint shadowColor, uint lineColor)
 let sp = 0; // thread filter
 let timer1 = null;
-globalThis.__buf = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0]);
-globalThis.pBuf = __buf.buffer.unwrap();
+const pBuf = Memory.alloc(8);
 //const Text_GetSrcText = createFunction('', 'Objects.Text', 'GetSrcText', -1, 'pointer', ['pointer']); // on-screen text
 setHook('', 'Objects.Text', 'AddLetter', 8, {
     onEnter: function (args) {
@@ -79,7 +78,7 @@ setHook('', 'Objects.Text', 'AddLetter', 8, {
         timer1 = setTimeout(() => { sp = 0 }, 250); // reset sp
 
         pBuf.writePointer(args[1]);
-        const c = pBuf.readUtf16String(2);
+        const c = pBuf.readUtf16String(2)[0];
         handlerChar(c);
 
         //// onLeave => call (problem: rubi - same object)
@@ -98,7 +97,7 @@ setHook('', 'Objects.Text', 'AddLetter', 8, {
 });
 
 //// public override ScenarioDeclaration.State Execute(Scene scene, Element element)
-const Element_GetAttribute = createFunction('', 'Scenario.Element', 'GetAttribute', -1, 'pointer', ['pointer', 'pointer']);
+const Element_GetAttribute = Mono.use('', 'Scenario.Element').GetAttribute.implementation;
 console.log('Element_GetAttribute', Element_GetAttribute);
 setHook('', 'Scenario.CaseCommand', 'Execute', -1, {
     onEnter: (args) => {
@@ -110,7 +109,7 @@ setHook('', 'Scenario.CaseCommand', 'Execute', -1, {
 });
 
 function getElementAttribute(thiz, attribute) {
-    const att = Memory.createMonoString(attribute); // mono_gc
+    const att = Memory.allocMonoString(attribute); // mono_gc
     return Element_GetAttribute(thiz, att);
 }
 
