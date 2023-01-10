@@ -462,8 +462,9 @@ function monoInit(isAot) {
             if (wrapCache !== undefined) {
                 return wrapCache;
             }
-            const _namespace = className.substring(0, className.lastIndexOf('.'));
-            const nests = className.substring(_namespace.length + 1).split('$');
+            const lastIndexOf = className.lastIndexOf('.');
+            const _namespace = lastIndexOf === - 1 ? '' : className.substring(0, lastIndexOf);
+            const nests = className.substring(lastIndexOf + 1).split('$');
             let _className = nests.shift();
 
             const imageSignature = imageName ?? null;
