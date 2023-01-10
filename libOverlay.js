@@ -16,10 +16,12 @@
     /** @type HTMLDivElement */
     var _divOptions;
     var _options = {
+        otpPinOverlay: false,
         otpUnlockShowDiscord: false,
         otpLockShowOverlay: false,
         otpBacklog: false,
-        otpOriginalText: false
+        otpOriginalText: false,
+        otpLeftRight: false
     };
 
     /** @type WebSocket */
@@ -198,6 +200,35 @@
             }
             else if (e.key === 'Escape') {
                 _divTextTran.value = '';
+            }
+        });
+
+        if (__EXTERNAL__ === false) return;
+
+        const ipc = require('electron').ipcRenderer;
+        let enableInput = false;
+        _divTextTran.addEventListener('focus', (e) => {
+            // ignore focus from focusOnWebView();
+            if (e.sourceCapabilities === null) {
+                enableInput = false;
+                _divTextTran.blur();
+                // focus->focusout
+            }
+            else {
+                enableInput = true;
+            }
+        });
+        _divTextTran.addEventListener('focusin', () => {
+            if (enableInput === true) {
+                _canvas.onmousemove = () => { };
+                ipc.sendSync('enableInput', true);
+
+            }
+        });
+        _divTextTran.addEventListener('focusout', () => {
+            if (enableInput === true) {
+                _canvas.onmousemove = null;
+                ipc.send('enableInput', false);
             }
         });
     }
@@ -451,6 +482,8 @@
 
     function initOptions() {
         /** @type HTMLInputElement */
+        const inputPinOverlay = document.getElementById('otpPinOverlay');
+        /** @type HTMLInputElement */
         const inputShowDiscordLock = document.getElementById('otpUnlockShowDiscord');
         /** @type HTMLInputElement */
         const inputShowOverlayUnlock = document.getElementById('otpLockShowOverlay');
@@ -483,8 +516,23 @@
         inputOriginalText.parentElement.onclick = onClick;
         inputLeftRight.parentElement.onclick = onClick;
 
+        let setLockClickThrough;
         if (globalThis.__EXTERNAL__ === true) {
             inputShowDiscordLock.parentElement.style.display = 'none';
+
+            const ipc = require('electron').ipcRenderer;
+            setLockClickThrough = v => ipc.sendSync('setLockClickThrough', v);
+        }
+        else {
+            // TODO: 
+            inputPinOverlay.parentElement.style.display = 'none';
+            setLockClickThrough = v => false;
+        }
+
+        inputPinOverlay.parentElement.onclick = () => {
+            const target = inputPinOverlay;
+            const checked = !target.checked;
+            _options.otpPinOverlay = target.checked = setLockClickThrough(checked);
         }
     }
 
@@ -522,6 +570,11 @@
                 _divTextTran.parentElement.style.display = null;
                 _divTextTran.focus();
             }
+
+            if (_options.otpPinOverlay === true) {
+                _canvas.style.pointerEvents = '';
+                _layoutLocked.previousElementSibling.style.backgroundColor = 'rgb(0 0 0 / 1%)';
+            }
         }
         else {
             if (globalThis.__EXTERNAL__ !== true)
@@ -532,6 +585,19 @@
             _divTextFlow.focus();
             _divTextTran.parentElement.style.display = 'none';
             _canvasCtxText.clearRect(0, 0, _canvas.width, _canvas.height);
+
+            if (_options.otpPinOverlay === true) {
+                _canvas.style.pointerEvents = 'none';
+                _layoutLocked.previousElementSibling.style.backgroundColor = 'rgb(0 0 0 / 0%)';
+
+                _layoutLocked.parentElement.style.pointerEvents = 'auto';
+                _divTextFlow.style.overflowY = 'auto';
+                if (_options.otpBacklog === true) {
+                    _divTextFlow.parentElement.classList.remove('locked');
+
+                    _divTextTran.parentElement.style.display = null;
+                }
+            }
         }
 
         if (_options.otpOriginalText === true) {
@@ -589,8 +655,14 @@
     }
 })();
 
-function makeResizableDiv(div) {
-    const element = document.querySelector(div);
+function makeResizableDiv(selectors) {
+    const elements = document.querySelectorAll(selectors);
+    for (let i = 0; i < elements.length; i++) {
+        _makeResizableDiv(elements[i]);
+    }
+}
+
+function _makeResizableDiv(element) {
     function pin() {
         const target = element;
         const sw = document.body.clientWidth;
@@ -631,7 +703,8 @@ function makeResizableDiv(div) {
         }
     }
 
-    const resizers = document.querySelectorAll(div + ' .resizer')
+    //const resizers = document.querySelectorAll(div + ' .resizer')
+    const resizers = element.querySelectorAll('.resizer')
     const minimum_size = 50;
     let original_width = 0;
     let original_height = 0;
@@ -966,7 +1039,10 @@ function getViewHtml() {
         </div>
     </div>
     <!-- options -->
-    <div class="options" style="position: absolute; bottom: 1em; left: 1em; padding: 0.25em; color: white; background: #2f3135ab; user-select: none;">
+    <div class="options" style="position: absolute; bottom: 4em; padding: 0.25em; color: white; background: #2f3135ab; user-select: none;">
+        <div style="cursor: pointer;">
+            <input type="checkbox" id="otpPinOverlay"> Pin Overlay
+        </div>
         <div style="cursor: pointer;">
             <input type="checkbox" id="otpUnlockShowDiscord"> [Unlock] Show Discord
         </div>
@@ -1046,6 +1122,35 @@ function getViewHtml() {
     }
     </style>
     <template><span id="control"><b id="google"></b></span></template><div id="divDict"></div>
+    <!-- OCR -->
+    <div class='resizable' id='divOCR' style="z-index: 999; bottom: 250px; left: 250px; pointer-events: none; background: transparent; border: 1px solid #00ff00; display:none">
+        <div class='resizers'>
+            <div style="pointer-events: auto; position: absolute; bottom: 0; right: -1;">
+                <span style="
+        cursor: pointer;
+        background: lightgray;
+        user-select: none;
+        border-radius: 3px;
+        padding: 2px;
+        ">Auto</span>
+                <span style="
+        cursor: pointer;
+        user-select: none;
+        background: lightgray;
+        padding: 2px;
+        border-radius: 3px;
+        ">OCR</span>
+            </div>
+            <div style="pointer-events: auto;" class='resizer left'></div>
+            <div style="pointer-events: auto;" class='resizer right'></div>
+            <div style="pointer-events: auto;" class='resizer top'></div>
+            <div style="pointer-events: auto;" class='resizer bottom'></div>
+            <div style="pointer-events: auto;" class='resizer top-left'></div>
+            <div style="pointer-events: auto;" class='resizer top-right'></div>
+            <div style="pointer-events: auto;" class='resizer bottom-left'></div>
+            <div style="pointer-events: auto;" class='resizer bottom-right'></div>
+        </div>
+    </div>
 </div>
 `;
 }

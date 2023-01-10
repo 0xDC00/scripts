@@ -1,13 +1,13 @@
 <html>
 
 <head>
-    <title>Agent - WebSocket</title>
+    <title>Agent - WebSocketOverlay</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
 </head>
 
 <body style="overflow: hidden;">
-    <div id="app-mount">
+    <div id="app-mount"> <!-- discord overlay like -->
         <div><a></a><a></a><div class="overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden;">
             <div style="width: 100%; height: 100%; background-color: #4f5660cc; position: absolute;"></div>
             <div class="layoutUnlocked layoutLocked" style="position: absolute;">
@@ -50,7 +50,8 @@
                 }
                 else {
                     __OVERLAY__ = true;
-                    _layoutLocked.previousElementSibling.style.backgroundColor = '';
+                     // fix: --disable-gpu windows cause clickthrough
+                    _layoutLocked.previousElementSibling.style.backgroundColor = 'rgb(0 0 0 / 1%)';
                 }
             }
         </script>
