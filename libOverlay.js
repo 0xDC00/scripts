@@ -14,6 +14,8 @@
     /** @type HTMLInputElement */
     var _divTextTran;
     /** @type HTMLDivElement */
+    var _divRectOCR;
+    /** @type HTMLDivElement */
     var _divOptions;
     var _options = {
         otpPinOverlay: false,
@@ -21,7 +23,11 @@
         otpLockShowOverlay: false,
         otpBacklog: false,
         otpOriginalText: false,
-        otpLeftRight: false
+        otpLeftRight: false,
+        otpRectOCR: false,
+        otpColorOriginal: '#ffc107',
+        otpColorTranslated: '#adff2f',
+        otpColorSize: 16
     };
 
     /** @type WebSocket */
@@ -254,6 +260,16 @@
     }
 
     function initCanvas() {
+        /** @type {HTMLButtonElement} */
+        _divRectOCR = document.getElementById('divRectOCR');
+        const btnManualOCR = document.getElementById('btnManualOCR');
+        btnManualOCR.onclick = function () {
+            this.disabled = true;
+            const rect = _divRectOCR.getBoundingClientRect();
+            OCR(rect.x, rect.y, rect.width, rect.height, 'one', rect.x, rect.y)
+                .finally(() => this.disabled = false);
+        };
+
         _canvas = _rootDiv.firstElementChild;
         _canvas.width = _rootDiv.clientWidth;
         _canvas.height = _rootDiv.clientHeight;
@@ -263,42 +279,12 @@
 
         const ctx1 = _canvasCtxText;
         var x = 0, y = 0, w = 0, h = 0;
-        var sx, sy;
-        let timer;
-
-        async function loop() {
-            const sleep = ms => new Promise(r => setTimeout(r, ms));
-            const url = 'http://127.0.0.1:9001/api/ocr?mode=one'
-                + '&x=' + x
-                + '&y=' + y
-                + '&w=' + w
-                + '&h=' + h
-                + '&sx=' + sx
-                + '&sy=' + sy;
-            let pre;
-            while (timer === true) {
-                ctx1.beginPath();
-                ctx1.rect(sx, sy, w, h);
-                ctx1.stroke();
-                try {
-                    const r = await fetch(url);
-                    const j = await r.json();
-                    const s = j.text;
-                    if (s !== '' && s !== pre) {
-                        pre = s;
-                        addTextItem(s);
-                    };
-                    await sleep(500);
-                }
-                catch { }
-            }
-            addTextLog('LoopEnd');
-        }
+        var cx, cy;
 
         function render(e) {
             ctx1.clearRect(0, 0, _canvas.width, _canvas.height);
-            w = e.offsetX - x;
-            h = e.offsetY - y;
+            w = e.clientX - x;
+            h = e.clientY - y;
             if (e.buttons === 0) {
                 showWidgets();
                 return;
@@ -312,32 +298,31 @@
         function action(e) {
             if (e.buttons !== 0) return;
             if (_canvas.onmousemove === null) return;
-            _canvas.onmousemove = null;
-            _canvas.onmouseup = null;
+            _canvas.onmousemove = _canvas.ontouchmove = null;
+            _canvas.onmouseup = _canvas.ontouchend = null;
 
             ctx1.clearRect(0, 0, _canvas.width, _canvas.height);
             if (e.button === 2) {
-                timer = false;
                 showWidgets();
                 return;
             }
 
-            const mode = e.altKey ? 'lines' : (e.shiftKey ? 'loop' : (e.ctrlKey ? 'lines' : 'one'));
+            const mode = e.altKey ? 'lines' : (e.shiftKey ? 'snip' : (e.ctrlKey ? 'lines' : 'one'));
 
             if (mode === 'full') {
                 x = 0; y = 0;
-                sx = 0; sy = 0;
+                cx = 0; cy = 0;
                 w = _canvas.width;
                 h = _canvas.height;
             }
             else {
                 if (w < 0) {
-                    sx += w;
+                    cx += w;
                     x += w;
                     w = -w;
                 }
                 if (h < 0) {
-                    sy += h;
+                    cx += h;
                     y += h;
                     h = -h;
                 }
@@ -346,42 +331,61 @@
                     return;
                 }
 
-                if (mode === 'loop') {
-                    timer = true;
+                if (mode === 'snip') {
                     showWidgets();
-                    return requestAnimationFrame(loop);
+                    return;
                 }
             }
             requestAnimationFrame(() => {
-                OCR(x, y, w, h, mode, sx, sy)
+                OCR(x, y, w, h, mode, cx, cy)
                     .finally(() => {
                         showWidgets();
                     });
             });
         };
 
-        _canvas.onmousedown = function (e) {
+        function renderT(e) {
+            render(e.touches[0]);
+        }
+
+        function actionT(e) {
+            const t = e.changedTouches[0];
+            t.buttons = 0;
+            action(t);
+        }
+
+        function startDrag() {
+            _canvas.onmousemove = render;
+            _canvas.onmouseup = action;
+            _canvas.ontouchmove = renderT;
+            _canvas.ontouchend = actionT;
+            hideWidgets();
+        }
+
+        _canvas.onmousedown = _canvas.ontouchstart = function (e) {
             if (_canvas.onmousemove !== null) return;
-            timer = false;
+            if (e.touches) {
+                const t = e.touches[0];
+                t.ctrlKey = e.ctrlKey;
+                t.button = e.touches.length !== 1 ? 2 : 0;
+                e = t;
+            }
             if (e.button === 2) {
                 ctx1.clearRect(0, 0, _canvas.width, _canvas.height);
                 return;
             }
-
             ctx1.strokeStyle = "#00ff00";
             w = 0;
             h = 0;
-            x = e.offsetX;
-            y = e.offsetY;
+            x = e.clientX;
+            y = e.clientY;
             // Overlay offscreen renderring, e.screenX, e.screenY is 0
             // we force full screen mode frist
-            sx = x;
-            sy = y;
+            cx = x;
+            cy = y;
 
             if (globalThis.__EXTERNAL__ === true) {
-                _canvas.onmousemove = render;
-                _canvas.onmouseup = action;
-                hideWidgets();
+                startDrag();
                 return;
             }
 
@@ -391,24 +395,21 @@
             fetch('http://127.0.0.1:9001/api/position', { signal: controller.signal })
                 .then(r => r.json())
                 .then(z => {
-                    sx = z.x;
-                    sy = z.y;
-                }).finally(() => {
-                    _canvas.onmousemove = render;
-                    _canvas.onmouseup = action;
-                    hideWidgets();
-                });
+                    x = z.x;
+                    y = z.y;
+                }).finally(startDrag);
         };
     }
 
-    function OCR(x, y, w, h, mode, sx, sy) {
+    // overlay <-> agent <-> ocr
+    function OCR(x, y, w, h, mode, cx, cy) {
         return fetch('http://127.0.0.1:9001/api/ocr?mode=' + mode +
             '&x=' + x +
             '&y=' + y +
             '&w=' + w +
             '&h=' + h +
-            '&sx=' + sx +
-            '&sy=' + sy
+            '&cx=' + cx +
+            '&cy=' + cy
         )
             .then(r => r.json())
             .then(z => {
@@ -416,6 +417,8 @@
                 if (s === '') return;
 
                 addTextItem(s);
+            }).catch(() => {
+                addTextLog('[Error] Unable to connect to ocr-server');
             });
     }
 
@@ -486,20 +489,64 @@
         /** @type HTMLInputElement */
         const inputShowDiscordLock = document.getElementById('otpUnlockShowDiscord');
         /** @type HTMLInputElement */
-        const inputShowOverlayUnlock = document.getElementById('otpLockShowOverlay');
+        const inputShowOverlayLock = document.getElementById('otpLockShowOverlay');
         /** @type HTMLInputElement */
         const inputBacklog = document.getElementById('otpBacklog');
         /** @type HTMLInputElement */
         const inputLeftRight = document.getElementById('otpLeftRight');
         /** @type HTMLInputElement */
         const inputOriginalText = document.getElementById('otpOriginalText');
+        /** @type HTMLInputElement */
+        const inputOCRBox = document.getElementById('otpRectOCR');
         _divOptions = inputBacklog.parentElement.parentElement;
 
-        _options.otpLockShowOverlay = true;
-        inputShowOverlayUnlock.checked = true;
+        let timer;
+        function saveOptions() {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                localStorage.setItem('options', JSON.stringify(_options));
+            }, 100);
+        }
 
-        _options.otpOriginalText = true;
-        inputOriginalText.checked = true;
+        const inputColorOriginal = document.getElementById('inputColorOriginal');
+        const inputColorTranslated = document.getElementById('inputColorTranslated');
+        const btnFontSizeSub = document.getElementById('btnFontSizeSub');
+        const btnFontSizeIns = document.getElementById('btnFontSizeIns');
+
+        const _textView = document.querySelector('.resizable.text-view');
+        inputColorOriginal.parentElement.onclick = () => inputColorOriginal.click();
+        inputColorTranslated.parentElement.onclick = () => inputColorTranslated.click();
+        btnFontSizeSub.onclick = () => {
+            _options.otpColorSize--;
+            _textView.style.setProperty('--text-view-font-size', _options.otpColorSize + 'px');
+            saveOptions();
+        }
+        btnFontSizeIns.onclick = () => {
+            _options.otpColorSize++;
+            _textView.style.setProperty('--text-view-font-size', _options.otpColorSize + 'px');
+            saveOptions();
+        }
+        inputColorOriginal.oninput = () => {
+            const color = inputColorOriginal.value;
+            _options.otpColorOriginal = color;
+            _textView.style.setProperty('--text-view-original-color', color);
+            saveOptions();
+        }
+        inputColorTranslated.oninput = () => {
+            const color = inputColorTranslated.value;
+            _options.otpColorTranslated = color;
+            _textView.style.setProperty('--text-view-translate-color', color);
+            saveOptions();
+        }
+        document.getElementById('btnFontReset').onclick = () => {
+            _textView.style.setProperty('--text-view-font-size', '16px');
+            _textView.style.setProperty('--text-view-original-color', '#ffc107');
+            _textView.style.setProperty('--text-view-translate-color', '#adff2f');
+            _options.otpColorSize = 16;
+            inputColorOriginal.value = _options.otpColorOriginal = '#ffc107';
+            inputColorTranslated.value = _options.otpColorTranslated = '#adff2f';
+            saveOptions();
+        }
 
         /** @param {MouseEvent} e */
         function onClick(e) {
@@ -508,13 +555,15 @@
             const checked = !target.checked;
             target.checked = checked;
             _options[target.id] = checked;
+            saveOptions();
             refeshVisibility();
         }
         inputShowDiscordLock.parentElement.onclick = onClick;
-        inputShowOverlayUnlock.parentElement.onclick = onClick;
+        inputShowOverlayLock.parentElement.onclick = onClick;
         inputBacklog.parentElement.onclick = onClick;
         inputOriginalText.parentElement.onclick = onClick;
         inputLeftRight.parentElement.onclick = onClick;
+        inputOCRBox.parentElement.onclick = onClick;
 
         let setLockClickThrough;
         if (globalThis.__EXTERNAL__ === true) {
@@ -533,6 +582,56 @@
             const target = inputPinOverlay;
             const checked = !target.checked;
             _options.otpPinOverlay = target.checked = setLockClickThrough(checked);
+            saveOptions();
+        }
+
+        const cb = document.getElementById('cbShowRectOCR');
+        cb.parentElement.onclick = () => {
+            //cb.checked = !cb.checked; // 3 state
+            if (cb.readOnly) {
+                cb.checked = cb.readOnly = cb.indeterminate = false;
+                _divRectOCR.firstElementChild.style.visibility = 'hidden';
+            }
+            else if (!cb.checked) {
+                cb.readOnly = cb.indeterminate = true;
+                _divRectOCR.firstElementChild.style.visibility = '';
+            }
+        }
+
+        // default value
+        cb.readOnly = cb.indeterminate = true;
+        const options = localStorage.getItem('options');
+        if (options === null) {
+            _options.otpPinOverlay = true;
+            inputPinOverlay.checked = true;
+
+            _options.otpLockShowOverlay = true;
+            inputShowOverlayLock.checked = true;
+
+            _options.otpOriginalText = true;
+            inputOriginalText.checked = true;
+
+            _options.otpRectOCR = true;
+            inputOCRBox.checked = true;
+            _options.otpPinOverlay = inputPinOverlay.checked = setLockClickThrough(true);
+        }
+        else {
+            _options = JSON.parse(options);
+
+            inputPinOverlay.checked = _options.otpPinOverlay = setLockClickThrough(_options.otpPinOverlay !== true ? false : true);
+            inputShowDiscordLock.checked = _options.otpUnlockShowDiscord;
+            inputShowOverlayLock.checked = _options.otpLockShowOverlay;
+            inputOriginalText.checked = _options.otpColorOriginal;
+            inputBacklog.checked = _options.otpBacklog;
+            inputLeftRight.checked = _options.otpLeftRight;
+
+            inputColorOriginal.value = _options.otpColorOriginal;
+            inputColorTranslated.value = _options.otpColorTranslated;
+            _textView.style.setProperty('--text-view-font-size', _options.otpColorSize + 'px');
+            _textView.style.setProperty('--text-view-original-color', _options.otpColorOriginal);
+            _textView.style.setProperty('--text-view-translate-color', _options.otpColorTranslated);
+
+            inputOCRBox.checked = _options.otpRectOCR;
         }
     }
 
@@ -621,6 +720,12 @@
         }
         else {
             _divTextFlow.classList.remove('left-right');
+        }
+
+        if (_options.otpRectOCR === true) {
+            _divRectOCR.style.display = '';
+        } else {
+            _divRectOCR.style.display = 'none';
         }
     }
 
@@ -714,9 +819,19 @@ function _makeResizableDiv(element) {
     let original_mouse_y = 0;
     for (let i = 0; i < resizers.length; i++) {
         const currentResizer = resizers[i];
-        currentResizer.addEventListener('mousedown', function (e) {
-            e.preventDefault()
+        currentResizer.addEventListener('mousedown', startResize);
+        currentResizer.addEventListener('touchstart', startResize, { passive: true });
 
+        function startResize(e) {
+            if (e.touches) {
+                const t = e.touches[0];
+                t.ctrlKey = e.ctrlKey;
+                t.button = e.touches.length !== 1 ? 2 : 0;
+                e = t;
+            }
+            else {
+                e.preventDefault();
+            }
             if (e.ctrlKey === true || e.button === 2) {
                 const target = element;
                 const rect = target.getBoundingClientRect();
@@ -729,18 +844,26 @@ function _makeResizableDiv(element) {
                     target.style.top = pageY - shiftY + 'px';
                 }
 
-                function onMouseMove(ev) {
-                    moveAt(ev.pageX, ev.pageY);
+                function onMouseMove(e) {
+                    moveAt(e.pageX, e.pageY);
                 }
 
-                function onMouseUp(ev) {
+                function onTouchMove(e) {
+                    moveAt(e.touches[0].pageX, e.touches[0].pageY);
+                }
+
+                function onMouseUp(e) {
                     window.removeEventListener('mousemove', onMouseMove);
                     window.removeEventListener('mouseup', onMouseUp);
+                    window.removeEventListener('touchmove', onTouchMove);
+                    window.removeEventListener('touchend', onMouseUp);
                     pin();
                 }
 
                 window.addEventListener('mousemove', onMouseMove);
                 window.addEventListener('mouseup', onMouseUp);
+                window.addEventListener('touchmove', onTouchMove);
+                window.addEventListener('touchend', onMouseUp);
                 return;
             }
 
@@ -760,12 +883,20 @@ function _makeResizableDiv(element) {
 
             window.addEventListener('mousemove', resize);
             window.addEventListener('mouseup', stopResize);
-        })
+            window.addEventListener('touchmove', resizeT);
+            window.addEventListener('touchend', stopResize);
+        }
 
         function stopResize() {
             window.removeEventListener('mousemove', resize);
             window.removeEventListener('mouseup', stopResize);
+            window.removeEventListener('touchmove', resizeT);
+            window.removeEventListener('touchend', stopResize);
             pin();
+        }
+
+        function resizeT(e) {
+            resize(e.touches[0]);
         }
 
         function resize(e) {
@@ -915,17 +1046,23 @@ function getViewHtml() {
 
     /* Text-view style */
     .resizable.text-view {
+        --text-view-background-color: #00000096;
+        --text-view-original-color: #ffc107;
+        --text-view-translate-color: #adff2f;
+        --text-view-font-size: 16px;
+        --text-view-font-family: "gg sans","Noto Sans","Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
+
         overflow: hidden;
         user-select: text;
-        background-color: #00000096;
-        color: #adff2f;
         line-height: normal;
-        font-family: "gg sans","Noto Sans","Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
-        font-size: 1.0em;
+        background-color: var(--text-view-background-color);
+        color: var(--text-view-translate-color);
+        font-size: var(--text-view-font-size);
+        font-family: var(--text-view-font-family);
     }
     .resizable.text-view .resizers .text-flow {
         width: 100%;
-        height: calc(100% - 1.4em); /* 1.75 em*/
+        /*height: calc(100% - 1.4em);  1.75 em*/
         overflow-x: hidden;
         overflow-y: auto;
         display: flex;
@@ -938,7 +1075,7 @@ function getViewHtml() {
 
     /* original style */
     .resizable.text-view .resizers .text-flow .text-item > :first-child {
-        color: #ffc107;
+        color: var(--text-view-original-color);
     }
 
     /* multiple view; bottom up */
@@ -962,6 +1099,11 @@ function getViewHtml() {
         /*margin-top: auto;*/
         background-color: inherit;
         border-bottom: none;
+    }
+
+    .resizable.text-view .resizers .text-flow .text-item {
+        padding: 4px;
+        border-bottom: 1px solid #80808040;
     }
 
     /* row mode (left-right) */
@@ -989,24 +1131,25 @@ function getViewHtml() {
         }
     }
 
+    /* scrollbar  */
     .resizable.text-view .resizers .text-flow::-webkit-scrollbar {
         width: 12px;
     }
     .resizable.text-view .resizers .text-flow::-webkit-scrollbar-track {
-        background: #3c3d46;
+        background-color: #3c3d46;
     }
     .resizable.text-view .resizers .text-flow::-webkit-scrollbar-thumb {
-        background: #5c5d66;
+        background-color: #5c5d66;
         border-radius: 5px;
     }
     .resizable.text-view .resizers .text-flow::-webkit-scrollbar-thumb:hover {
-        background: #5c5d66;
-    }
-    .resizable.text-view .resizers .text-flow .text-item {
-        padding: 0.4em;
-        border-bottom: 1px solid #80808040;
+        background-color: #5c5d66;
     }
 
+    /* options  */
+    .options > div:hover {
+        background-color: gray;
+    }
     .options input {
         pointer-events: none;
     }
@@ -1014,7 +1157,7 @@ function getViewHtml() {
     <!-- text-view -->
     <div class='resizable text-view' style="z-index: 999; bottom: 50px; left: 250px; border-radius: 5px;">
         <div class='resizers'>
-            <div style='height: 100%;'>
+            <div style='height: 100%; display: flex; flex-direction: column; justify-content: flex-end;'>
                 <div class='text-flow single'>
                     <div class="text-item"><p>Agent Overlay</p></div>
                     <div class="text-item"><p>Agent Overlay</p></div>
@@ -1022,7 +1165,7 @@ function getViewHtml() {
                     <div class="text-item"><p>Agent Overlay</p></div>
                     <div class="text-item"><p>Agent Overlay</p></div>
                     <div class="text-item"><p>Agent Overlay</p></div>
-                    <div class="text-item"><p>Agent Overlay</p></div>
+                    <div class="text-item"><p>Agent Overlay</p><p>Agent Overlay</p></div>
                 </div>
                 <div style="width: 100%;">
                     <input type="text" spellcheck="false" tabindex="-1" style="width: 100%;outline: none;background: #202126; border: 0; padding-left: 0.6em; color: #a3a3aa; height: 1.75em;">
@@ -1049,14 +1192,33 @@ function getViewHtml() {
         <div style="cursor: pointer;">
             <input type="checkbox" id="otpLockShowOverlay"> [Lock] Show Overlay
         </div>
+        <hr>
         <div style="cursor: pointer;">
             <input type="checkbox" id="otpOriginalText"> Show original text
         </div>
         <div style="cursor: pointer;">
             <input type="checkbox" id="otpBacklog"> Backlog mode
         </div>
-        <div style="cursor: pointer;">
+        <div style="cursor: pointer; margin-bottom: 4px">
             <input type="checkbox" id="otpLeftRight"> Left-Right
+        </div>
+        <hr>
+        <div style="cursor: pointer; margin-bottom: 4px">
+            <input id="inputColorOriginal" type="color" value="#ffc107" style="cursor: pointer; pointer-events: auto"> Original
+        </div>
+        <div style="cursor: pointer; margin-bottom: 4px">
+            <input id="inputColorTranslated" type="color" value="#adff2f" style="cursor: pointer; pointer-events: auto"> Translated
+        </div>
+        <div style="margin-bottom: 4px">
+            <button id="btnFontSizeSub" style="width: 50px; cursor: pointer;">-</button> Font size
+            <button id="btnFontSizeIns" style="width: 50px; cursor: pointer; margin-right: 6px;">+</button>
+        </div>
+        <div>
+            <button id="btnFontReset" style="width: 100%; cursor: pointer; ">Reset</button>
+        </div>
+        <hr>
+        <div style="cursor: pointer;">
+            <input type="checkbox" id="otpRectOCR"> OCR Box
         </div>
     </div>
     <!-- translate button -->
@@ -1090,7 +1252,7 @@ function getViewHtml() {
         border-color: rgb(220, 220, 220);
         background-color: white;
         color: black;
-        padding: 0.4em;
+        padding: 4px;
         user-select: none;
         display: none;
         max-width: 400px;
@@ -1118,37 +1280,47 @@ function getViewHtml() {
         display: inherit;
     }
     .dict-item:hover {
-        background-color: lightgrey !important;
+        background-color: lightgray !important;
+    }
+
+    /* OCR */
+    #btnManualOCR:disabled,
+    #btnManualOCR[disabled]  {
+        background-color: #00FF00 !important;
     }
     </style>
     <template><span id="control"><b id="google"></b></span></template><div id="divDict"></div>
     <!-- OCR -->
-    <div class='resizable' id='divOCR' style="z-index: 999; bottom: 250px; left: 250px; pointer-events: none; background: transparent; border: 1px solid #00ff00; display:none">
-        <div class='resizers'>
-            <div style="pointer-events: auto; position: absolute; bottom: 0; right: -1;">
-                <span style="
-        cursor: pointer;
-        background: lightgray;
-        user-select: none;
-        border-radius: 3px;
-        padding: 2px;
-        ">Auto</span>
-                <span style="
-        cursor: pointer;
-        user-select: none;
-        background: lightgray;
-        padding: 2px;
-        border-radius: 3px;
-        ">OCR</span>
+    <div class='resizable' id='divRectOCR' style="z-index: 999; bottom: 300px; left: 250px;">
+        <div class='resizers' style="pointer-events: none; background-color: transparent; border: 1px solid rgb(0, 255, 0);">
+            <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer left'></div>
+            <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer right'></div>
+            <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer top'></div>
+            <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer bottom'></div>
+            <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer top-left'></div>
+            <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer top-right'></div>
+            <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer bottom-left'></div>
+            <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer bottom-right'></div>
+        </div>
+        <div style="position: absolute; right: 0; display: flex; align-items: center; gap: 10px;">
+            <div style="
+                cursor: pointer;
+                background: rgb(0 0 0 / 1%);
+                padding: 8px;
+            ">
+                <input type="checkbox" style="
+                    -webkit-transform: scale(1.4);
+                    pointer-events: none;
+                    margin: 0;" id="cbShowRectOCR">
             </div>
-            <div style="pointer-events: auto;" class='resizer left'></div>
-            <div style="pointer-events: auto;" class='resizer right'></div>
-            <div style="pointer-events: auto;" class='resizer top'></div>
-            <div style="pointer-events: auto;" class='resizer bottom'></div>
-            <div style="pointer-events: auto;" class='resizer top-left'></div>
-            <div style="pointer-events: auto;" class='resizer top-right'></div>
-            <div style="pointer-events: auto;" class='resizer bottom-left'></div>
-            <div style="pointer-events: auto;" class='resizer bottom-right'></div>
+            <button  style="
+                cursor: pointer;
+                user-select: none;
+                border: 1px solid #e7e7e7;
+                background-color: #e7e7e7;
+                color: black;
+                padding: 6px;
+            " id="btnManualOCR">OCR</button>
         </div>
     </div>
 </div>
