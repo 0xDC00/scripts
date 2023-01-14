@@ -63,7 +63,7 @@ function readString(address, table, isOut) {
                 // do nothing -> back to readChar
             }
             else if (c === 4 || c === 0x15) { // SetColor, EvaluateExpression => SKIP
-                if (c !== 4) console.log('Warning: ', c);
+                ////if (c !== 4) console.warn('Warning: ', c, hexdump(address));
                 // https://github.com/CommitteeOfZero/SciAdv.Net/blob/32489cd21921079975291dbdce9151ad66f1b06a/src/SciAdvNet.SC3/Text/SC3StringDecoder.cs#L98
                 //   https://github.com/CommitteeOfZero/SciAdv.Net/blob/32489cd21921079975291dbdce9151ad66f1b06a/src/SciAdvNet.SC3/Text/StringSegmentCodes.cs#L3
                 // https://github.com/shiiion/steinsgate_textractor/blob/master/steinsgatetextractor/sg_text_extractor.cpp#L46
