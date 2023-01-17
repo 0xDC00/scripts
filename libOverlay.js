@@ -80,10 +80,11 @@
             const selection = document.getSelection();
             const s = selection.toString().trim();
             if (s === '') return;
+            if (e.ctrlKey === true) document.execCommand('copy');
 
             rect = selection.getRangeAt(0).getBoundingClientRect();
             const { x, y } = e;
-            if (rect.width == 0) {
+            if (rect.width === 0) {
                 rect.x = x;
                 rect.y = y - 12;
             }
@@ -902,73 +903,73 @@ function _makeResizableDiv(element) {
         function resize(e) {
             const classList = currentResizer.classList;
             if (classList.contains('left')) {
-                const width = original_width - (e.pageX - original_mouse_x)
+                const width = original_width - (e.pageX - original_mouse_x);
                 if (width > minimum_size) {
-                    element.style.width = width + 'px'
-                    element.style.left = original_x + (e.pageX - original_mouse_x) + 'px'
+                    element.style.width = width + 'px';
+                    element.style.left = original_x + (e.pageX - original_mouse_x) + 'px';
                 }
             }
             else if (classList.contains('right')) {
                 const width = original_width + (e.pageX - original_mouse_x);
                 if (width > minimum_size) {
-                    element.style.width = width + 'px'
+                    element.style.width = width + 'px';
                 }
             }
             else if (classList.contains('top')) {
-                const height = original_height - (e.pageY - original_mouse_y)
+                const height = original_height - (e.pageY - original_mouse_y);
                 if (height > minimum_size) {
-                    element.style.height = height + 'px'
-                    element.style.top = original_y + (e.pageY - original_mouse_y) + 'px'
+                    element.style.height = height + 'px';
+                    element.style.top = original_y + (e.pageY - original_mouse_y) + 'px';
                 }
             }
             else if (classList.contains('bottom')) {
-                const height = original_height + (e.pageY - original_mouse_y)
+                const height = original_height + (e.pageY - original_mouse_y);
                 if (height > minimum_size) {
-                    element.style.height = height + 'px'
+                    element.style.height = height + 'px';
                 }
             }
             else if (classList.contains('bottom-right')) {
                 const width = original_width + (e.pageX - original_mouse_x);
-                const height = original_height + (e.pageY - original_mouse_y)
+                const height = original_height + (e.pageY - original_mouse_y);
                 if (width > minimum_size) {
-                    element.style.width = width + 'px'
+                    element.style.width = width + 'px';
                 }
                 if (height > minimum_size) {
-                    element.style.height = height + 'px'
+                    element.style.height = height + 'px';
                 }
             }
             else if (classList.contains('bottom-left')) {
-                const height = original_height + (e.pageY - original_mouse_y)
-                const width = original_width - (e.pageX - original_mouse_x)
+                const height = original_height + (e.pageY - original_mouse_y);
+                const width = original_width - (e.pageX - original_mouse_x);
                 if (height > minimum_size) {
-                    element.style.height = height + 'px'
+                    element.style.height = height + 'px';
                 }
                 if (width > minimum_size) {
-                    element.style.width = width + 'px'
-                    element.style.left = original_x + (e.pageX - original_mouse_x) + 'px'
+                    element.style.width = width + 'px';
+                    element.style.left = original_x + (e.pageX - original_mouse_x) + 'px';
                 }
             }
             else if (classList.contains('top-right')) {
-                const width = original_width + (e.pageX - original_mouse_x)
-                const height = original_height - (e.pageY - original_mouse_y)
+                const width = original_width + (e.pageX - original_mouse_x);
+                const height = original_height - (e.pageY - original_mouse_y);
                 if (width > minimum_size) {
-                    element.style.width = width + 'px'
+                    element.style.width = width + 'px';
                 }
                 if (height > minimum_size) {
-                    element.style.height = height + 'px'
-                    element.style.top = original_y + (e.pageY - original_mouse_y) + 'px'
+                    element.style.height = height + 'px';
+                    element.style.top = original_y + (e.pageY - original_mouse_y) + 'px';
                 }
             }
             else {
-                const width = original_width - (e.pageX - original_mouse_x)
-                const height = original_height - (e.pageY - original_mouse_y)
+                const width = original_width - (e.pageX - original_mouse_x);
+                const height = original_height - (e.pageY - original_mouse_y);
                 if (width > minimum_size) {
-                    element.style.width = width + 'px'
-                    element.style.left = original_x + (e.pageX - original_mouse_x) + 'px'
+                    element.style.width = width + 'px';
+                    element.style.left = original_x + (e.pageX - original_mouse_x) + 'px';
                 }
                 if (height > minimum_size) {
-                    element.style.height = height + 'px'
-                    element.style.top = original_y + (e.pageY - original_mouse_y) + 'px'
+                    element.style.height = height + 'px';
+                    element.style.top = original_y + (e.pageY - original_mouse_y) + 'px';
                 }
             }
         }
@@ -1291,8 +1292,8 @@ function getViewHtml() {
     </style>
     <template><span id="control"><b id="google"></b></span></template><div id="divDict"></div>
     <!-- OCR -->
-    <div class='resizable' id='divRectOCR' style="z-index: 999; bottom: 300px; left: 250px;">
-        <div class='resizers' style="pointer-events: none; background-color: transparent; border: 1px solid rgb(0, 255, 0);">
+    <div class='resizable' id='divRectOCR' style="pointer-events: none; z-index: 999; bottom: 300px; left: 250px;">
+        <div class='resizers' style="background-color: transparent; border: 1px solid rgb(0, 255, 0);">
             <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer left'></div>
             <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer right'></div>
             <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer top'></div>
@@ -1302,7 +1303,7 @@ function getViewHtml() {
             <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer bottom-left'></div>
             <div style="pointer-events: auto; background-color: rgb(0 0 0 / 1%)" class='resizer bottom-right'></div>
         </div>
-        <div style="position: absolute; right: 0; display: flex; align-items: center; gap: 10px;">
+        <div style="pointer-events: auto; position: absolute; right: 0; display: flex; align-items: center; gap: 10px;">
             <div style="
                 cursor: pointer;
                 background: rgb(0 0 0 / 1%);
