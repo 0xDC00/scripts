@@ -214,6 +214,58 @@ function setHookDialog(callback) {
     return hookAddress;
 }
 
+function setHookDialog64(callback) {
+    // same 32bit (rcx <=> arg0 <=> expr)
+    let dialogSigOffset = 2;
+    const dialogSig1 = '85?? 74?? 4183??01 74?? 4183??04 74?? 41';
+    let results = Memory.scanSync(__e.base, __e.size, dialogSig1);
+    if (results.length === 0) {
+        console.error('[DialoguesPattern] no result!');
+        return null;
+    }
+
+    // get hook address
+    let pos = results[0].address.add(dialogSigOffset); // skip (test reg,reg)
+    let ins = Instruction.parse(pos);    // parse (je 0x431d57)
+    pos = ins.next;
+    let hookAddress = ins.opStr;         // 0x431d57 (mov mem, reg)
+    
+    //// 2nd je have more (computer-system; but include previous dialogue too; check r10=0?unableFilter?)
+    //// like hook at top function 
+    // ins = Instruction.parse(pos); // cmp reg, 1
+    // pos = ins.next;
+    // ins = Instruction.parse(pos); // jp 0xAD
+    // pos = ins.next;
+    // let hookAddress = ins.opStr;  // 0xAD
+    
+    // find expressions: movzx edx, byte ptr ds:[reg] => reg
+    let expr = '';
+    for (let index = 0; index < 200; index++) {
+        ins = Instruction.parse(pos);
+        //console.log(index, JSON.stringify(ins, null, 2));
+        if (ins.mnemonic.startsWith('mov') === true && ins.size === 3
+            && ins.operands[0].type === 'reg'
+            && ins.operands[1].type === 'mem' && ins.operands[1].size === 1) {
+            expr = ins.operands[1].value.base;
+            break;
+        }
+        pos = ins.next;
+    }
+
+    if (expr === '') {
+        console.error('[DialoguesPattern] error!');
+        return null;
+    }
+
+    console.log('Attach Dialog:', hookAddress, expr);
+    Breakpoint.add(ptr(hookAddress), function () {
+        callback.call(this, this.context, expr);
+        
+    });
+
+    return hookAddress;
+}
+
 /**
  * Mail: inbox, outbox, send,...
  * @param {string[]} table 
@@ -265,6 +317,6 @@ function setHookMail(table, cb) {
 
 module.exports = exports = {
     readString,
-    setHookDialog,
+    setHookDialog: Process.arch === 'x64' ? setHookDialog64: setHookDialog,
     setHookMail
 }
