@@ -22,7 +22,7 @@ setHook({
         //0x8052794: mainHandler.bind_(null, 0, 0), // text
         0x8010b48: mainHandler.bind_(null, 0, 0), // prompt
         0x8010c80: mainHandler.bind_(null, 0, 0), // choice
-        0x8052fa8: mainHandler.bind_(null, 1, 1), // battle guide
+        //0x8052fa8: mainHandler.bind_(null, 1, 1), // battle guide not working
 
     }
 }[globalThis.gameVer ?? gameVer]);
