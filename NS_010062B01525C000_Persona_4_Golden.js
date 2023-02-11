@@ -13,7 +13,7 @@ const { readString, createTable } = require('./libPCAtlus.js');
 
 const mainHandler = trans.send(handler, '200+'); // join 200ms
 const table = createTable('P4G');
-table[0xa] = ' ';
+table[0xa] = ' '; // single line
 
 setHook({
     '1.0.0': {
@@ -28,6 +28,6 @@ function handler(regs) {
 
     const address = regs[0].value;
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
-    let s = readString(address, table);
+    const s = readString(address, table);
     return s;
 }

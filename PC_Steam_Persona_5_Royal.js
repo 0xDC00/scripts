@@ -12,16 +12,21 @@ const { readString, createTable } = require('./libPCAtlus.js');
 
 const mainHandler = trans.send(handler, '200+');
 const table = createTable('P5R');
-table[0xa] = ' ';
+table[0xa] = ' '; // single line
 
 (function () {
-    const dialogSig1 = '48 895C24 08  48 896C24 10  48 897424 18  57  48 81EC ??000000  48 ????  48 ????  BA ??000000  48 8D4C24 ??  41 ????  41 ???? E8 ???????? 48';
+    const dialogSig1 = 'C7 ?????? 01012000 ???? ???????? E8';
     const results = Memory.scanSync(__e.base, __e.size, dialogSig1);
     if (results.length === 0) {
         console.error('[DialoguesPattern] no result!');
         return;
     }
-    const hookAddress = results[0].address;
+    const beginSubs = Memory.scanSync(results[results.length - 1].address.sub(0x200), 0x200, 'CC 48 ???????? 48');
+    if (beginSubs.length === 0) {
+        console.error('[DialoguesPattern] no result! (2)');
+        return;
+    }
+    const hookAddress = beginSubs[beginSubs.length - 1].address.add(1);
 
     Interceptor.attach(hookAddress, {
         onEnter(args) {

@@ -13,7 +13,7 @@ const { readString, createTable } = require('./libPCAtlus.js');
 
 const mainHandler = trans.send(handler, '200+'); // join 200ms
 const table = createTable('P5R');
-table[0xa] = ' ';
+table[0xa] = ' '; // single line
 
 setHook({
     '1.0.0': {

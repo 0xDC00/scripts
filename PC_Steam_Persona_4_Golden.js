@@ -12,7 +12,7 @@ const { readString, createTable } = require('./libPCAtlus.js');
 
 const mainHandler = trans.send(handler, '200+');
 const table = createTable('P4G');
-table[0xa] = ' ';
+table[0xa] = ' '; // single line
 
 (function () {
     const dialogSig1 = 'C1??07 83??1E ?????? ?????? ???????? ?????? 75?? 81?? 21F10000 74';
@@ -21,18 +21,18 @@ table[0xa] = ' ';
         console.error('[DialoguesPattern] no result!');
         return;
     }
-    const beginSubs = Memory.scanSync(results[results.length - 1].address.sub(0x200), 0x200, '56 57 ?? ?? 48');
+    const beginSubs = Memory.scanSync(results[results.length - 1].address.sub(0x400), 0x400, '56 57 ???? 48');
     if (beginSubs.length === 0) {
-        console.error('[DialoguesPattern] no result!');
+        console.error('[DialoguesPattern] no result! (2)');
         return;
     }
-    const hookAddress = beginSubs[0].address;
+    const hookAddress = beginSubs[beginSubs.length - 1].address;
 
     Interceptor.attach(hookAddress, {
         onEnter(args) {
             const type = args[1].and(0xFFFF).toUInt32();
             //console.log(this.returnAddress + ' ' + type);
-            if (type === 3 || type === 4) return null;
+            if (type === 3) return null;
 
             mainHandler.call(this, args[0]);
         }
