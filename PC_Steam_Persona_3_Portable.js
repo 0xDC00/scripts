@@ -37,6 +37,7 @@ table[0xa] = ' '; // single line
     });
 
     // more
+    if (results.length === 1) return;
     const choiceSubs = Memory.scanSync(results[0].address.sub(0x200), 0x200, '56 57 415?');
     if (choiceSubs.length === 0) {
         console.error('[DialoguesPattern] no result! (3)');
