@@ -473,12 +473,30 @@ function monoInit(isAot) {
                 if (hImage !== undefined) {
                     const pNamespace = Memory.allocUtf8String(_namespace); // first part
                     const pClassName = Memory.allocUtf8String(_className); // last part
-                    const kclass = MonoApi.mono_class_from_name(hImage, pNamespace, pClassName);
-                    if (kclass.isNull() === false) {
-                        let wrap = cacheClasss[kclass];
+                    let hClass = MonoApi.mono_class_from_name(hImage, pNamespace, pClassName);
+                    if (hClass.isNull() === false) {
+                        while (nests.length !== 0) {
+                            const sub = nests.shift();
+                            const iter = Memory.alloc(POINTER_SIZE);
+                            while (true) {
+                                const sClass = MonoApi.mono_class_get_nested_types(hClass, iter);
+                                if (sClass.isNull() === true) {
+                                    return null;
+                                }
+            
+                                const s = MonoApi.mono_class_get_name(sClass).readCString();
+                                if (s === sub) {
+                                    hClass = sClass;
+                                    _className += '$' + s;
+                                    break;
+                                }
+                            }
+                        }
+
+                        let wrap = cacheClasss[hClass];
                         if (wrap !== undefined) return wrap;
                         wrap = _classWrap({
-                            handle: kclass,
+                            handle: hClass,
                             name: _className,
                             namespace: _namespace,
                             fullName: className,
@@ -522,9 +540,9 @@ function monoInit(isAot) {
                 }
                 return 0;
             });
-
+            
             if (hClass === null) return null;
-
+            
             while (nests.length !== 0) {
                 const sub = nests.shift();
                 const iter = Memory.alloc(POINTER_SIZE);
@@ -585,10 +603,10 @@ function monoInit(isAot) {
                 });
             }
 
-            var hMethod = NULL;
+            let hMethod = NULL, mn;
             if (typeof numArg === 'number') {
                 console.log(classObj.fullName + ' ' + methodName + '|' + numArg);
-                const mn = Memory.allocUtf8String(methodName);
+                mn = Memory.allocUtf8String(methodName);
                 hMethod = MonoApi.mono_class_get_method_from_name(handle, mn, numArg);
             }
             else {
