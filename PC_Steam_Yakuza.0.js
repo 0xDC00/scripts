@@ -116,11 +116,17 @@ const handlerLine = trans.send((s) => s, '250+');
 
 // subtitle box
 (function () {
+    let isJKP = false;
     const dialogSig1 = '38010000 ???? ????????  ?????? 58010000';
-    const results = Memory.scanSync(__e.base, __e.size, dialogSig1);
+    let results = Memory.scanSync(__e.base, __e.size, dialogSig1);
     if (results.length === 0) {
-        console.error('[BoxPattern] no result!');
-        return;
+        const dialogSigKJP = '48010000 ???? ????????  ?????? 68010000';
+        results = Memory.scanSync(__e.base, __e.size, dialogSigKJP);
+        if (results.length === 0) {
+            console.error('[BoxPattern] no result!');
+            return;
+        }
+        isJKP = true;
     }
     const beginSubs = Memory.scanSync(results[results.length - 1].address.sub(0x200), 0x200, '5? 48??EC');
     if (beginSubs.length === 0) {
@@ -131,10 +137,11 @@ const handlerLine = trans.send((s) => s, '250+');
     console.log('[BoxPattern] ' + hookAddress);
 
     // 0x1401F7160 & 0x1401F74B0 from 0x1401D6D20
+    const [offsetLen, offsetText] = isJKP === true ? [0x148, 0x168] : [0x138, 0x158];
     let preAddress1 = 0, preAddress2 = 0, i = 0;
     Interceptor.attach(hookAddress, {
         onEnter(args) {
-            const address = args[0].add(0x158).readPointer();
+            const address = args[0].add(offsetText).readPointer();
             //console.log(hexdump(address, {length: 0x190}))
 
             const index = i++ % 2;
@@ -151,7 +158,7 @@ const handlerLine = trans.send((s) => s, '250+');
                 preAddress2 = address; // str
             }
 
-            const N = args[0].add(0x138).readU32(); // numLine
+            const N = args[0].add(offsetLen).readU32(); // numLine
 
             const arr = [];
             for (let i = 0; i < N; i++) {
