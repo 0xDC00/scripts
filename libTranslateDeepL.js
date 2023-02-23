@@ -71,7 +71,6 @@
         if (v === 'auto') v = '';
         else if (v === 'zh-CN') v = 'zh';
         else if (v === 'zh-TW') v = 'zh';
-        else if (v === 'ko') v = ''; // Korean is not supported
         return v;
     }
 
@@ -79,7 +78,6 @@
         if (v === 'vi' || v === 'auto') v = 'en'; // Vietnamese is not supported
         else if (v === 'zh-CN') v = 'zh';
         else if (v === 'zh-TW') v = 'zh';
-        else if (v === 'ko') v = 'en'; // Korean is not supported
         return v;
     }
 
