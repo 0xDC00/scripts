@@ -387,9 +387,9 @@ function monoInit(isAot) {
 
     const domain = MonoApi.mono_get_root_domain();
     const m = MonoApi.mono_thread_attach(domain);
-    Script.bindWeak(globalThis, () => {
-        MonoApi.mono_thread_detach(m);
-    });
+    // Script.bindWeak(globalThis, () => {
+    //     MonoApi.mono_thread_detach(m);
+    // });
 
     if (isAot === true) {
         Memory.allocMonoString = function (s) {
@@ -483,7 +483,7 @@ function monoInit(isAot) {
                                 if (sClass.isNull() === true) {
                                     return null;
                                 }
-            
+
                                 const s = MonoApi.mono_class_get_name(sClass).readCString();
                                 if (s === sub) {
                                     hClass = sClass;
@@ -540,9 +540,9 @@ function monoInit(isAot) {
                 }
                 return 0;
             });
-            
+
             if (hClass === null) return null;
-            
+
             while (nests.length !== 0) {
                 const sub = nests.shift();
                 const iter = Memory.alloc(POINTER_SIZE);
@@ -1532,7 +1532,7 @@ function monoInit(isAot) {
                     o._args = [];
                     o._argsType = [];
                     if (isAot === true) {
-                        var argCnt = MonoApi.mono_method_get_param_count(this.handle);
+                        const argCnt = MonoApi.mono_method_get_param_count(this.handle);
                         for (let i = 0; i < argCnt; i++) {
                             const ptype = MonoApi.mono_method_get_param(this.handle, i);
                             const ptypeName = MonoApi.mono_type_get_name(ptype).readCString();
@@ -2033,6 +2033,12 @@ function monoInit(isAot) {
                     return uint64(handle.toString()).toNumber();
                 }
                 return '[ObjectWrapper ' + clazz.fullName + ' ' + handle + ']';
+            },
+            [Symbol.iterator]: function* () {
+                const iter = findMethod('GetEnumerator').call(handle).wrap();
+                while (iter.MoveNext().unbox().readU8() === 1) {
+                    yield iter.get_Current();
+                }
             },
             $dump() {
                 clazz.$dump();
@@ -2674,16 +2680,16 @@ function _loadMonoApi(isAot) {
 }
 
 function isMono() {
-    let address = Module.findExportByName(null, 'mono_thread_attach');
-    if (address !== null) {
-        const mod = Process.getModuleByAddress(address);
-        return { isAot: false, module: mod };
-    }
-
-    address = Module.findExportByName(null, 'il2cpp_thread_attach');
+    let address = Module.findExportByName(null, 'il2cpp_thread_attach');
     if (address !== null) {
         const mod = Process.getModuleByAddress(address);
         return { isAot: true, module: mod };
+    }
+
+    address = Module.findExportByName(null, 'mono_thread_attach');
+    if (address !== null) {
+        const mod = Process.getModuleByAddress(address);
+        return { isAot: false, module: mod };
     }
 
     address = Module.findExportByName(null, 'il2cpp_runtime_class_init');
@@ -2703,14 +2709,14 @@ function isMono() {
         // }
         const exps = mod.enumerateExports();
         for (const exp of exps) {
-            if (exp.name.includes('mono_thread_attach') === true) {
-                console.log('exports: `' + exp.name + '`');
-                return { isAot: false, module: mod };
-            }
-            else if (exp.name.includes('il2cpp_thread_attach') === true
+            if (exp.name.includes('il2cpp_thread_attach') === true
                 || exp.name.includes('il2cpp_runtime_class_init') === true) {
                 console.log('exports: `' + exp.name + '`');
                 return { isAot: true, module: mod };
+            }
+            else if (exp.name.includes('mono_thread_attach') === true) {
+                console.log('exports: `' + exp.name + '`');
+                return { isAot: false, module: mod };
             }
         }
     }
