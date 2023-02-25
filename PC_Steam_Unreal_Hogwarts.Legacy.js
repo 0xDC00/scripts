@@ -20,8 +20,8 @@ UE.setHookSetText('/Script/UMG.RichTextBlock:SetText', function (thiz, s) {
     console.log('onEnter: ' + ctx);
 
     if (ctx === '/Engine/Transient.GameEngine.BP_PhoenixGameInstance_C.UI_BP_Subtitle_Element_C.WidgetTree.Text_Element') {
-        s = s.seplace(/^<Name_Text>/, '')
-            .seplace(':</> ', '\r\n')
+        s = s.replace(/^<Name_Text>/, '')
+            .replace(':</> ', '\r\n')
             ;
         handlerLine(s);
     }
