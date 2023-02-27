@@ -3,7 +3,7 @@
 // @version      
 // @author       [DC]
 // @description  WIP
-
+NativePointer.prototype.readFTextString = function () { return readFTextString(this) };
 const POINTER_SIZE = Process.pointerSize;
 const [OFFSET_ID, OFFSET_CLASS, OFFSET_NAME, OFFSET_OUTER] = [0xC, 0x10, 0x18, 0x20];
 const __e = Process.enumerateModules()[0];
@@ -17,37 +17,19 @@ const [OFFSET_FUNCTION, GUObjectItemSize] = getUnrealOffsetAndSize();
 const cacheFunctions = getAllFunctions();
 
 let pmemmove = __e.enumerateImports().find(x => x.name === 'memmove').address; // for unknown format
-let getStr = null; // for unknown format (2)
-
-if (module.parent === null) {
-    setHookSetText('/Script/UMG.RichTextBlock:SetText', function (thiz, s) {
-        const ctx = getObjectFullName(thiz);
-        const ctxId = thiz.add(OFFSET_ID).readU32();
-        const className = getNameByIndex(thiz.add(OFFSET_CLASS).readPointer().add(OFFSET_NAME).readU32());
-        console.warn('---' + thiz + ' ' + ctxId + ' ' + className);
-        console.warn(ctx);
-
-        console.log(s);
-    });
-
-    // setHookSetText('/Script/UMG.TextBlock:SetText', function (thiz, s) {
-    //     const ctx = getFullName(thiz);
-    //     const ctxId = thiz.add(OFFSET_ID).readU32();
-    //     const className = getNameByIndex(thiz.add(OFFSET_CLASS).readPointer().add(OFFSET_NAME).readU32());
-    //     console.warn('---' + ctxId + ' ' + className);
-    //     console.warn(ctx);
-
-    //     console.log(s);
-    // });
-}
+let getStr = null; // for unknown format (try reuse)
 
 /**
  * 
  * @param {string} fullName 
- * @param {{(this: InvocationContext, thiz: NativePointer, s: string): void}} cb 
+ * @param {{(this: InvocationContext, thiz: NativePointer, getText: {():string})): void} | InvocationListenerCallbacks} cb 
  * @returns {InvocationListener}
  */
 function setHookSetText(fullName, cb) {
+    if (cb instanceof Function === false) {
+        return setHookSetTextRaw(fullName, cb);
+    }
+
     const address = cacheFunctions[fullName];
     if (address === undefined) {
         return console.error("Function not found: " + fullName);
@@ -92,17 +74,15 @@ function setHookSetText(fullName, cb) {
 
     if (ins.operands[0].type === 'imm') {
         const newAddress = ptr(ins.opStr);
-        console.log('Attach imm: ' + address + ' -> ' + newAddress + ' ' + fullName);
-        return Interceptor.attach(newAddress, function () {
-            console.log('onEnter');
-        });
+        console.warn('Attach imm: ' + address + ' -> ' + newAddress + ' ' + fullName);
+        return Interceptor.attach(newAddress, cb);
     }
     else {
         const newAddress = ptr(ins.address);
-        console.log('Attach debug: ' + address + ' -> ' + newAddress + ' ' + fullName);
+        console.warn('Attach debug: ' + address + ' -> ' + newAddress + ' ' + fullName);
 
         // FText or FText|unknown (Problem! => after memmove or getstr)
-        let listener;
+        let listener = {};
         const bp = Breakpoint.add(newAddress, function () {
             Breakpoint.remove(bp);
 
@@ -144,10 +124,12 @@ function setHookSetText(fullName, cb) {
             }
 
             if (haveMemMove !== true) {
-                console.log('ReAttach: ' + this.context.pc + ' -> ' + address + ' ' + fullName);
+                // normal hook (may error)
+                console.warn('ReAttach: ' + this.context.pc + ' -> ' + address + ' ' + fullName);
                 if (getStr === null) {
                     listener = Interceptor.attach(address, function (args) {
-                        cb.call(this, args[0], readFTextString(args[1]))
+                        const read = readFTextString.bind(null, args[1]);
+                        cb.call(this, args[0], read)
                     });
                 }
                 else {
@@ -155,9 +137,10 @@ function setHookSetText(fullName, cb) {
                         const hook = Interceptor.attach(getStr, {
                             onLeave(retVal) {
                                 hook.detach();
-                                cb.call(this, thiz, retVal.readPointer().readUtf16String());
+                                const read = () => retVal.readPointer().readUtf16String();
+                                cb.call(this, thiz, read);
                             }
-                        })
+                        });
                     });
                 }
             }
@@ -172,42 +155,199 @@ function setHookSetText(fullName, cb) {
                 //getStr = ptr(ins.opStr);
 
                 const address2 = ins.next;
-                console.log('Attach imm: ' + address + ' ' + fullName);
-                console.log('Attach ret: ' + address2 + ' ' + fullName);
+                console.warn('Attach imm: ' + address + ' ' + fullName);
+                console.warn('Attach ret: ' + address2 + ' ' + fullName);
 
                 let thiz;
                 const bp1 = Breakpoint.add(address, function () {
                     thiz = this.context.rcx;
                 });
                 const bp2 = Breakpoint.add(address2, function () {
-                    cb.call(this, thiz, this.context.rax.readPointer().readUtf16String());
+                    const read = () => this.context.rax.readPointer().readUtf16String();
+                    cb.call(this, thiz, read);
                 })
 
-                listener = {
-                    detach: () => {
-                        Breakpoint.remove(bp1);
-                        Breakpoint.remove(bp2);
-                    }
-                }
+                listener.detach = () => {
+                    Breakpoint.remove(bp1);
+                    Breakpoint.remove(bp2);
+                };
             }
         });
         return { detach: () => listener.detach() };
     }
 }
 
+/**
+ * 
+ * @param {string} fullName 
+ * @param {InvocationListenerCallbacks} callbackOrProbe 
+ * @returns {InvocationListener}
+ */
+function setHookSetTextRaw(fullName, callbackOrProbe) {
+    const address = cacheFunctions[fullName];
+    if (address === undefined) {
+        return console.error("Function not found: " + fullName);
+    }
+    console.log('VM: ' + address + ' | ' + fullName);
+
+    // find native function (after restore rcx; only if VM function >0 param)
+    let ins, nextAddress = address;
+    function InstructionWake(cb) {
+        ins = Instruction.parse(nextAddress);
+        console.log(ins.address + ' ' + ins.toString());
+        while (cb(ins) === false) {
+            if (ins.mnemonic[0] !== 'j') {
+                nextAddress = ins.next;
+            }
+            else {
+                if (ins.operands[0].type !== 'imm') {
+                    nextAddress = ins.next;
+                }
+                else {
+                    nextAddress = ptr(ins.opStr);
+                }
+            }
+            ins = Instruction.parse(nextAddress);
+            console.log(ins.address + ' ' + ins.toString());
+        }
+        nextAddress = ins.next;
+    }
+
+    InstructionWake(x => x.mnemonic === 'mov'
+        && x.operands[0].type === 'reg'
+        && x.operands[1].value === 'rcx'
+    );
+
+    const targetReg = ins.operands[0].value;
+    InstructionWake(x => x.mnemonic === 'mov'
+        && x.operands[0].value === 'rcx'
+        && x.operands[1].value === targetReg
+    );
+
+    InstructionWake(x => x.mnemonic === 'call');
+
+    if (ins.operands[0].type === 'imm') {
+        const newAddress = ptr(ins.opStr);
+        console.warn('Attach imm: ' + address + ' -> ' + newAddress + ' ' + fullName);
+        return Interceptor.attach(newAddress, callbackOrProbe);
+    }
+    else {
+        const newAddress = ptr(ins.address);
+        console.warn('Attach debug: ' + address + ' -> ' + newAddress + ' ' + fullName);
+
+        let listener;
+        const bp = Breakpoint.add(newAddress, function () {
+            Breakpoint.remove(bp);
+
+            const memValue = ins.operands[0].value;
+            const address = this.context[memValue.base].add(memValue.disp * memValue.scale).readPointer();
+
+            listener = Interceptor.attach(address, callbackOrProbe);
+        });
+        return { detach: () => listener.detach() };
+    }
+}
+
+/**
+ * 
+ * @param {string} fullName 
+ * @param {InvocationListenerCallbacks} callbackOrProbe 
+ * @returns {InvocationListener}
+ */
 function setHook(fullName, callbackOrProbe) {
     const address = cacheFunctions[fullName];
     if (address === undefined) {
         return console.error("Function not found: " + fullName);
     }
 
-    return Interceptor.attach(address, callbackOrProbe);
+    try {
+        console.warn('Attach VM: ' + fullName + ' ' + address);
+        return Interceptor.attach(address, callbackOrProbe);
+    }
+    catch {
+        followJmp(address);
+
+        function followJmp2(newAddress) {
+            try {
+                console.warn('Attach VM imm: ' + fullName + ' ' + address + ' -> ' + newAddress);
+                return Interceptor.attach(newAddress, callbackOrProbe);
+            }
+            catch {
+                let ins = Instruction.parse(newAddress);
+                let size = 0;
+                while (true) {
+                    size += ins.size;
+                    if (size >= 14) break;
+                    if (ins.mnemonic === 'jmp') {
+                        const op = ins.operands[0];
+                        if (op.type === 'imm') {
+                            return followJmp2(ptr(ins.opStr));
+                        }
+                        else {
+                            throw new Error('Error');
+                        }
+                    }
+                    ins = Instruction.parse(ins.next);
+                }
+                throw new Error('Error');
+            }
+        }
+
+        function followJmp(address) {
+            const ins = Instruction.parse(address);
+            if (ins.mnemonic === 'jmp') {
+                const op = ins.operands[0];
+                if (op.type === 'imm') {
+                    followJmp2(ptr(ins.opStr));
+                }
+                else {
+                    throw new Error('Error');
+                }
+            }
+            else {
+                throw new Error('Error');
+            }
+        }
+    }
 }
 
 function readFTextString(address) {
     const data = address.readPointer();
-    const length = data.add(0x30).readU32();
-    const value = data.add(0x28).readPointer();
+    //console.log(hexdump(data));
+
+    let length;
+    let value;
+    const ptr1 = data.add(POINTER_SIZE).readPointer();
+    if (ptr1.isNull() !== true) {
+        try {
+            if (data.add(0x30).readPointer().isNull() === true)
+                return ''; // force empty
+
+            const data2 = data.add(0x18).readPointer().add(0x38).readPointer().add(0x20).readPointer();
+            value = data2.readPointer();
+            length = data2.add(POINTER_SIZE).readU32();
+        }
+        catch {
+            console.error("ERROR: " + address + ' ' + data);
+            console.error(hexdump(data));
+            value = data.add(0x28).readPointer();
+            length = data.add(0x30).readU32();
+        }
+    }
+    else {
+        length = data.add(0x30).readU32();
+        const len = data.add(0x40).readU32();
+        if (length === len) {
+            value = data.add(0x28).readPointer();
+        }
+        else {
+            value = data.add(0x48).readPointer();
+            length = data.add(0x50).readU32();
+        }
+
+    }
+
+    if (length === 0) return '';
     return value.readUtf16String(length - 1);
 }
 
@@ -224,6 +364,24 @@ function findFunction(fullName) {
 /**
  * 
  * @param {NativePointer} uObject 
+ * @returns {number}
+ */
+function getObjectId(uObject) {
+    return uObject.add(OFFSET_ID).readU32();
+}
+
+/**
+ * 
+ * @param {NativePointer} uObject 
+ * @returns {string}
+ */
+function getObjectClassName(uObject) {
+    return getNameByIndex(uObject.add(OFFSET_CLASS).readPointer().add(OFFSET_NAME).readU32());
+}
+
+/**
+ * 
+ * @param {NativePointer} uObject 
  * @returns {string}
  */
 function getObjectFullName(uObject) {
@@ -231,14 +389,10 @@ function getObjectFullName(uObject) {
     const cache = cacheObjectFullName[internalIndex];
     if (cache !== undefined) return cache;
 
-    const classObject = uObject.add(OFFSET_CLASS).readPointer();
-    const nameIndex = uObject.add(OFFSET_NAME).readU32();
-    const outerObject = uObject.add(OFFSET_OUTER).readPointer();
-
-    const classNameIndex = classObject.add(OFFSET_NAME).readU32();
-    const className = getNameByIndex(classNameIndex);
+    const className = getObjectClassName(uObject);
     const split = className === 'Function' ? ':' : '.';
 
+    const outerObject = uObject.add(OFFSET_OUTER).readPointer();
     let _outerObject = outerObject;
     const outers = [];
     while (_outerObject.isNull() === false) {
@@ -250,7 +404,9 @@ function getObjectFullName(uObject) {
     }
     const outerName = outers.join('.');
 
+    const nameIndex = uObject.add(OFFSET_NAME).readU32();
     const objectName = getNameByIndex(nameIndex);
+
     const fullName = outerName.length === 0 ? objectName : outerName + split + objectName;
     cacheObjectFullName[internalIndex] = fullName;
     return fullName;
@@ -287,123 +443,67 @@ function getNameByIndex(nameIndex) {
 
 function getAllFunctions() {
     const f = Object.create(null);
-    let j = 0;
-    for (let i = 0; ; i++) {
-        const uObject = GUObjectArray.add(i * GUObjectItemSize).readPointer();
-        if (uObject.isNull() === true) {
-            console.log('Found: ' + j + '/' + i);
+    let numFunc = 0, total = 0;
+
+    const pointers = GUObjectArray.readPointer();
+    for (let j = 0; ; j++) {
+        const GUObjectArray0 = pointers.add(j * POINTER_SIZE).readPointer();
+        if (GUObjectArray0.isNull() === true) {
             break;
         }
 
-        const classObject = uObject.add(OFFSET_CLASS).readPointer();
-        const classNameIndex = classObject.add(OFFSET_NAME).readU32();
-        const className = getNameByIndex(classNameIndex);
-        if (className !== 'Function') {
-            continue;
-        }
+        const range = Process.getRangeByAddress(GUObjectArray0);
+        const stop = range.base.add(range.size);
+        console.log('GUObjectArray page' + j + ' ' + range.base + ' ' + ptr(range.size));
 
-        j++;
-        const fullName = getObjectFullName(uObject);
-        f[fullName] = uObject.add(OFFSET_FUNCTION).readPointer();
+        for (let i = 0; ; i++) {
+            const pUObject = GUObjectArray0.add(i * GUObjectItemSize);
+            if (pUObject.compare(stop) >= 0) {
+                total += i;
+                break;
+            }
+            const uObject = pUObject.readPointer();
+            if (uObject.isNull() === true) {
+                continue;
+            }
+
+            const classObject = uObject.add(OFFSET_CLASS).readPointer();
+            const classNameIndex = classObject.add(OFFSET_NAME).readU32();
+            const className = getNameByIndex(classNameIndex);
+            if (className !== 'Function') {
+                continue;
+            }
+
+            numFunc++;
+            const fullName = getObjectFullName(uObject);
+            f[fullName] = uObject.add(OFFSET_FUNCTION).readPointer();
+        }
     }
+    console.log('Found: ' + numFunc + '/' + total);
 
     return f;
 }
 
-function getGUObjectArrayAndFNamePool() {
-    let FNamePool = null;
-    let GUObjectArray = null;
-    const c = new CModule(`
-char* scan(char* begin, int size, char* v) {
-    char* end = begin + size;
-    while (begin < end) {
-        if (*(char**)begin == v) {
-            return begin;
-        }
-        begin += 8;
-    }
-    return (void*)0;
-}
-`);
-    const scan = new NativeFunction(c.scan, 'pointer', ['pointer', 'uint', 'pointer']);
-    const ranges = Process.enumerateRanges('rw-');
-    for (let i = 0; i < ranges.length; i++) {
-        try {
-            const address = ranges[i].base;
-            const sig = address.readU64().toNumber();
-            if (FNamePool === null
-                && sig === 0x310656e6f4e011e /* 1e 01 4e 6f 6e 65 10 03 */) {
-                console.log('Found page0: ' + address);
-                const localRanges = __e.enumerateRanges('rw-');
-                for (let i = 0; i < localRanges.length; i++) {
-                    const range = localRanges[i];
-                    let begin = range.base;
-                    let size = range.size;
-                    while (size > 0) {
-                        const found = scan(begin, size, address);
-                        if (found.isNull() === false) {
-                            const max = found.sub(4).readS32();
-                            const len = found.sub(8).readS32();
-                            if (len <= 0 || max <= 0 || max < len) {
-                                const next = found.add(POINTER_SIZE);
-                                size -= next.sub(begin).toInt32();
-                                begin = next;
-                                continue;
-                            }
-
-                            FNamePool = found;
-                            console.log(hexdump(address, { length: 0x40 }));
-                            console.log('FNamePool: ' + FNamePool);
-                            console.log(hexdump(FNamePool, { length: 0x40 }));
-                        }
-
-                        break;
-                    }
-                    if (FNamePool !== null) break;
-                }
-            }
-            else if (GUObjectArray === null && sig === 0x10000) {
-                const temp = address.add(POINTER_SIZE);
-                try {
-                    if (temp.readPointer().add(POINTER_SIZE).readU32() === 1 /* ObjectFlags */) {
-                        GUObjectArray = temp;
-                        console.log('GUObjectArray:  ' + GUObjectArray);
-                        console.log(hexdump(GUObjectArray, { length: 0x60 }));
-                    }
-                }
-                catch { }
-            }
-            else if (FNamePool !== null && GUObjectArray !== null) {
-                break;
-            }
-        }
-        catch { }
-    }
-    if (FNamePool === null || GUObjectArray === null)
-        throw new Error("Init Error");
-
-    return [FNamePool, GUObjectArray];
-}
-
 function getUnrealOffsetAndSize() {
+    const GUObjectArray0 = GUObjectArray.readPointer().readPointer();
     const GUObjectItemSize = (function () {
-        // begin at 0x20
-        for (let i = 4; ; i++) {
-            const ptr1 = GUObjectArray.add(i * POINTER_SIZE);
+        // begin at 0x10
+        for (let i = 2; ; i++) {
+            const ptr1 = GUObjectArray0.add(i * POINTER_SIZE);
             try {
                 ptr1.readPointer().readPointer().readPointer(); // P->ObjectItem->VTable->Func
-                return ptr1.sub(GUObjectArray).toInt32();
+                return ptr1.sub(GUObjectArray0).toInt32();
             }
             catch { };
         }
     })();
     console.log('GUObjectItemSize:  ' + GUObjectItemSize.toString(16));
-    console.log(hexdump(GUObjectArray.add(GUObjectItemSize).readPointer()));
+    console.log(hexdump(GUObjectArray0.add(GUObjectItemSize).readPointer()));
 
     let uObject;
     const OFFSET_FUNCTION = (function () {
         for (let i = 0; ; i++) {
-            uObject = GUObjectArray.add(i * GUObjectItemSize).readPointer();
+            uObject = GUObjectArray0.add(i * GUObjectItemSize).readPointer();
             if (uObject.isNull() === true) {
                 break;
             }
@@ -435,19 +535,143 @@ function getUnrealOffsetAndSize() {
     return [OFFSET_FUNCTION, GUObjectItemSize];
 }
 
-/**
- * 
- * @param {NativePointer} uObject 
- * @returns {number}
- */
-function getObjectId(uObject) {
-    return uObject.add(OFFSET_ID).readU32();
+function getGUObjectArrayAndFNamePool() {
+    let FNamePool = null;
+    let GUObjectArray = null;
+    const c = new CModule(`
+#include <glib.h>
+
+char* scan(char* begin, const int size, const char* v) {
+    char* end = begin + size;
+    while (begin < end) {
+        if (*(char**)begin == v) {
+            return begin;
+        }
+        begin += sizeof(gsize);
+    }
+    return (void*)0;
+}
+`);
+    let rangeFNamePool;
+    const scan = new NativeFunction(c.scan, 'pointer', ['pointer', 'uint', 'pointer']);
+    const ranges = Process.enumerateRanges('rw-');
+    for (let i = 0; i < ranges.length; i++) {
+        try {
+            const address = ranges[i].base;
+            const sig = address.readU64().toNumber();
+            if (FNamePool === null
+                && sig === 0x310656e6f4e011e /* 1e 01 4e 6f 6e 65 10 03 */) {
+                console.log('FNamePool page0: ' + address);
+                const localRanges = __e.enumerateRanges('rw-');
+                for (let i = 0; i < localRanges.length; i++) {
+                    rangeFNamePool = localRanges[i];
+                    let begin = rangeFNamePool.base;
+                    let size = rangeFNamePool.size;
+                    while (size > 0) {
+                        const found = scan(begin, size, address);
+                        if (found.isNull() === false) {
+                            const max = found.sub(4).readS32();
+                            const len = found.sub(8).readS32();
+                            if (len <= 0 || max <= 0 || max < len) {
+                                const next = found.add(POINTER_SIZE);
+                                size -= next.sub(begin).toInt32();
+                                begin = next;
+                                continue;
+                            }
+
+                            FNamePool = found;
+                            console.log(hexdump(address, { length: 0x40 }));
+                            console.log('FNamePool: ' + FNamePool);
+                            console.log(hexdump(FNamePool, { length: 0x40 }));
+                        }
+
+                        break;
+                    }
+                    if (FNamePool !== null) break;
+                }
+            }
+            else if (GUObjectArray === null && sig === 0x10000) {
+                const temp = address.add(POINTER_SIZE);
+                try {
+                    if (temp.readPointer().add(POINTER_SIZE).readU32() === 1 /* ObjectFlags */) {
+                        GUObjectArray = temp;
+                        console.log('GUObjectArray page0:  ' + GUObjectArray);
+                        console.log(hexdump(GUObjectArray, { length: 0x60 }));
+                    }
+                }
+                catch { }
+            }
+            else if (FNamePool !== null && GUObjectArray !== null) {
+                break;
+            }
+        }
+        catch { }
+    }
+
+    if (FNamePool !== null && GUObjectArray !== null) {
+        console.log('Scan...');
+        const readPointer = new NativeCallback(p => {
+            try {
+                return p.readPointer();
+            }
+            catch { return NULL; }
+        }, 'pointer', ['pointer']);
+
+        const c = new CModule(`
+#include <glib.h>
+extern const char* readPointer(const char* address);
+
+char* scan(char* begin, const int size, const char* v) {
+    char* end = begin + size;
+    while (begin < end) {
+        const char* p = *(char**)begin;
+        if (((gsize)p & 0xF) == 0 && readPointer(p) == v) {
+            return begin;
+        }
+        begin += 0x10;
+    }
+    return (void*)0;
+}
+`, { readPointer: readPointer });
+
+        const scan = new NativeFunction(c.scan, 'pointer', ['pointer', 'uint', 'pointer']);
+        const pGUObjectArray = scan(rangeFNamePool.base, rangeFNamePool.size, GUObjectArray);
+        if (pGUObjectArray.isNull() === false) {
+            console.log('GUObjectArray: ' + pGUObjectArray, pGUObjectArray.readPointer());
+            return [FNamePool, pGUObjectArray];
+        }
+
+        const _GUObjectArray = Memory.alloc(Process.pageSize);
+        const _GUObjectArrayItems = _GUObjectArray.add(8);
+        _GUObjectArray.writePointer(_GUObjectArrayItems);
+        console.warn('Fake GUObjectArray: ' + _GUObjectArray);
+
+        let found = 0;
+        for (let i = 0; i < ranges.length; i++) {
+            const range = ranges[i];
+            const address = range.base;
+            const sig = address.readU64().toNumber();
+            if (sig === 0x10000) {
+                const temp = address.add(POINTER_SIZE);
+                try {
+                    temp.readPointer().readPointer().readPointer()
+                    _GUObjectArrayItems.add(found++ * POINTER_SIZE).writePointer(temp);
+                }
+                catch { }
+            }
+        }
+
+        globalThis.GUObjectArray = _GUObjectArray;
+        return [FNamePool, _GUObjectArray];
+    }
+    throw new Error("Init Error");
 }
 
 module.exports = exports = {
     findFunction,
     setHook,
     setHookSetText,
+    getObjectClassName,
     getObjectFullName,
     getObjectId,
     functions: cacheFunctions
