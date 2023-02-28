@@ -102,9 +102,10 @@ UE.setHook('/Script/Phoenix.PhoenixTextBlock:SetTextKey', {
         ) {
             handlerLine(s);
         }
-        else {
-            console.warn(s);
-        }
+        // Uncomment to show all text (to create filters)
+        // else {
+        //     console.warn(s);
+        // }
     }
 });
 
@@ -179,9 +180,10 @@ UE.setHook('/Script/Phoenix.PhoenixRichTextBlock:SetTextKey', {
         ) {
             handlerLine(s);
         }
-        else {
-            console.warn(s);
-        }
+        // Uncomment to show all text (to create filters)
+        // else {
+        //     console.warn(s);
+        // }
     }
 });
 
@@ -206,9 +208,10 @@ UE.setHook('/Script/Phoenix.PhoenixRichTextBlock:SetPhoenixText', {
         if (ctx === '/Engine/Transient.GameEngine.BP_PhoenixGameInstance_C.UI_BP_InteractButton_C.WidgetTree.DisplayText') {
             handlerLine(s);
         }
-        else {
-            console.warn(s);
-        }
+        // Uncomment to show all text (to create filters)
+        // else {
+        //     console.warn(s);
+        // }
     }
 });
 
@@ -253,9 +256,10 @@ UE.setHook('/Script/UMG.RichTextBlock:SetText', {
         ) {
             handlerLine(s);
         }
-        else {
-            console.warn(s);
-        }
+        // Uncomment to show all text (to create filters)
+        // else {
+        //     console.warn(s);
+        // }
     }
 });
 
