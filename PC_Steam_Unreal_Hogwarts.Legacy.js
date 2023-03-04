@@ -31,7 +31,8 @@ UE.setHook('/Script/Phoenix.PhoenixTextBlock:SetTextKey', {
         }
 
         const ctx = getObjectFullName(thiz);
-        console.log('onEnter SetTextKey: ' + ctx);
+        //console.log('onEnter SetTextKey: ' + ctx);
+        console.log('onEnter SetTextKey: ');
         const s = ptext.readFTextString();
 
         if (// Map
@@ -102,9 +103,11 @@ UE.setHook('/Script/Phoenix.PhoenixTextBlock:SetTextKey', {
         ) {
             handlerLine(s);
         }
-        else {
-            console.warn(s);
-        }
+        // Uncomment to show all text (to create filters)
+        // else {
+        //     console.warn(ctx);
+        //     console.warn(s);
+        // }
     }
 });
 
@@ -123,7 +126,8 @@ UE.setHook('/Script/Phoenix.PhoenixRichTextBlock:SetTextKey', {
         }
 
         const ctx = getObjectFullName(thiz);
-        console.log('onEnter RSetTextKey: ' + ctx);
+        //console.log('onEnter RSetTextKey: ' + ctx);
+        console.log('onEnter RSetTextKey: ');
         const s = ptext.readFTextString();
 
         if (// Map
@@ -179,9 +183,11 @@ UE.setHook('/Script/Phoenix.PhoenixRichTextBlock:SetTextKey', {
         ) {
             handlerLine(s);
         }
-        else {
-            console.warn(s);
-        }
+        // Uncomment to show all text (to create filters)
+        // else {
+        //     console.warn(ctx);
+        //     console.warn(s);
+        // }
     }
 });
 
@@ -200,15 +206,18 @@ UE.setHook('/Script/Phoenix.PhoenixRichTextBlock:SetPhoenixText', {
         }
 
         const ctx = getObjectFullName(thiz);
-        console.log('onEnter RSetPhoenixText: ' + ctx);
+        //console.log('onEnter RSetPhoenixText: ' + ctx);
+        console.log('onEnter RSetPhoenixText: ');
         const s = ptext.readFTextString();
         // Choices (repeat again)
         if (ctx === '/Engine/Transient.GameEngine.BP_PhoenixGameInstance_C.UI_BP_InteractButton_C.WidgetTree.DisplayText') {
             handlerLine(s);
         }
-        else {
-            console.warn(s);
-        }
+        // Uncomment to show all text (to create filters)
+        // else {
+        //     console.warn(ctx);
+        //     console.warn(s);
+        // }
     }
 });
 
@@ -227,8 +236,9 @@ UE.setHook('/Script/UMG.RichTextBlock:SetText', {
         }
 
         const ctx = getObjectFullName(thiz);
-        console.log('onEnter RichTextBlock:SetText: ' + ctx);
-        console.log(hexdump(ptext.readPointer()));
+        //console.log('onEnter RichTextBlock:SetText: ' + ctx);
+        console.log('onEnter RichTextBlock:SetText: ');
+        //console.log(hexdump(ptext.readPointer()));
         let s = ptext.readFTextString();
         if (// Main Subtitle
             ctx === '/Engine/Transient.GameEngine.BP_PhoenixGameInstance_C.UI_BP_Subtitle_Element_C.WidgetTree.Text_Element') {
@@ -253,9 +263,11 @@ UE.setHook('/Script/UMG.RichTextBlock:SetText', {
         ) {
             handlerLine(s);
         }
-        else {
-            console.warn(s);
-        }
+        // Uncomment to show all text (to create filters)
+        // else {
+        //     console.warn(ctx);
+        //     console.warn(s);
+        // }
     }
 });
 
