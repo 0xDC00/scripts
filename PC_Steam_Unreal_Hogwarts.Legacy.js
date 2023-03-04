@@ -105,6 +105,7 @@ UE.setHook('/Script/Phoenix.PhoenixTextBlock:SetTextKey', {
         }
         // Uncomment to show all text (to create filters)
         // else {
+        //     console.warn(ctx);
         //     console.warn(s);
         // }
     }
@@ -184,6 +185,7 @@ UE.setHook('/Script/Phoenix.PhoenixRichTextBlock:SetTextKey', {
         }
         // Uncomment to show all text (to create filters)
         // else {
+        //     console.warn(ctx);
         //     console.warn(s);
         // }
     }
@@ -213,6 +215,7 @@ UE.setHook('/Script/Phoenix.PhoenixRichTextBlock:SetPhoenixText', {
         }
         // Uncomment to show all text (to create filters)
         // else {
+        //     console.warn(ctx);
         //     console.warn(s);
         // }
     }
@@ -262,6 +265,7 @@ UE.setHook('/Script/UMG.RichTextBlock:SetText', {
         }
         // Uncomment to show all text (to create filters)
         // else {
+        //     console.warn(ctx);
         //     console.warn(s);
         // }
     }
