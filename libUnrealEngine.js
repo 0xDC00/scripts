@@ -1,5 +1,5 @@
 
-// @name         Unreal Engine 4.25+
+// @name         Unreal Engine 4
 // @version      
 // @author       [DC]
 // @description  WIP
@@ -10,12 +10,12 @@ const __e = Process.enumerateModules()[0];
 
 const cacheObjectName = [];
 const cacheObjectFullName = [];
-const [FNamePool, GUObjectArray] = getGUObjectArrayAndFNamePool();
+const [FNamePool, GUObjectArray, getNameByIndex] = getGUObjectArrayAndFNamePool();
 const [OFFSET_FUNCTION, GUObjectItemSize] = getUnrealOffsetAndSize();
 
 /** @type {Object.<string, NativePointer>} */
 const cacheFunctions = getAllFunctions();
-
+//console.log(JSON.stringify(cacheFunctions, null, 2));
 let pmemmove = __e.enumerateImports().find(x => x.name === 'memmove').address; // for unknown format
 let getStr = null; // for unknown format (try reuse)
 
@@ -412,7 +412,19 @@ function getObjectFullName(uObject) {
     return fullName;
 }
 
-function getNameByIndex(nameIndex) {
+function _getNameByIndex_below423(nameIndex) {
+    const cache = cacheObjectName[nameIndex];
+    if (cache !== undefined) return cache;
+
+    const FNameEntryArr = FNamePool.add((nameIndex >> 14) * POINTER_SIZE).readPointer();
+    const FNameEntry = FNameEntryArr.add((nameIndex % 0x4000) * POINTER_SIZE).readPointer();
+    const name = FNameEntry.add(0x10).readCString();
+
+    cacheObjectName[nameIndex] = name;
+    return name;
+}
+
+function _getNameByIndex(nameIndex) {
     const cache = cacheObjectName[nameIndex];
     if (cache !== undefined) return cache;
 
@@ -475,7 +487,7 @@ function getAllFunctions() {
             }
 
             numFunc++;
-            const fullName = getObjectFullName(uObject);
+            const fullName = getObjectFullName(uObject); //console.log(uObject, uObject.add(OFFSET_FUNCTION).readPointer() + ' ' + fullName);
             f[fullName] = uObject.add(OFFSET_FUNCTION).readPointer();
         }
     }
@@ -502,6 +514,7 @@ function getUnrealOffsetAndSize() {
 
     let uObject;
     const OFFSET_FUNCTION = (function () {
+        let index = 0;
         for (let i = 0; ; i++) {
             uObject = GUObjectArray0.add(i * GUObjectItemSize).readPointer();
             if (uObject.isNull() === true) {
@@ -514,10 +527,15 @@ function getUnrealOffsetAndSize() {
             if (className !== 'Function') {
                 continue;
             }
-
+            if (index++ !== 3) {
+                continue;
+            }
             for (let i = POINTER_SIZE * 3 + 0x10; i < 0x100; i += POINTER_SIZE) {
                 try {
-                    const func = uObject.add(i * POINTER_SIZE).readPointer();
+                    const func = uObject.add(i).readPointer();
+                    if (func.isNull() === true) {
+                        continue;
+                    }
                     const range = Process.getRangeByAddress(func);
                     if (range.protection.includes('x') === true) {
                         return i;
@@ -526,13 +544,163 @@ function getUnrealOffsetAndSize() {
                 catch { }
             }
 
-            return 0xD8;
+            console.warn('use default');
+            return _getNameByIndex === getNameByIndex ? 0xD8 /* 4.23+ */ : 0xB0;
         }
     })();
     console.log('OFFSET_FUNCTION:  ' + OFFSET_FUNCTION.toString(16));
     console.log(hexdump(uObject));
 
     return [OFFSET_FUNCTION, GUObjectItemSize];
+}
+
+/**
+ * <4.23
+ * @param {RangeDetails[]} ranges 
+ */
+function getGUObjectArrayAndFNamePool_below423(ranges, GUObjectArray) {
+    let FNamePool = null;
+    const N = ranges.length;
+    for (let i = 0; i < N; i++) {
+        const address = ranges[i].base;
+        try {
+            const addressIntProp = address.add(0x48);
+            const sig = addressIntProp.readU64().toNumber();
+            if (FNamePool === null && sig === 0x65706f7250746e49 /* 49 6e 74 50 72 6f 70 65 */) {
+                console.log('FNamePool page0: ' + address); // FNameEntry
+                let luckyFNameEntryArr = null;
+                for (let i = 1; i < 7; i++) {
+                    let maybe = address.sub(i * 0x10000);
+                    try {
+                        if (maybe.readPointer().equals(address) === true) {
+                            luckyFNameEntryArr = maybe;
+                            console.log('luckyFNameEntryArr: ' + maybe);
+                            break;
+                        }
+                    } catch { }; // maybe may invalid pointer
+                }
+
+                if (luckyFNameEntryArr !== null) {
+                    for (let i = 1; i < 7; i++) {
+                        let maybe = luckyFNameEntryArr.sub(i * 0x10000);
+                        try {
+                            for (let j = 0; j < 20; j++) {
+                                const address = maybe.add(j * POINTER_SIZE);
+                                if (address.readPointer().equals(luckyFNameEntryArr) === true) {
+                                    FNamePool = address;
+                                    console.log('luckyFNamePool: ' + address);
+                                    break;
+                                }
+                            }
+
+                        } catch { }; // maybe may invalid pointer
+                    }
+                }
+
+                if (FNamePool === null) {
+                    if (luckyFNameEntryArr === null) {
+                        luckyFNameEntryArr = (() => {
+                            for (let i = 0; i < N; i++) {
+                                const range = ranges[i].base;
+                                if (range.readPointer().equals(address) === true) {
+                                    console.log('FNameEntryArr: ' + range);
+                                    return range;
+                                }
+                            }
+                            throw new Error("FNameEntryArr not found!");
+                        })();
+                    }
+
+                    FNamePool = (() => {
+                        for (let i = 0; i < N; i++) {
+                            const range = ranges[i].base;
+                            for (let j = 0; j < 20; j++) {
+                                const tmp = range.add(j * POINTER_SIZE);
+                                if (tmp.readPointer().equals(luckyFNameEntryArr) === true) {
+                                    console.log('FNamePool: ' + tmp);
+                                    return tmp;
+                                }
+                            }
+                        }
+                        throw new Error("FNameEntryArrArr not found!");
+                    })();
+                }
+            }
+            else if (GUObjectArray === null) {
+                try {
+                    if (address.readPointer().add(POINTER_SIZE).readU32() === 1 /* ObjectFlags */) {
+                        try {
+                            address.readPointer().readPointer().readPointer();
+                            if (address.add(POINTER_SIZE).readS32() === -1) {
+                                continue;
+                            }
+                            GUObjectArray = address;
+                            console.log('GUObjectArray page0:  ' + GUObjectArray);
+                            console.log(hexdump(GUObjectArray, { length: 0x60 }));
+                        }
+                        catch { }
+                    }
+                }
+                catch { };
+            }
+            else if (FNamePool !== null && GUObjectArray !== null) {
+                break;
+            }
+        }
+        catch { }
+    }
+
+    if (FNamePool !== null && GUObjectArray !== null) {
+        console.log('Scan...');
+        const readPointer = new NativeCallback(p => {
+            try {
+                return p.readPointer();
+            }
+            catch { return NULL; }
+        }, 'pointer', ['pointer']);
+
+        const c = new CModule(`
+#include <glib.h>
+extern const char* readPointer(const char* address);
+
+char* scan(char* begin, const int size, const char* v) {
+    char* end = begin + size;
+    while (begin < end) {
+        const char* p = *(char**)begin;
+        if (((gsize)p & 0xF) == 0 && readPointer(p) == v) {
+            return begin;
+        }
+        begin += 0x10; // sizeof(gsize)
+    }
+    return (void*)0;
+}
+`, { readPointer: readPointer });
+
+        const scan = new NativeFunction(c.scan, 'pointer', ['pointer', 'uint', 'pointer']);
+
+        const localRanges = __e.enumerateRanges('rw-');
+        const N = localRanges.length;
+        for (let i = 0; i < N; i++) {
+            const range = localRanges[i];
+            const pGUObjectArray = scan(range.base, range.size, GUObjectArray);
+            if (pGUObjectArray.isNull() === false) {
+                console.log('GUObjectArray: ' + pGUObjectArray, pGUObjectArray.readPointer());
+                return [FNamePool, pGUObjectArray, _getNameByIndex_below423];
+            }
+        }
+
+        const pGUObjectArray = Memory.alloc(Process.pageSize);
+        const _GUObjectArrayItems = pGUObjectArray.add(8);
+        pGUObjectArray.writePointer(_GUObjectArrayItems);
+        console.warn('Fake GUObjectArray: ' + pGUObjectArray);
+
+        _GUObjectArrayItems.writePointer(GUObjectArray); // TODO: scan...
+
+        globalThis.GUObjectArray = pGUObjectArray;
+        return [FNamePool, pGUObjectArray, _getNameByIndex_below423];
+    }
+
+    throw new Error("[Init Error] GUObjectArray: " + GUObjectArray + ' FNamePool: ' + FNamePool);
 }
 
 function getGUObjectArrayAndFNamePool() {
@@ -635,16 +803,16 @@ char* scan(char* begin, const int size, const char* v) {
 `, { readPointer: readPointer });
 
         const scan = new NativeFunction(c.scan, 'pointer', ['pointer', 'uint', 'pointer']);
-        const pGUObjectArray = scan(rangeFNamePool.base, rangeFNamePool.size, GUObjectArray);
+        let pGUObjectArray = scan(rangeFNamePool.base, rangeFNamePool.size, GUObjectArray);
         if (pGUObjectArray.isNull() === false) {
             console.log('GUObjectArray: ' + pGUObjectArray, pGUObjectArray.readPointer());
-            return [FNamePool, pGUObjectArray];
+            return [FNamePool, pGUObjectArray, _getNameByIndex];
         }
 
-        const _GUObjectArray = Memory.alloc(Process.pageSize);
-        const _GUObjectArrayItems = _GUObjectArray.add(8);
-        _GUObjectArray.writePointer(_GUObjectArrayItems);
-        console.warn('Fake GUObjectArray: ' + _GUObjectArray);
+        pGUObjectArray = Memory.alloc(Process.pageSize);
+        const _GUObjectArrayItems = pGUObjectArray.add(8);
+        pGUObjectArray.writePointer(_GUObjectArrayItems);
+        console.warn('Fake GUObjectArray: ' + pGUObjectArray);
 
         let found = 0;
         for (let i = 0; i < ranges.length; i++) {
@@ -661,10 +829,13 @@ char* scan(char* begin, const int size, const char* v) {
             }
         }
 
-        globalThis.GUObjectArray = _GUObjectArray;
-        return [FNamePool, _GUObjectArray];
+        globalThis.GUObjectArray = pGUObjectArray;
+        return [FNamePool, pGUObjectArray, _getNameByIndex];
     }
-    throw new Error("Init Error");
+    else if (FNamePool === null) {
+        return getGUObjectArrayAndFNamePool_below423(ranges, GUObjectArray);
+    }
+    throw new Error("[Init Error] GUObjectArray: " + GUObjectArray + ' FNamePool: ' + FNamePool);
 }
 
 module.exports = exports = {
