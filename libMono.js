@@ -1275,10 +1275,10 @@ function monoInit(isAot) {
             // TODO: real static address; merge get-setValue
             get address() {
                 if (this.static === true) {
+                    const buf = Memory.alloc(POINTER_SIZE);
                     if (valuetype === true) {
                         const address = ptr(-1);
 
-                        const buf = Memory.alloc(POINTER_SIZE);
                         const support = cacheKnownType[f._classHandle];
                         let get;
                         buf.unbox = () => buf;
