@@ -42,7 +42,7 @@ function readString(address) {
             if (c === 0x7) {
                 address = address.add(2);
                 let cmd = address.readU16();
-
+                address = address.add(2); // skip cmd
                 // voice id --> skip
                 if (cmd === 0x8) {
                     while ((c = address.readU16()) !== 0) {
@@ -56,7 +56,6 @@ function readString(address) {
                 }
                 // ruby
                 if (cmd === 0x1) {
-                    address = address.add(2);
                     while ((c = address.readU16()) !== 0) {
                         // when we reach 0xa we have the kanji part
                         if (c === 0xa) {

@@ -7,4 +7,4 @@
 // * Malie
 //
 // ==/UserScript==
-require('./PC_Dies_Irae_Acta_est_Fabula.js');
+require('./PC_Malie_Dies_Irae_Acta_est_Fabula.js');
