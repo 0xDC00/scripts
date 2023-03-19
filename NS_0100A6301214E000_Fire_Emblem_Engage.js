@@ -12,7 +12,7 @@ const gameVer = '1.3.0';
 
 const { setHook } = require('./libYuzu.js');
 
-const mainHandler = trans.send(handler, -200); // db leading prevemt double
+const mainHandler = trans.send(handler, "200+");// join 200ms
 
 setHook({
     '1.3.0': {
@@ -38,7 +38,7 @@ function handler(regs) {
     const x3 = regs[3] // Speaker
     const talker = readSystemString(x3.value)
 
-    const out = talker + ": " + message;
+    const out = talker + '\n' + message.replace(/\n+/g, ' ');
 
     return out;
 }
