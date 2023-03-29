@@ -186,7 +186,8 @@ if (module.parent === null) {
 }
 
 const POINTER_SIZE = Process.pointerSize;
-const OFFSET_ARRAY_DATA = 0x20;  // 0x18=len
+const POINTER_ARRAY = POINTER_SIZE === 4 ? Uint32Array : BigUint64Array;
+const OFFSET_ARRAY_DATA = POINTER_SIZE === 4 ? 0x10 : 0x20;  // 0xC, 0x18=len
 
 /** image => handle */
 const cacheLookImage = {};
@@ -225,7 +226,7 @@ const cacheIsPrimes = { // invoke unbox need (same value type?)
     'System.Double': true,
 };
 var cachedApi = null;
-var _api, _mod, _isAot;
+var _api, _mod, _isAot, _thread;
 
 /* backward compatibility */
 /**
@@ -386,9 +387,9 @@ function monoInit(isAot) {
     const MonoApi = loadMonoApi(isAot);
 
     const domain = MonoApi.mono_get_root_domain();
-    const m = MonoApi.mono_thread_attach(domain);
+    _thread = MonoApi.mono_thread_attach(domain);
     // Script.bindWeak(globalThis, () => {
-    //     MonoApi.mono_thread_detach(m);
+    //     MonoApi.mono_thread_detach(_thread);
     // });
 
     if (isAot === true) {
@@ -831,7 +832,7 @@ function monoInit(isAot) {
     cacheKnownType[ArrayByte] = {
         get() {
             const p = this.add(OFFSET_ARRAY_DATA);
-            const s = this.add(OFFSET_ARRAY_DATA - 8).readU32();
+            const s = this.add(OFFSET_ARRAY_DATA - POINTER_SIZE).readU32();
             return new Uint8Array(ArrayBuffer.wrap(p, s));
         },
         set(v) {
@@ -841,7 +842,7 @@ function monoInit(isAot) {
     cacheKnownType[ArrayInt32] = {
         get() {
             const p = this.add(OFFSET_ARRAY_DATA);
-            const s = this.add(OFFSET_ARRAY_DATA - 8).readU32();
+            const s = this.add(OFFSET_ARRAY_DATA - POINTER_SIZE).readU32();
             return new Int32Array(ArrayBuffer.wrap(p, s * 4));
         },
         set(v) {
@@ -851,7 +852,7 @@ function monoInit(isAot) {
     cacheKnownType[ArrayString] = {
         get() {
             const p = this.add(OFFSET_ARRAY_DATA);
-            const s = this.add(OFFSET_ARRAY_DATA - 8).readU32();
+            const s = this.add(OFFSET_ARRAY_DATA - POINTER_SIZE).readU32();
             const b = ArrayBuffer.wrap(p, s * POINTER_SIZE);
             const a = new BigUint64Array(b);
             let len = s;
@@ -1029,9 +1030,9 @@ function monoInit(isAot) {
         else if (fname.endsWith('[]') === true) {
             // T[]
             const p = this.add(OFFSET_ARRAY_DATA);
-            const s = this.add(OFFSET_ARRAY_DATA - 8).readU32();
-            const b = ArrayBuffer.wrap(p, s * 8);
-            const a = new BigUint64Array(b);
+            const s = this.add(OFFSET_ARRAY_DATA - POINTER_SIZE).readU32();
+            const b = ArrayBuffer.wrap(p, s * POINTER_SIZE);
+            const a = new POINTER_ARRAY(b);
 
             var pz = new Proxy(a, {
                 get(target, prop) {
@@ -1048,7 +1049,7 @@ function monoInit(isAot) {
                 },
                 set(target, prop, value) {
                     const index = parseInt(prop);
-                    p.add(index * 8).writePointer(value);
+                    p.add(index * POINTER_SIZE).writePointer(value);
                     return true;
                 }
             });
@@ -1719,7 +1720,7 @@ function monoInit(isAot) {
                         // we in instance + not same overload
                         if (this.thiz !== undefined) {
                             return _methodWrap({
-                                handle: this.handle,
+                                handle: overload.handle,
                                 class: this.class,
                                 thiz: this.thiz
                             });
