@@ -1786,10 +1786,6 @@ function monoInit(isAot) {
                         else {//console.log('from wrapper');
                             thiz = this.thiz;
                         }
-
-                        if (m._instanceEnum === false && m._instanceValue === true) {
-                            thiz = thiz.unbox();
-                        }
                     }
 
                     const N = params.length;
