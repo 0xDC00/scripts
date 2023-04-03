@@ -13,14 +13,15 @@ const Mono = require('./libMono.js');
 const handlerLine = trans.send((s) => s, '100+');
 
 /* subtitle */
+// public void DisplaySubtitle(List<string> textLines, float clipDuration)
 Mono.setHook('', 'InteriorNight.SubtitlesManager', 'DisplaySubtitle', -1, {
     onEnter(args) {
         console.warn('onEnter: SubtitlesManager.DisplaySubtitle');
 
         const lines = [];
-        const textLines = args[1].wrap();
+        const textLines = args[1].wrap().ToArray().value;
         for (const line of textLines) {
-            lines.push(line.readMonoString());
+            lines.push(line);
         }
         const s = lines.join(' ');
         if (s.length === 0) {
@@ -29,14 +30,15 @@ Mono.setHook('', 'InteriorNight.SubtitlesManager', 'DisplaySubtitle', -1, {
         handlerLine(s);
     }
 });
+// public void DisplayBackgroundSubtitle(List<string> textLines, float clipDuration)
 Mono.setHook('', 'InteriorNight.SubtitlesManager', 'DisplayBackgroundSubtitle', -1, {
     onEnter(args) {
         console.warn('onEnter: SubtitlesManager.DisplayBackgroundSubtitle');
 
         const lines = [];
-        const textLines = args[1].wrap();
+        const textLines = args[1].wrap().ToArray().value;
         for (const line of textLines) {
-            lines.push(line.readMonoString());
+            lines.push(line);
         }
         const s = lines.join(' ');
         if (s.length === 0) {
@@ -46,6 +48,7 @@ Mono.setHook('', 'InteriorNight.SubtitlesManager', 'DisplayBackgroundSubtitle', 
     }
 });
 
+//// public void DisplayCloseCaption(string text, float clipDuation)
 // Mono.setHook('', 'InteriorNight.SubtitlesManager', 'DisplayCloseCaption', -1, {
 //     onEnter(args) {
 //         console.warn('onEnter: SubtitlesManager.DisplayCloseCaption');
@@ -54,6 +57,7 @@ Mono.setHook('', 'InteriorNight.SubtitlesManager', 'DisplayBackgroundSubtitle', 
 //         console.error(s);
 //     }
 // }); // not use
+//// public static string GetCloseCaptionWithIdAsSingleString(string _entryId, bool returnMissingStringIfNotFound = true)
 // Mono.setHook('', 'InteriorNight.VOLocalisationDatabase', 'GetCloseCaptionWithIdAsSingleString', -1, {
 //     onLeave(retVal) {
 //         console.warn('onEnter: VOLocalisationDatabase.GetCloseCaptionWithIdAsSingleString');
@@ -76,6 +80,7 @@ Mono.setHook('', 'InteriorNight.SubtitlesManager', 'DisplayBackgroundSubtitle', 
 // }); // many, split
 
 /* Choice */
+// public void SetText(string _text, BaseOption.EType _type)
 Mono.setHook('', 'InteriorNight.ChoiceTextController', 'SetText', -1, {
     onEnter(args) {
         console.warn('onEnter: ChoiceTextController.SetText');
@@ -89,6 +94,7 @@ Mono.setHook('', 'InteriorNight.ChoiceTextController', 'SetText', -1, {
 });
 
 /* Hidden choice (hover) */
+//// public static void OptionFound(string _optionName, int _playerID, float _time)
 // Mono.setHook('', 'InteriorNight.GameTracker', 'OptionFound', -1, {
 //     onEnter(args) {
 //         console.warn('onEnter: GameTracker.OptionFound');
@@ -100,6 +106,7 @@ Mono.setHook('', 'InteriorNight.ChoiceTextController', 'SetText', -1, {
 //         handlerLine(s);
 //     }
 // });
+//// public void Show(float _time = 0.5f)
 // Mono.setHook('', 'InteriorNight.ChoiceComponentAlphaController', 'Show', -1, {
 //     onEnter(args) {
 //         console.log('onEnter: ChoiceComponentAlphaController.Show');
