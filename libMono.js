@@ -767,9 +767,9 @@ function monoInit(isAot) {
     const IntPtr = MonoApiHelper.findClass('System.IntPtr');
 
     const mString = MonoApiHelper.findClass('System.String');
-    const ArrayByte = MonoApi.mono_array_class_get(Byte, 1);
-    const ArrayInt32 = MonoApi.mono_array_class_get(Int32, 1);
-    const ArrayString = MonoApi.mono_array_class_get(mString, 1);
+    const ArrayByte = MonoApi.mono_array_class_get(Byte.handle, 1);
+    const ArrayInt32 = MonoApi.mono_array_class_get(Int32.handle, 1);
+    const ArrayString = MonoApi.mono_array_class_get(mString.handle, 1);
 
     cacheKnownType[IntPtr.handle] = {
         get() { return this.unbox().readPointer(); },
@@ -853,8 +853,6 @@ function monoInit(isAot) {
         get() {
             const p = this.add(OFFSET_ARRAY_DATA);
             const s = this.add(OFFSET_ARRAY_DATA - POINTER_SIZE).readU32();
-            const b = ArrayBuffer.wrap(p, s * POINTER_SIZE);
-            const a = new BigUint64Array(b);
             let len = s;
             var pz = new Proxy({
                 length: len,
@@ -862,19 +860,19 @@ function monoInit(isAot) {
                 valueOf: () => { this }
             }, {
                 get(target, prop) {
-                    if (prop === 'length')
+                    if (prop === Symbol.iterator) {
+                        return function* () {
+                            for (let i = 0; i < len; i++) {
+                                yield p.add(i * POINTER_SIZE).readPointer().readMonoString();
+                            }
+                        }
+                    }
+                    if (prop === 'length') {
                         return len;
+                    }
 
-                    try {
-                        //console.log('String[] get', typeof prop);
-                        //console.log(prop);
-                        const item = a[parseInt(prop)];
-                        const p = ptr(item.toString());
-                        return p.readMonoString();
-                    }
-                    catch {
-                        // length, toJSON, ...?
-                    }
+                    const index = parseInt(prop);
+                    return p.add(index * POINTER_SIZE).readPointer().readMonoString();
                 },
                 set(target, prop, value) {
                     //console.log('String[] set', typeof prop);
@@ -942,8 +940,9 @@ function monoInit(isAot) {
             // try fallback to T[]
             const v = list1._items.getValue().value;
             //const v = list1._items.address.value;
-            let s = list1._size.value;
 
+            // set real length
+            let s = list1._size.value;
             Object.defineProperty(v, 'length', {
                 enumerable: true,
                 configurable: true,
@@ -959,7 +958,7 @@ function monoInit(isAot) {
                 v.length = s;
             }
 
-            // no cache (nay re-alloc)
+            // no cache (may re-alloc)
             return v;
         }
         else if (fname.startsWith('System.Collections.Generic.Dictionary<') === true) {
@@ -1037,7 +1036,8 @@ function monoInit(isAot) {
             var pz = new Proxy(a, {
                 get(target, prop) {
                     try {
-                        const item = target[parseInt(prop)];
+                        const index = parseInt(prop);
+                        const item = target[index];
                         const p = ptr(item.toString());
                         return p.readPointer(); // need .value
                     }
