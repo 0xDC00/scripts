@@ -15,7 +15,7 @@ const {
 
 function cleanText(s) {
     return s
-        .replace(/\n+/g, ' ') // remove newline
+        .replace(/\n+/g, '') // remove newline
         .replace(/<\/?[^>]*./g, ''); // remove control codes
 }
 
