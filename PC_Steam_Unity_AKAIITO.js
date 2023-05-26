@@ -13,12 +13,18 @@ const {
     setHook
 } = Mono;
 
+function cleanText(s) {
+    return s
+        .replace(/\n+/g, ' ') // remove newline
+        .replace(/<\/?[^>]*./g, ''); // remove control codes
+}
+
 // backlog (sometimes has extra text for section headers)
 // Mono.setHook('', 'messageLog', 'AddLog', 2, {
 //     onEnter(args) {
 //         let name = args[1].readMonoString();
 //         let text = args[2].readMonoString();
-//         text = text.replace(/<\/?[^>]*./g, '');
+//         text = cleanText(text);
 //         trans.send(text);
 //     }
 // });
@@ -27,7 +33,10 @@ const {
 Mono.setHook('', 'messageController', 'showMessageCor', 2, {
     onEnter(args) {
         let text = args[1].readMonoString();
-        text = text.replace(/<\/?[^>]*./g, '');
-        trans.send(text);
+        text = cleanText(text);
+        //don't grab the test message from the options menu
+        if (text != "文章中ではこのように表示される") {
+            trans.send(text);
+        }
     }
 });
