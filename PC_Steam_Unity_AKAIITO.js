@@ -15,7 +15,7 @@ const {
 
 function cleanText(s) {
     return s
-        .replace(/\n+/g, '') //remove newline
+        .replace(/\s+/g, '') //remove whitespace
         .replace(/<\/?[^>]*./g, ''); //remove control codes
 }
 
@@ -52,4 +52,12 @@ Mono.setHook('', 'KeywordData', 'getKeywordDataOne', 2, {
     }
 });
 
-//todo dialog choices
+//dialog choices
+Mono.setHook('', 'selectDialogControl', 'showDailog', 1, {
+    onEnter(args) {
+        let text = args[1].wrap().message.value;
+        text = text.replace(/\t+/g, ''); //remove whitespace, but keep newline
+        trans.send(text);
+    }
+});
+
