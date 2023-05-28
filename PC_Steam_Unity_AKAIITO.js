@@ -15,8 +15,8 @@ const {
 
 function cleanText(s) {
     return s
-        .replace(/\n+/g, '') // remove newline
-        .replace(/<\/?[^>]*./g, ''); // remove control codes
+        .replace(/\n+/g, '') //remove newline
+        .replace(/<\/?[^>]*./g, ''); //remove control codes
 }
 
 // backlog (sometimes has extra text for section headers)
@@ -29,7 +29,7 @@ function cleanText(s) {
 //     }
 // });
 
-// text box
+//text box
 Mono.setHook('', 'messageController', 'showMessageCor', 2, {
     onEnter(args) {
         let text = args[1].readMonoString();
@@ -40,3 +40,16 @@ Mono.setHook('', 'messageController', 'showMessageCor', 2, {
         }
     }
 });
+
+//dictionary
+Mono.setHook('', 'KeywordData', 'getKeywordDataOne', 2, {
+    onLeave(retVal) {
+        let word = retVal.wrap().showName.value;
+        let reading = retVal.wrap().readName.value;
+        let definition = retVal.wrap().contentText.value;
+        let output = word + '\r\n' + reading + '\r\n' + definition;
+        trans.send(output);
+    }
+});
+
+//todo dialog choices
