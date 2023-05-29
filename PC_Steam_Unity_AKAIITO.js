@@ -47,6 +47,7 @@ Mono.setHook('', 'KeywordData', 'getKeywordDataOne', 2, {
         let word = retVal.wrap().showName.value;
         let reading = retVal.wrap().readName.value;
         let definition = retVal.wrap().contentText.value;
+        definition = cleanText(definition);
         let output = word + '\r\n' + reading + '\r\n' + definition;
         trans.send(output);
     }
