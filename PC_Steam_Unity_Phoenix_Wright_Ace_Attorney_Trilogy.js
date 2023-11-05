@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Phoenix Wright: Ace Attorney Trilogy
-// @version      0.1
+// @version      0.2
 // @author       aqui
 // @description  Steam
 // * Capcom
@@ -16,23 +16,29 @@ const Mono = require('./libMono.js');
 const {
     _module
 } = Mono;
-const handlerLine = trans.send((s) => s, '250+'); //set to 2000+ if you want dialogue text in a single line for now, but it will cause delays in printing
-let stringToPrint = '';
+const handlerLine = trans.send((s) => s, '250+');
+let firstLine = '';
+let secondLine = '';
 let timeout;
+let isSecondLine;
+
+// missing on the first game: text from the buttons in investigation mode (like where to go)
 
 Mono.setHook('', 'MessageText', 'ToString', -1, {
     onLeave(retVal) {
         console.log('onLeave: MessageText:ToString');
         const s = retVal.readMonoString().replace(/<[^>]*>/g, '').trim();
-        if (s.length < stringToPrint.length) {
-            handlerLine(stringToPrint)
+        if (s.length < firstLine.length) {
+            isSecondLine = true
         }
         clearTimeout(timeout)
         timeout = setTimeout(() => {
-            handlerLine(stringToPrint)
-            stringToPrint = ''
+            handlerLine(firstLine + secondLine)
+            firstLine = ''
+            secondLine = ''
+            isSecondLine = false
         }, 500)
-        stringToPrint = s
+        isSecondLine ? secondLine = s : firstLine = s
     }
 });
 
