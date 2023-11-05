@@ -17,28 +17,26 @@ const {
     _module
 } = Mono;
 const handlerLine = trans.send((s) => s, '250+');
-let firstLine = '';
-let secondLine = '';
+let lines = [];
+let lastLine = ''
 let timeout;
-let isSecondLine;
 
-// missing on the first game: text from the buttons in investigation mode (like where to go)
+// missing on the first game: text from the buttons in investigation mode (like where to go), character names
 
 Mono.setHook('', 'MessageText', 'ToString', -1, {
     onLeave(retVal) {
         console.log('onLeave: MessageText:ToString');
         const s = retVal.readMonoString().replace(/<[^>]*>/g, '').trim();
-        if (s.length < firstLine.length) {
-            isSecondLine = true
+        if (s.length < lastLine.length) {
+            lines.push(lastLine)
         }
+        lastLine = s
         clearTimeout(timeout)
         timeout = setTimeout(() => {
-            handlerLine(firstLine + secondLine)
-            firstLine = ''
-            secondLine = ''
-            isSecondLine = false
-        }, 500)
-        isSecondLine ? secondLine = s : firstLine = s
+            handlerLine(lines.join("") + lastLine)
+            lines = []
+            lastLine = ""
+        }, 250)
     }
 });
 
