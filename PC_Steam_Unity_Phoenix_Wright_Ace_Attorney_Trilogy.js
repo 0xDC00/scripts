@@ -36,7 +36,7 @@ Mono.setHook('', 'MessageText', 'ToString', -1, {
             handlerLine(lines.join("") + lastLine)
             lines = []
             lastLine = ""
-        }, 250)
+        }, 500)
     }
 });
 
