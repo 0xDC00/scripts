@@ -25,7 +25,7 @@ const handlerLine = trans.send((s) => s, '250+');
 
     Interceptor.attach(hookAddress, {
         onEnter(args) {
-            let newString = args[1].readCString().replace(/<[^>]*>/g, '').replace(/\[(.*?)\/(.*?)\]/g, "$1").replace(/\\n/g,"\n")
+            let newString = args[1].readCString().replace(/<[^>]*>/g, '').replace(/\[(.*?)\/(.*?)\]/g, "$1").replace(/\\n/g, "\n")
             if (!lastTwentyStrings.includes(newString)) {
                 handlerLine(newString)
                 lastTwentyStrings.push(newString)
