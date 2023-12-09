@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100A3A00CC7E000] CLANNAD
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * PROTOTYPE

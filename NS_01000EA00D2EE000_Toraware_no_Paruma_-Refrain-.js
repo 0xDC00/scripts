@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01000EA00D2EE000] Toraware no Paruma -Refrain-
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * Capcom
@@ -20,7 +20,7 @@ setHook({
         [0x804b04c8 - 0x80004000]: mainHandler.bind_(null, 0), // alert x0
         [0x804b725c - 0x80004000]: mainHandler.bind_(null, 0), // prompt x0
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index) {
     const address = regs[index].value;

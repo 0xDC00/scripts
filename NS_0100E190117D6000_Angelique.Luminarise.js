@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100D11018A7E000] Angelique Luminarise
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * Koei Tecmo Games
@@ -27,7 +27,7 @@ setHook({
         //[0x80047164 - 0x80004000]: mainHandler1, // prompt+ingame+previous (unstable)
         [0x80011140 - 0x80004000]: mainHandler0, // prompt first
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index) {
     console.log('onEnter ' + ptr(this.context.pc));

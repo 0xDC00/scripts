@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01008C100C572000] CLOCK ZERO ~Shuuen no Ichibyou~ Devote
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       Koukdw
 // @description  Yuzu
 // * Otomate
@@ -18,7 +18,7 @@ setHook({
         [0x8003c184 - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"), // slow but in order
         [0x8001f6d0 - 0x80004000]: mainHandler.bind_(null, 0, "prompt"),
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
     console.log('onEnter: ' + hookname);

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100B0100E26C000] Tokimeki Memorial Girl's Side: 4th Heart
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * KONAMI
@@ -23,7 +23,7 @@ setHook({
         [0x81429f54 - 0x80004000]: choiceHandler, // choice (x0)
         [0x8180633c - 0x80004000]: helpHandler,   // help (x1)
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 let currentType = -1;
 let previousType = -1;

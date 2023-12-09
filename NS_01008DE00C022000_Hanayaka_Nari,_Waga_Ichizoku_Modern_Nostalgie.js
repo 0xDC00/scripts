@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01008DE00C022000] Hanayaka Nari, Waga Ichizoku Modern Nostalgie
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * Idea Factory (アイディアファクトリー)
@@ -20,7 +20,7 @@ setHook({
         // SIG: 5C 00 50 E3 ???????? 26 00 50 E3 ???????? 25 00 50 E3 (=> sub_ => first blt)
         0x2509ac: mainHandler, // x3 (double trigged), name+text, onscreen 
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 /** @type {EmulatorProbeCallBack} */
 function handler(regs) {

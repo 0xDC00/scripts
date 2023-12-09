@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100D9500A0F6000] Closed Nightmare
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * Nippon Ichi Software, Inc.
@@ -19,7 +19,7 @@ setHook({
         [0x800878fc - 0x80004000]: mainHandler, // prompt
         [0x80087aa0 - 0x80004000]: mainHandler  // choice
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[0].value; // x0

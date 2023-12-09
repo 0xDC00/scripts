@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100CF400F7CE000] Harukanaru Toki no Naka de 7
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       Koukdw
 // @description  Yuzu
 // * Koei Tecmo Games
@@ -25,7 +25,7 @@ setHook({
         //[0x80052fa8 - 0x80004000]: mainHandler.bind_(null, 1, 1), // battle guide not working
 
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, offset) {
     console.log('onEnter ' + ptr(this.context.pc));

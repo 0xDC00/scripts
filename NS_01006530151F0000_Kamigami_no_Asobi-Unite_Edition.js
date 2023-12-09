@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01006530151F0000] Kamigami no Asobi - Unite Edition
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * 株式会社ブロッコリー（英: BROCCOLI Co., Ltd.）
@@ -19,7 +19,7 @@ setHook({
         //[0x812f1e60 - 0x80004000]: mainHandler, // (trigged multiple: text animate, noname)
         [0x812f1b8c - 0x80004000]: mainHandler, // ADVManager._ShowTextCoroutine_d__564$$MoveNext (+0x30); name + text (trigged one)
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[1].value; // name

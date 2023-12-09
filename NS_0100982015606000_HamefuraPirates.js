@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100982015606000] Hamefura Pirates
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [SciresM]
 // @description  Yuzu
 // * Idea Factory (アイディアファクトリー)
@@ -20,7 +20,7 @@ setHook({
         [0x81c9ae60 - 0x80004000]: mainHandler, // Hamekai.ChoicesText$$SetText
         [0x81eb7dc0 - 0x80004000]: mainHandler, // Hamekai.ShortStoryTextView$$AddText
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[1].value;

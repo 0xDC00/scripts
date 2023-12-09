@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [010093800DB1C000] Jakou no Lyla ~Trap of MUSK~
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * Idea Factory (アイディアファクトリー)
@@ -40,7 +40,7 @@ setHook({
         [0x80301e80 - 0x80004000]: mainHandler, // x1 text + name (unformated), #T1 #T2, #T0
         [0x803f7a90 - 0x80004000]: mainHandler, // x0=x1=choice (sig=SltAdd)
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     console.log('onEnter');

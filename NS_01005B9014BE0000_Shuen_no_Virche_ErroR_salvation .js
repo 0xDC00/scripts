@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01005B9014BE0000] Shuuen no Virche -ErroR:salvation
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * Idea Factory (アイディアファクトリー)
@@ -20,7 +20,7 @@ setHook({
         //[0x8002b768 - 0x80004000]: mainHandler.bind_(null, 0), // name (wrong)
         [0x8003d540 - 0x80004000]: mainHandler.bind_(null, 0) // choice
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, offset) {
     const address = regs[0].value; // x0

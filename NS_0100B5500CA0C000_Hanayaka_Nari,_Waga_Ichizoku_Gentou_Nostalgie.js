@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100B5500CA0C000] Hanayaka Nari, Waga Ichizoku Gentou Nostalgie
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * Idea Factory (アイディアファクトリー)
@@ -20,7 +20,7 @@ setHook({
         // SIG: 
         0x27ca10: mainHandler, // x3 (double trigged), name+text, onscreen 
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     console.log('onEnter');

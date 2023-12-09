@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100957016B90000] CHAOS;HEAD NOAH
-// @version      1.0.0 (base)
+// @version      1.0.0
 // @author       [DC]
 // @description  
 // * MAGES. inc.
@@ -36,7 +36,7 @@ const base100 = {
 
 setHook({
     '1.0.0': base100,
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[0].value; // x0

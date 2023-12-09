@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [010062B01525C000] Persona 4 Golden
-// @version      0.1 - 1.0.0 (base)
+// @version      1.0.0
 // @author       Koukdw & [DC]
 // @description  Yuzu
 // * Atlus
@@ -19,7 +19,7 @@ setHook({
     '1.0.0': {
         [0x802d5ba0 - 0x80004000]: mainHandler
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const type = regs[1].value & 0xFFFF;

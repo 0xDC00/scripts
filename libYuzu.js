@@ -6,7 +6,6 @@
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
-console.warn('Yuzu 1646+');
 
 const isFastMem = true;
 
@@ -235,6 +234,10 @@ function setHook(object) {
             operations[address] = element;
         }
     }
+
+    console.warn('[Compatibility]');
+    console.warn('Yuzu 1646+');
+    if (globalThis.gameVer) console.warn('Game version: ' + globalThis.gameVer);
 }
 
 module.exports = exports = {

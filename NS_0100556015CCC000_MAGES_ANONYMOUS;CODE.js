@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100556015CCC000] ANONYMOUS;CODE
-// @version      0.1 - 1.0.0 (base)
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * MAGES. inc.
@@ -16,7 +16,7 @@ setHook({
     '1.0.0': {
         [0x80011608 - 0x80004000]: mainHandler, // dialouge, menu
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 let pre = '';
 function handler(regs) {

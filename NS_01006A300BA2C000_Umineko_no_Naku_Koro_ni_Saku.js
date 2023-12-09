@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01006A300BA2C000] Umineko no Naku Koro ni Saku ~Nekobako to Musou no Koukyoukyoku~
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * ENTERGRAM
@@ -20,7 +20,7 @@ setHook({
         [0x801049a8 - 0x80004000]: mainHandler, // x0 topLeft (double: ♪ + text)
 
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[0].value;

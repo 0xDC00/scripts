@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100E94014792000] SINce Memories: Hoshi no Sora no Shita de
-// @version      0.1 - 1.0.0 (base), 1.0.1
+// @version      1.0.0, 1.0.1
 // @author       [DC]
 // @description  Yuzu, SINce Memories Off the starry sky
 // * MAGES. inc.
@@ -25,7 +25,7 @@ const base100 = {
 setHook({
     '1.0.0': base100,
     '1.0.1': base100 // same exe
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[0].value; // x0

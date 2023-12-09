@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100B5700CDFC000] AMNESIA LATER×CROWD for Nintendo Switch 
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * Idea Factory (アイディアファクトリー)
@@ -25,7 +25,7 @@ setHook({
         [0x80149b10 - 0x80004000]: mainHandler, // dialogue
         [0x803add50 - 0x80004000]: mainHandler, // choice
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index) {
     const address = regs[index].value;

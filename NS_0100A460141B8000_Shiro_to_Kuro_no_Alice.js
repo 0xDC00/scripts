@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100A460141B8000] Shiro to Kuro no Alice
-// @version      1.0.0 (base)
+// @version      1.0.0
 // @author       Koukdw
 // @description  
 // * Kogado Girls Project
@@ -25,7 +25,7 @@ setHook({
         [0x800142d4 - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"),
         [0x800144dc - 0x80004000]: mainHandler.bind_(null, 0, "choice"),
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
     const address = regs[index].value;

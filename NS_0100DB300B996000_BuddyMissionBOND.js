@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100DB300B996000] Buddy Mission BOND
-// @version      0.1 - 1.0.0, 1.0.1
+// @version      1.0.0, 1.0.1
 // @author       [DC]
 // @description  Yuzu
 // * Nintendo
@@ -25,7 +25,7 @@ setHook({
         [0x80046dd0 - 0x80004000]: mainHandler,
         [0x80046de0 - 0x80004000]: mainHandler,
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[8].value.add(1);

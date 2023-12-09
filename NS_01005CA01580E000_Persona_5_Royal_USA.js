@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01005CA01580E000] Persona 5 Royal
-// @version      0.1 - 1.0.0 (base)
+// @version      1.0.0
 // @author       Koukdw & [DC]
 // @description  Yuzu
 // * Atlus
@@ -19,7 +19,7 @@ setHook({
     '1.0.0': {
         [0x80ec4db0 - 0x80004000]: mainHandler
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const type = regs[2].value & 0xFFFF;

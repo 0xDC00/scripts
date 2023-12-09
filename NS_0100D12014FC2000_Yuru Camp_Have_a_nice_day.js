@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100D12014FC2000] Yuru Camp△ - Have a Nice Day!
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [Darkmans]
 // @description  Yuzu
 // * MAGES. GAME
@@ -18,7 +18,7 @@ setHook({
     '1.0.0': {
         [0x816d03f8 - 0x80004000]: mainHandler, // dialog / backlog
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[0].value;

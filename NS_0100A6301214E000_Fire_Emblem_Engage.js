@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100A6301214E000] Fire Emblem Engage
-// @version      1.3.0 - 1.3.0
+// @version      1.3.0
 // @author       [Sphyralg zx96]
 // @description  Yuzu
 // * Intelligent Systems Co., Ltd
@@ -18,7 +18,7 @@ setHook({
     '1.3.0': {
         [0x8248c550 - 0x80004000]: mainHandler, // App.Talk3D.TalkLog$$AddLog
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 console.log(gameVer);
 

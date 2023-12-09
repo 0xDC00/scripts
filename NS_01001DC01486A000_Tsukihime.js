@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01001DC01486A000] 月姫 -A piece of blue glass moon-
-// @version      0.2.1 - 1.0.1, 1.0.2
+// @version      1.0.1, 1.0.2
 // @author       [DC]
 // @description  Yuzu, Tsukihime
 // * Aniplex (アニプレックス)
@@ -112,7 +112,7 @@ setHook({
     },
     '1.0.1': udp101,
     '1.0.2': udp101 // same exe
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[2].value; // x2

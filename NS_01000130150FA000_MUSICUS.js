@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01000130150FA000] MUSICUS!
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       Koukdw
 // @description  Yuzu
 // * OVERDRIVE
@@ -23,7 +23,7 @@ setHook({
 
         //0x804bc5b8: mainHandler // x1 - all dialogue, didnt test choice
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, offset) {
     console.log('onEnter');

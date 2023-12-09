@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100925014864000] Radiance Tale
-// @version      1.0.0 (base)
+// @version      1.0.0
 // @author       Koukdw
 // @description  
 // * Design Factory & Otomate
@@ -19,7 +19,7 @@ setHook({
         [0x8002fb18 - 0x80004000]: mainHandler.bind_(null, 0, "name"),
         [0x8002fd7c - 0x80004000]: mainHandler.bind_(null, 0, "text"),
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
     console.log('onEnter: ' + hookname);

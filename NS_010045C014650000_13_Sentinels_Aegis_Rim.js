@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [010045C014650000] 13 Sentinels: Aegis Rim
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       Koukdw
 // @description  Yuzu
 // * Vanillaware
@@ -26,7 +26,7 @@ setHook({
         [0x8005c518 - 0x80004000]: mainHandler.bind_(null, 0, "game help"), // game help
         //[0x801bc87c - 0x80004000]: mainHandler.bind_(null, 1), // attack description not working 
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
     console.log('onEnter ' + hookname);

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01005940182EC000] サマータイムレンダ Another Horizon
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [hitsulol]
 // @description  Yuzu
 // * MAGES. GAME
@@ -17,7 +17,7 @@ setHook({
     '1.0.0': {
         [0x818ebaf0 - 0x80004000]: mainHandler, //dialogue
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
 

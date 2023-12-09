@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [010012A017F18000] 魔法使いの夜 通常版
-// @version      1.0.2
+// @version      1.0.0, 1.0.2
 // @author       Koukdw
 // @description  Yuzu, Mahoyo
 // * Aniplex (アニプレックス)
@@ -22,7 +22,7 @@ setHook({
     '1.0.2': {
         [0x80086e70 - 0x80004000]: mainHandler,
     },
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[2].value; // x2

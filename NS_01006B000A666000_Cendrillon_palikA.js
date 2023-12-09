@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01006B000A666000] Cendrillon palikA
-// @version      1.0.0 (base)
+// @version      1.0.0
 // @author       Koukdw
 // @description  
 // * Otomate
@@ -18,7 +18,7 @@ setHook({
         [0x8001ab8c - 0x80004000]: mainHandler0.bind_(null, 2, "name"),
         [0x80027b30 - 0x80004000]: mainHandler1.bind_(null, 0, "dialogue"), // only copy the last invocation on this hook. (example: 3 line -> string get appended 3 times)
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
     console.log('onEnter: ', hookname);

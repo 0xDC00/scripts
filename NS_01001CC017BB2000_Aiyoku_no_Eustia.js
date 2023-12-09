@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01001CC017BB2000] Aiyoku no Eustia
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       Koukdw
 // @description  Yuzu
 // * AUGUST
@@ -20,7 +20,7 @@ setHook({
         [0x804d043c - 0x80004000]: mainHandler, // x0 - choice
         //[0x8051d290 - 0x80004000]: mainHandler, // x1 - dialogue + name at bottom
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     console.log('onEnter: ');

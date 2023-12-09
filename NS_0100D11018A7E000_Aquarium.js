@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100D11018A7E000] Aquarium
-// @version      0.1 - 1.0.0
+// @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
 // * ENTERGRAM
@@ -19,7 +19,7 @@ setHook({
         [0x80500178 - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - choice
         //[0x805622AC - 0x80004000]: mainHandler, // x1 - dialogue - name - choice
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, offset) {
     console.log('onEnter');

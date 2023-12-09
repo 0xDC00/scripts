@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [01002BB00A662000] Nil Adminari no Tenbin Irodori Nadeshiko
-// @version      1.0.0 (base)
+// @version      1.0.0
 // @author       Koukdw
 // @description  
 // * Otomate
@@ -18,7 +18,7 @@ setHook({
         [0x8007C3E8 - 0x80004000]: mainHandler.bind_(null, 0, "name"), // name slow but in order (work on both games)
         [0x8007c23c - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"), // dialogue slow but in order (work on both games)
     }
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
     const reg = regs[index];

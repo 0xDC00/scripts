@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100E0D0154BC000] Yahari Game demo Ore no Seishun Love Come wa Machigatteiru.
-// @version      1.0.0 (base)
+// @version      1.0.0
 // @author       [DC]
 // @description  
 // * MAGES. inc.
@@ -22,7 +22,7 @@ const base100 = {
 
 setHook({
     '1.0.0': base100,
-}[globalThis.gameVer ?? gameVer]);
+}[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     const address = regs[0].value; // x0
