@@ -8,7 +8,8 @@
 //
 // Warnning: Japanese
 // ==/UserScript==
-trans.replace(function(s) {
+trans.replace(function(str) {
+    const s = str.replace("Tomoya", "朋也").replace("Okazaki", "岡崎")
     const splited = s.split('\n');
     if (splited.length % 2 === 0) {
         const N = splited.length / 2;
