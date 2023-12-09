@@ -1,18 +1,12 @@
 // @name         Yuzu JIT Hooker
-// @version      908+
+// @version      1646+
 // @author       [DC]
 // @description  windows, linux
 
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
-console.warn(`
-  The new Yuzu (12??+) broke some scripts.
-  FIX: Yuzu -> Configuration -> General -> Debug:
-    Tab Debug => check 'Enable CPU Debugging' (Advanced section)
-    Tab CPU   => uncheck 'Enable block linking'
-   -> OK (apply changes -> restart game)
-`);
+console.warn('Yuzu 1646+');
 
 const isFastMem = true;
 
@@ -227,12 +221,18 @@ function createFunction_buildRegs() {
     return new Function('context', 'thiz', body);
 };
 
+/**
+ * 
+ * @param {EmulatorHook} object
+ */
 function setHook(object) {
     //console.log(JSON.stringify(object, null, 2));
+    const IS_32 = globalThis.ARM === true;
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
-            operations[key] = element;
+            const address = IS_32 === true ? key : uint64(key).add(0x80004000).toNumber();
+            operations[address] = element;
         }
     }
 }
