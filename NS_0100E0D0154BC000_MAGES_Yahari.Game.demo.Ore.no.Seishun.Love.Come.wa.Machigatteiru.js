@@ -15,9 +15,9 @@ const table = createTable();
 const mainHandler = trans.send(handler, '500+'); // join 500ms (line + name)
 
 const base100 = {
-    // 805DFB4 BL  sub_8061B00
-    // 805DFB8 MOV x21, x0
-    0x805DFB8: mainHandler,
+    // 8005DFB4 BL  sub_8061B00
+    // 8005DFB8 MOV x21, x0
+    [0x8005DFB8 - 0x80004000]: mainHandler,
 };
 
 setHook({

@@ -18,14 +18,14 @@ const mainHandler0 = mainHandler.bind_(null, 0);
 //const mainHandler1 =  mainHandler.bind_(null, 1);
 //const mainHandler1 =  trans.send(handler, 200).bind_(null, 1);
 // the last one (but trans.send not support linker yet; so result not join with mainHandler0)
-// wrong, conflict with 0x8046c04
+// wrong, conflict with 0x80046c04
 
 setHook({
     '1.0.0': {
-        0x8046c04: mainHandler0, // ingameDialogue
-        0x8011284: mainHandler0, // choice
-        //0x8047164: mainHandler1, // prompt+ingame+previous (unstable)
-        0x8011140: mainHandler0, // prompt first
+        [0x80046c04 - 0x80004000]: mainHandler0, // ingameDialogue
+        [0x80011284 - 0x80004000]: mainHandler0, // choice
+        //[0x80047164 - 0x80004000]: mainHandler1, // prompt+ingame+previous (unstable)
+        [0x80011140 - 0x80004000]: mainHandler0, // prompt first
     }
 }[globalThis.gameVer ?? gameVer]);
 

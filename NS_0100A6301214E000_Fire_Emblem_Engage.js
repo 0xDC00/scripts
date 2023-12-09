@@ -16,11 +16,11 @@ const mainHandler = trans.send(handler, "200+");// join 200ms
 
 setHook({
     '1.3.0': {
-        0x0a48c550: mainHandler, // App.Talk3D.TalkLog$$AddLog
+        [0x8248c550 - 0x80004000]: mainHandler, // App.Talk3D.TalkLog$$AddLog
     }
 }[globalThis.gameVer ?? gameVer]);
 
-console.log(gameVer)
+console.log(gameVer);
 
 
 function readSystemString(addr) {

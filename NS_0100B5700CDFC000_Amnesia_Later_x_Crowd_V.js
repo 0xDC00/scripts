@@ -20,10 +20,10 @@ const mainHandler = trans.send(handler.bind_(null, 1), '250+'); // join 250ms; x
 
 setHook({
     '1.0.0': {
-        0x80ebc34: mainHandler, // waterfall
-        0x814dc64: mainHandler, // name
-        0x8149b10: mainHandler, // dialogue
-        0x83add50: mainHandler, // choice
+        [0x800ebc34 - 0x80004000]: mainHandler, // waterfall
+        [0x8014dc64 - 0x80004000]: mainHandler, // name
+        [0x80149b10 - 0x80004000]: mainHandler, // dialogue
+        [0x803add50 - 0x80004000]: mainHandler, // choice
     }
 }[globalThis.gameVer ?? gameVer]);
 

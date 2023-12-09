@@ -17,7 +17,7 @@ table[0xa] = ' '; // single line
 
 setHook({
     '1.0.0': {
-        0x8ec4db0: mainHandler
+        [0x80ec4db0 - 0x80004000]: mainHandler
     }
 }[globalThis.gameVer ?? gameVer]);
 

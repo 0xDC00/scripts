@@ -15,9 +15,9 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        0x8075190: mainHandler.bind_(null, 1, "prompt"),
-        0x802fb18: mainHandler.bind_(null, 0, "name"),
-        0x802fd7c: mainHandler.bind_(null, 0, "text"),
+        [0x80075190 - 0x80004000]: mainHandler.bind_(null, 1, "prompt"),
+        [0x8002fb18 - 0x80004000]: mainHandler.bind_(null, 0, "name"),
+        [0x8002fd7c - 0x80004000]: mainHandler.bind_(null, 0, "text"),
     }
 }[globalThis.gameVer ?? gameVer]);
 
@@ -30,6 +30,6 @@ function handler(regs, index, hookname) {
     let s = address.readUtf8String()
         .replace(/(#n)+/g, ' ') // Single line
         .replace(/(#[A-Za-z]+\[(\d*[.])?\d+\])+/g, '') // Remove controls
-    ;
+        ;
     return s;
 }

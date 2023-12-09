@@ -14,10 +14,10 @@ const mainHandler = trans.send(handler, '200+');
 
 setHook({
     '1.0.0': {
-        0x80b4560: mainHandler, // x0 name + text (bottom, center) - whole line
-        0x81049c0: mainHandler, // x0 prompt, bottomLeft
-        0x8026378: mainHandler, // x0 Yes|No
-        0x81049a8: mainHandler, // x0 topLeft (double: ♪ + text)
+        [0x800b4560 - 0x80004000]: mainHandler, // x0 name + text (bottom, center) - whole line
+        [0x801049c0 - 0x80004000]: mainHandler, // x0 prompt, bottomLeft
+        [0x80026378 - 0x80004000]: mainHandler, // x0 Yes|No
+        [0x801049a8 - 0x80004000]: mainHandler, // x0 topLeft (double: ♪ + text)
 
     }
 }[globalThis.gameVer ?? gameVer]);
@@ -62,7 +62,7 @@ function handler(regs) {
                 console.log('rube ' + content);
                 s += content;
                 continue;
-            
+
             case '@v':
             case '@w':
             case '@o':
@@ -95,7 +95,7 @@ function handler(regs) {
             case '@y':
                 s += content;
                 continue;
-            
+
             default:
                 console.log('Unrecognised dialogue tag: ' + tag);
                 s += content;

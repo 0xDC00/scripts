@@ -16,8 +16,8 @@ const mainHandler = trans.send(handler, -200); // db leading prevemt double
 
 setHook({
     '1.0.0': {
-        //0x92f1e60: mainHandler, // (trigged multiple: text animate, noname)
-        0x92f1b8c: mainHandler, // ADVManager._ShowTextCoroutine_d__564$$MoveNext (+0x30); name + text (trigged one)
+        //[0x812f1e60 - 0x80004000]: mainHandler, // (trigged multiple: text animate, noname)
+        [0x812f1b8c - 0x80004000]: mainHandler, // ADVManager._ShowTextCoroutine_d__564$$MoveNext (+0x30); name + text (trigged one)
     }
 }[globalThis.gameVer ?? gameVer]);
 
@@ -37,7 +37,7 @@ function handler(regs) {
     // guest -> host
     x19.vm = vmPtr; // x19 as tmp
     let adr = x19.value;
-    
+
     let slen = adr.add(0x10).readU32() * 2;
     let s = adr.add(0x14).readUtf16String(slen);
     //console.log(hexdump(adr, { header: false, ansi: false, length: 0x50 }));

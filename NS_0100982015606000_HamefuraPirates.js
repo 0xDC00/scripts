@@ -16,9 +16,9 @@ const mainHandler = trans.send(handler, '200+');
 
 setHook({
     '1.0.0': {
-        0x9E75940: mainHandler, // Hamekai.TalkPresenter$$AddMessageBacklog
-        0x9C9AE60: mainHandler, // Hamekai.ChoicesText$$SetText
-        0x9EB7DC0: mainHandler, // Hamekai.ShortStoryTextView$$AddText
+        [0x81e75940 - 0x80004000]: mainHandler, // Hamekai.TalkPresenter$$AddMessageBacklog
+        [0x81c9ae60 - 0x80004000]: mainHandler, // Hamekai.ChoicesText$$SetText
+        [0x81eb7dc0 - 0x80004000]: mainHandler, // Hamekai.ShortStoryTextView$$AddText
     }
 }[globalThis.gameVer ?? gameVer]);
 

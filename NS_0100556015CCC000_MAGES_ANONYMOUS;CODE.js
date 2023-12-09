@@ -14,7 +14,7 @@ const mainHandler = trans.send(handler, '250+');
 
 setHook({
     '1.0.0': {
-        0x8011608: mainHandler, // dialouge, menu
+        [0x80011608 - 0x80004000]: mainHandler, // dialouge, menu
     }
 }[globalThis.gameVer ?? gameVer]);
 

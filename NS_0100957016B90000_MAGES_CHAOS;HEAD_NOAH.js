@@ -16,21 +16,21 @@ const mainHandler = trans.send(handler, '500+'); // join 500ms (line + name)
 
 const base100 = {
     // sig (from SINce): 05 00 00 14 (mov x21, x0)
-    // 0x80466dc, 0x8046700 (better?)
-    0x8046700: mainHandler,
-    0x803A2c0: mainHandler, // TODO: choice?, test
-    0x803EAB0: mainHandler, // TIPS list (menu)
+    // [0x800466dc - 0x80004000], 0x80046700 (better?)
+    [0x80046700 - 0x80004000]: mainHandler,
+    [0x8003A2c0 - 0x80004000]: mainHandler, // TODO: choice?, test
+    [0x8003EAB0 - 0x80004000]: mainHandler, // TIPS list (menu)
     // TODO: ...
-    //0x804773C: mainHandler,
-    //0x8047EA8: mainHandler,
-    // 0x8048A88: mainHandler, // dialogue (not show) => skip
-    //0x8048AB0: mainHandler,
-    //0x8048AE0: mainHandler,
-    //0x8048B3C: mainHandler,
-    0x804C648: mainHandler, // system message
-    //0x804C66C: mainHandler,
-    0x8050374: mainHandler, // TIPS (red)
-    //0x8050A50: mainHandler,
+    //[0x8004773C - 0x80004000]: mainHandler,
+    //[0x80047EA8 - 0x80004000]: mainHandler,
+    //[0x80048A88 - 0x80004000]: mainHandler, // dialogue (not show) => skip
+    //[0x80048AB0 - 0x80004000]: mainHandler,
+    //[0x80048AE0 - 0x80004000]: mainHandler,
+    //[0x80048B3C - 0x80004000]: mainHandler,
+    [0x8004C648 - 0x80004000]: mainHandler, // system message
+    //[0x8004C66C - 0x80004000]: mainHandler,
+    [0x80050374 - 0x80004000]: mainHandler, // TIPS (red)
+    //[0x80050A50 - 0x80004000]: mainHandler,
 
 };
 

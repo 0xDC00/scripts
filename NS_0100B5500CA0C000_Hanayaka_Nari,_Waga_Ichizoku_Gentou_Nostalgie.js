@@ -8,6 +8,7 @@
 // ==/UserScript==
 const gameVer = '1.0.0';
 
+globalThis.ARM = true;
 const { setHook } = require('./libYuzu.js');
 const decoder = new TextDecoder('utf-8');
 

@@ -17,10 +17,10 @@ const mainHandler = handler;
 // e8 03 27 1e ? ? 41 a9 00 1d a8 4e
 setHook({
     '1.0.0': {
-        0x8086ba0: mainHandler,
+        [0x80086ba0 - 0x80004000]: mainHandler,
     },
     '1.0.2': {
-        0x8086e70: mainHandler,
+        [0x80086e70 - 0x80004000]: mainHandler,
     },
 }[globalThis.gameVer ?? gameVer]);
 

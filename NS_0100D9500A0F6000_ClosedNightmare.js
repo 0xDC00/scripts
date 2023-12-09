@@ -14,10 +14,10 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        0x80c0918: mainHandler, // line + name
-        0x8070b98: mainHandler, // fast trophy
-        0x80878fc: mainHandler, // prompt
-        0x8087aa0: mainHandler  // choice
+        [0x800c0918 - 0x80004000]: mainHandler, // line + name
+        [0x80070b98 - 0x80004000]: mainHandler, // fast trophy
+        [0x800878fc - 0x80004000]: mainHandler, // prompt
+        [0x80087aa0 - 0x80004000]: mainHandler  // choice
     }
 }[globalThis.gameVer ?? gameVer]);
 

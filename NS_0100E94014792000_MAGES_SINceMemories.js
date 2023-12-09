@@ -16,10 +16,10 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms (line + name)
 const directHandler = trans.send(handler);
 
 const base100 = {
-    0x8048cc8: mainHandler, // line + name => join
-    0x804f44c: directHandler, // fast trophy
-    0x804f474: directHandler, // prompt
-    0x8039dc0: mainHandler  // choice
+    [0x80048cc8 - 0x80004000]: mainHandler, // line + name => join
+    [0x8004f44c - 0x80004000]: directHandler, // fast trophy
+    [0x8004f474 - 0x80004000]: directHandler, // prompt
+    [0x80039dc0 - 0x80004000]: mainHandler  // choice
 };
 
 setHook({

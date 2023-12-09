@@ -16,7 +16,7 @@ const mainHandler = trans.send(handler, "200+");
 
 setHook({
     '1.0.0': {
-        0x96D03F8: mainHandler, // dialog / backlog
+        [0x816d03f8 - 0x80004000]: mainHandler, // dialog / backlog
     }
 }[globalThis.gameVer ?? gameVer]);
 

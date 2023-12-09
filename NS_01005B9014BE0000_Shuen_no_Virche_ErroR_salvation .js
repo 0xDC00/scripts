@@ -14,35 +14,23 @@ const directHandler = trans.send(handler);
 
 setHook({
     '1.0.0': {
-        //0x80C41B0: mainHandler, (just test arm pattern)
-        0x801f594: mainHandler, // dialog
-        0x801f668: directHandler, // center (immediate)
-        //0x802b768: mainHandler, // name (wrong)
-        0x803d540: mainHandler  // choice
+        //[0x800C41B0 - 0x80004000]: mainHandler.bind_(null, 0), (just test arm pattern)
+        [0x8001f594 - 0x80004000]: mainHandler.bind_(null, 0x1C), // dialog
+        [0x8001f668 - 0x80004000]: directHandler.bind_(null, 0x1C), // center (immediate)
+        //[0x8002b768 - 0x80004000]: mainHandler.bind_(null, 0), // name (wrong)
+        [0x8003d540 - 0x80004000]: mainHandler.bind_(null, 0) // choice
     }
 }[globalThis.gameVer ?? gameVer]);
 
-function getOffsets(armAddress) {
-    switch (armAddress) {
-        case 0x801f594:
-        case 0x801f668:
-            return 0x1C;
-        // case 0x802b768: return 0x40;
-        default:
-            return 0;
-    }
-}
-
-function handler(regs) {
+function handler(regs, offset) {
     const address = regs[0].value; // x0
 
-    console.log('onEnter', ptr(this.context.pc));
+    console.log('onEnter ' + ptr(this.context.pc));
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     /* processString */
-    const offset = getOffsets(this.context.pc);
     let s = address.add(offset).readUtf8String();
-    
+
     // print rubi
     const rubis = s.matchAll(/(#Ruby\[)([^,]+).([^\]]+)./g);
     for (const rubi of rubis) {
@@ -52,7 +40,7 @@ function handler(regs) {
     // remove rubi
     s = s.replace(/(#Ruby\[)([^,]+).([^\]]+)./g, '$2');
     // remove icon
-    
+
     // remove controls
     s = s.replace(/#Color\[[\d]+\]/g, '');
 
@@ -61,4 +49,3 @@ function handler(regs) {
 
     return s;
 }
-

@@ -16,14 +16,14 @@ const mainHandler = trans.send(handler, 100); // debounce trailing (prevent doub
 
 setHook({
     '1.0.0': {
-        0x8046dd0: mainHandler,
+        [0x80046dd0 - 0x80004000]: mainHandler,
     },
     '1.0.1': {
-        0x8046de0: mainHandler,
+        [0x80046de0 - 0x80004000]: mainHandler,
     },
     '1.0.0+1.0.1': { // unsafe
-        0x8046dd0: mainHandler,
-        0x8046de0: mainHandler,
+        [0x80046dd0 - 0x80004000]: mainHandler,
+        [0x80046de0 - 0x80004000]: mainHandler,
     }
 }[globalThis.gameVer ?? gameVer]);
 
@@ -44,11 +44,11 @@ function readString(address) {
     const buf = new Uint8Array(2);
     while ((c = address.add(i).readU8()) !== 0) {
         if (c < 0x20 && c > 0x10) { // skip bytecode: ruby, color,...
-            let size = address.add(i+2).readU8();
+            let size = address.add(i + 2).readU8();
             i = i + 3 + size;
         } else { // read one char
             buf[0] = c;
-            buf[1] = address.add(i+1).readU8();
+            buf[1] = address.add(i + 1).readU8();
             c = decoder.decode(buf)[0]; // ShiftJIS: 1->2 bytes.
             s += c;
             i += encoder.encode(c).byteLength;

@@ -15,8 +15,8 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        0x807C3E8: mainHandler.bind_(null, 0, "name"), // name slow but in order (work on both games)
-        0x807c23c: mainHandler.bind_(null, 0, "dialogue"), // dialogue slow but in order (work on both games)
+        [0x8007C3E8 - 0x80004000]: mainHandler.bind_(null, 0, "name"), // name slow but in order (work on both games)
+        [0x8007c23c - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"), // dialogue slow but in order (work on both games)
     }
 }[globalThis.gameVer ?? gameVer]);
 

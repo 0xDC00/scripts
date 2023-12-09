@@ -17,13 +17,13 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 setHook({
     '1.0.0': {
         // Shiro to Kuro no Alice
-        0x8013f20: mainHandler.bind_(null, 0, "name"),
-        0x8013f94: mainHandler.bind_(null, 0, "dialogue"),
-        0x801419c: mainHandler.bind_(null, 0, "choice"),
+        [0x80013f20 - 0x80004000]: mainHandler.bind_(null, 0, "name"),
+        [0x80013f94 - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"),
+        [0x8001419c - 0x80004000]: mainHandler.bind_(null, 0, "choice"),
         // Shiro to Kuro no Alice -Twilight line-
-        0x8014260: mainHandler.bind_(null, 0, "name"),
-        0x80142d4: mainHandler.bind_(null, 0, "dialogue"),
-        0x80144dc: mainHandler.bind_(null, 0, "choice"),
+        [0x80014260 - 0x80004000]: mainHandler.bind_(null, 0, "name"),
+        [0x800142d4 - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"),
+        [0x800144dc - 0x80004000]: mainHandler.bind_(null, 0, "choice"),
     }
 }[globalThis.gameVer ?? gameVer]);
 
@@ -34,7 +34,7 @@ function handler(regs, index, hookname) {
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
     let s = address.readUtf8String()
         .replace('\n', ' ') // Single line
-    ;
-    
+        ;
+
     return s;
 }

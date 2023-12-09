@@ -17,12 +17,12 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        0x80102bc: mainHandler.bind_(null, 0, 0), // name
-        0x8051f90: mainHandler.bind_(null, 1, 0), // text
-        //0x8052794: mainHandler.bind_(null, 0, 0), // text
-        0x8010b48: mainHandler.bind_(null, 0, 0), // prompt
-        0x8010c80: mainHandler.bind_(null, 0, 0), // choice
-        //0x8052fa8: mainHandler.bind_(null, 1, 1), // battle guide not working
+        [0x800102bc - 0x80004000]: mainHandler.bind_(null, 0, 0), // name
+        [0x80051f90 - 0x80004000]: mainHandler.bind_(null, 1, 0), // text
+        //[0x80052794 - 0x80004000]: mainHandler.bind_(null, 0, 0), // text
+        [0x80010b48 - 0x80004000]: mainHandler.bind_(null, 0, 0), // prompt
+        [0x80010c80 - 0x80004000]: mainHandler.bind_(null, 0, 0), // choice
+        //[0x80052fa8 - 0x80004000]: mainHandler.bind_(null, 1, 1), // battle guide not working
 
     }
 }[globalThis.gameVer ?? gameVer]);

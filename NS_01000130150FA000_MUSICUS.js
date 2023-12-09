@@ -15,20 +15,18 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        0x8462DD4: mainHandler.bind_(null, 0, 1), // x0 - name
+        [0x80462DD4 - 0x80004000]: mainHandler.bind_(null, 0, 1), // x0 - name
         // Dialogue splitted when in NVL mode ?
-        0x8462DEC: mainHandler.bind_(null, 0, 0), // x0 - dialogue 1 
-        0x8480d4c: mainHandler.bind_(null, 0, 0), // x0 - dialogue 2
-        0x84798e0: mainHandler.bind_(null, 0, 0), // x0 - choice
+        [0x80462DEC - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - dialogue 1 
+        [0x80480d4c - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - dialogue 2
+        [0x804798e0 - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - choice
 
-        //0x84bc5b8: mainHandler // x1 - all dialogue, didnt test choice
+        //0x804bc5b8: mainHandler // x1 - all dialogue, didnt test choice
     }
 }[globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, offset) {
     console.log('onEnter');
-    //const index = this.context.pc == 0x8462DD4 ? 0 : 1;
-    //const address = regs[index].value;
     const address = regs[index].value.add(offset); // x0
 
     // let s = address.readUtf8String();

@@ -14,10 +14,10 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        0x851a990: mainHandler.bind_(null, 0, 1), // x0 - name
-        0x851a9a8: mainHandler.bind_(null, 0, 0), // x0 - dialogue
-        0x8500178: mainHandler.bind_(null, 0, 0), // x0 - choice
-        //0x85622AC: mainHandler, // x1 - dialogue - name - choice
+        [0x8051a990 - 0x80004000]: mainHandler.bind_(null, 0, 1), // x0 - name
+        [0x8051a9a8 - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - dialogue
+        [0x80500178 - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - choice
+        //[0x805622AC - 0x80004000]: mainHandler, // x1 - dialogue - name - choice
     }
 }[globalThis.gameVer ?? gameVer]);
 

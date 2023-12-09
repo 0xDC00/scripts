@@ -14,16 +14,16 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        0x803c290: mainHandler.bind_(null, 0, "name"), // slow but in order
-        0x803c184: mainHandler.bind_(null, 0, "dialogue"), // slow but in order
-        0x801f6d0: mainHandler.bind_(null, 0, "prompt"),
+        [0x8003c290 - 0x80004000]: mainHandler.bind_(null, 0, "name"), // slow but in order
+        [0x8003c184 - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"), // slow but in order
+        [0x8001f6d0 - 0x80004000]: mainHandler.bind_(null, 0, "prompt"),
     }
 }[globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
-    console.log('onEnter: ', hookname);
+    console.log('onEnter: ' + hookname);
 
-    const address = regs[index].value; 
+    const address = regs[index].value;
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     /* processString */
@@ -37,7 +37,7 @@ function handler(regs, index, hookname) {
     }
     // remove rubi
     s = s.replace(/(#Ruby\[)([^,]+).([^\]]+)./g, '$2');
-    
+
     s = s.replace(/(#n)+/g, ' ') // Single line
         .replace(/(#[A-Za-z]+\[(\d*[.])?\d+\])+/g, ''); // Remove controls
     // #Ruby[森恒犀鳥,もりつねさいちょう]

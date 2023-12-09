@@ -8,7 +8,7 @@
 //
 // Warnning: Dual language
 // ==/UserScript==
-const gameVer = '1.0.7';
+const gameVer = '1.0.0';
 
 const { setHook } = require('./libYuzu.js');
 
@@ -17,11 +17,11 @@ const mainHandler = trans.send(handler, '200+');
 // Relevant function can be found by searching for references to the "$C[%02x%02x%02x]" string
 setHook({
     '1.0.0': {
-        //0x806a29c: mainHandler, // x1 dialouge+name, choice (KnowIssue: miss delay)
-        0x8072d00: mainHandler, // x1 dialouge+name, choice (delay break: fix miss; KnowIssue: firstName=＊Ｂ, lastName=＊Ａ)
+        //[0x8006a29c - 0x80004000]: mainHandler, // x1 dialouge+name, choice (KnowIssue: miss delay)
+        [0x80072d00 - 0x80004000]: mainHandler, // x1 dialouge+name, choice (delay break: fix miss; KnowIssue: firstName=＊Ｂ, lastName=＊Ａ)
     },
     '1.0.7': {
-        0x8072d30: mainHandler,
+        [0x80072d30 - 0x80004000]: mainHandler,
     }
 }[globalThis.gameVer ?? gameVer]);
 

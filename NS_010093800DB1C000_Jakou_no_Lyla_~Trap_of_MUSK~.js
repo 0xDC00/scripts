@@ -29,16 +29,16 @@ const mainHandler = trans.send(handler, '250+'); // join: separator=': ' (250+: 
 setHook({
     '1.0.0': {
         /* 1. European night */
-        0x8167100: mainHandler, // x1 text + name (unformated), #T1 #T2, #T0
-        0x81589a0: mainHandler, // x0=x1=choice (sig=SltAdd)
+        [0x80167100 - 0x80004000]: mainHandler, // x1 text + name (unformated), #T1 #T2, #T0
+        [0x801589a0 - 0x80004000]: mainHandler, // x0=x1=choice (sig=SltAdd)
 
         /* 2. Asian night */
-        0x81b4300: mainHandler, // x1 text + name (unformated), #T1 #T2, #T0
-        0x82a9170: mainHandler, // x0=x1=choice (sig=SltAdd)
+        [0x801b4300 - 0x80004000]: mainHandler, // x1 text + name (unformated), #T1 #T2, #T0
+        [0x802a9170 - 0x80004000]: mainHandler, // x0=x1=choice (sig=SltAdd)
 
         /* 3. Arabic night */
-        0x8301e80: mainHandler, // x1 text + name (unformated), #T1 #T2, #T0
-        0x83f7a90: mainHandler, // x0=x1=choice (sig=SltAdd)
+        [0x80301e80 - 0x80004000]: mainHandler, // x1 text + name (unformated), #T1 #T2, #T0
+        [0x803f7a90 - 0x80004000]: mainHandler, // x0=x1=choice (sig=SltAdd)
     }
 }[globalThis.gameVer ?? gameVer]);
 

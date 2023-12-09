@@ -19,9 +19,9 @@ const helpHandler = trans.send(handler.bind_(null, 1, 2)); // x1
 
 setHook({
     '1.0.0': {
-        0x97e7da8: mainHandler,   // name (x1) + dialogue (x2)
-        0x9429f54: choiceHandler, // choice (x0)
-        0x980633c: helpHandler,   // help (x1)
+        [0x817e7da8 - 0x80004000]: mainHandler,   // name (x1) + dialogue (x2)
+        [0x81429f54 - 0x80004000]: choiceHandler, // choice (x0)
+        [0x8180633c - 0x80004000]: helpHandler,   // help (x1)
     }
 }[globalThis.gameVer ?? gameVer]);
 
@@ -43,7 +43,7 @@ function handler(regs, index, type) {
     if (type === 2) {
         address = address.add(0xA);
     }
-    
+
     const len = address.add(0x10).readU32() * 2;
     if (len === 0) return null;
     let s = address.add(0x14).readUtf16String(len);

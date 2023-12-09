@@ -7,7 +7,7 @@
 // * 
 // KnowIssue: Prologue video (missed)
 // ==/UserScript==
-const gameVer = '1.0.1';
+const gameVer = '1.0.2';
 trans.replace(function (s) {
     return s
         .replace(/志貴さま/g, 'Shiki-Sama')
@@ -103,7 +103,7 @@ const { setHook } = require('./libYuzu.js');
 const mainHandler = handler;
 
 const udp101 = {
-    0x80ac290: mainHandler
+    [0x800ac290 - 0x80004000]: mainHandler
 };
 
 setHook({

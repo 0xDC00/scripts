@@ -14,16 +14,15 @@ const mainHandler = trans.send(handler, '250+');
 
 setHook({
     '1.0.0': {
-        0x815b7a8: mainHandler, // text x0
-        0x815b46c: mainHandler, // name x1
+        [0x8015b7a8 - 0x80004000]: mainHandler.bind_(null, 0), // text x0
+        [0x8015b46c - 0x80004000]: mainHandler.bind_(null, 1), // name x1
         // choice?
         // alert?
         // prompt?
     }
 }[globalThis.gameVer ?? gameVer]);
 
-function handler(regs) {
-    const index = this.context.pc == 0x815b7a8 ? 0 : 1;
+function handler(regs, index) {
     const address = regs[index].value;
     console.log('onEnter');
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));

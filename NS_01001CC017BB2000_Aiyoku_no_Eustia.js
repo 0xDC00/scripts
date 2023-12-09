@@ -15,15 +15,15 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        0x84BEFD0: mainHandler, // x0 - name
-        0x84BEFE8: mainHandler, // x0 - dialogue
-        0x84d043c: mainHandler, // x0 - choice
-        // 0x851d290: mainHandler, // x1 - dialogue + name at bottom
+        [0x804BEFD0 - 0x80004000]: mainHandler, // x0 - name
+        [0x804BEFE8 - 0x80004000]: mainHandler, // x0 - dialogue
+        [0x804d043c - 0x80004000]: mainHandler, // x0 - choice
+        //[0x8051d290 - 0x80004000]: mainHandler, // x1 - dialogue + name at bottom
     }
 }[globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
-    console.log('onEnter: ',);
+    console.log('onEnter: ');
     const address = regs[0].value; // x0
 
     // let s = address.readUtf8String();
