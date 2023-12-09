@@ -6,6 +6,7 @@
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
+console.warn('PPSSPP 1.12.3-867+');
 
 const DoJitPtr = getDoJitAddress();
 const buildRegs = createFunction_buildRegs();

@@ -6,6 +6,7 @@
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
+console.warn('RPCS3 0.0.20-13234+');
 
 const __e = Process.enumerateModules()[0];
 if (Process.platform !== 'windows') {
