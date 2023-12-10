@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100BDD01AAE4000] 9 R.I.P
-// @version      1.0.0 (base)
+// @version      1.0.0
 // @author       Koukdw
 // @description  
 // * Design Factory & Otomate
