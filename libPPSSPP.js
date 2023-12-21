@@ -1,12 +1,14 @@
 // @name         PPSSPP JIT Hooker
-// @version      1.12.3-867+
+// @version      1.12.3-867 -> v1.16.1-35
 // @author       [DC]
 // @description  windows, linux, mac (x64, arm64), android (arm64)
 
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
-console.warn('PPSSPP 1.12.3-867+');
+console.warn('[Compatibility]');
+console.warn('PPSSPP 1.12.3-867 -> v1.16.1-35');
+console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
 const DoJitPtr = getDoJitAddress();
 const buildRegs = createFunction_buildRegs();

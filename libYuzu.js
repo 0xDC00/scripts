@@ -237,6 +237,7 @@ function setHook(object) {
 
     console.warn('[Compatibility]');
     console.warn('Yuzu 1646+');
+    console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
     if (globalThis.gameVer) console.warn('Game version: ' + globalThis.gameVer);
 }
 

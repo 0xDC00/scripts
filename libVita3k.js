@@ -9,7 +9,7 @@ if (module.parent === null) {
 
 console.warn('[Compatibility]');
 console.warn('Vita3k 0.1.9 3520+');
-console.log('[Mirnor] Download: https://github.com/koukdw/emulators/releases');
+console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
 const buildRegs = createFunction_buildRegs();
 const operations = Object.create(null);
