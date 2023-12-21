@@ -46,7 +46,7 @@ function readString(address, table, isOut) {
                         address = address.add(1);
                         break;
                     }
-                    else if (c2 < 0x20) {
+                    else if (c2 < 0x80) {
                         address = address.add(1);
                     }
                     else {
@@ -57,7 +57,7 @@ function readString(address, table, isOut) {
                     }
                 }
 
-                s = s + bottom + ': ';
+                if (bottom.length !== 0) s = s + bottom + ': ';
             }
             else if (c === 2) { // line
                 // do nothing -> back to readChar
