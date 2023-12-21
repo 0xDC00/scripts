@@ -1,5 +1,5 @@
 // @name         Vita3k JIT Hooker
-// @version      0.1.3.2285+ - 
+// @version      0.1.9 3520+ -
 // @author       [DC]
 // @description  windows, linux, macOS (x64)
 
@@ -7,7 +7,10 @@ if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
 
-const DoJitPtr = getDoJitAddress();
+console.warn('[Compatibility]');
+console.warn('Vita3k 0.1.9 3520+');
+console.log('[Mirnor] Download: https://github.com/koukdw/emulators/releases');
+
 const buildRegs = createFunction_buildRegs();
 const operations = Object.create(null);
 //let EmitX64_vftable, EmitX64_handle;
@@ -18,10 +21,10 @@ const operations = Object.create(null);
 // EmitX64::BlockDescriptor EmitX64::RegisterBlock(const IR::LocationDescriptor& descriptor, CodePtr entrypoint, CodePtr entrypoint_far, size_t size)
 // EmitX64::BlockDescriptor EmitX64::RegisterBlock(const IR::LocationDescriptor& descriptor, CodePtr entrypoint, size_t size)
 
-
 const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
-const idxDescriptor = isVirtual === true ? 2 : 1;
-const idxEntrypoint = idxDescriptor + 1;
+let idxDescriptor = isVirtual === true ? 2 : 1;
+let idxEntrypoint = idxDescriptor + 1;
+const DoJitPtr = getDoJitAddress();
 Interceptor.attach(DoJitPtr, {
     onEnter: function (args) {
         //EmitX64_vftable = args[0]; // rcx
@@ -44,7 +47,7 @@ Interceptor.attach(DoJitPtr, {
                 op.call(thiz, regs);
             });
         }
-    }
+    },
 });
 
 function getDoJitAddress() {
@@ -54,7 +57,7 @@ function getDoJitAddress() {
         const names = [
             '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m', // linux x64
             // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
-            'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, void const*, unsigned long)' // macOS x64 (demangle)
+            'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, void const*, unsigned long)', // macOS x64 (demangle)
         ];
         for (const name of names) {
             const addresss = DebugSymbol.findFunctionsNamed(name);
@@ -62,13 +65,33 @@ function getDoJitAddress() {
                 return addresss[0];
             }
         }
-    }
-    else {
+    } else {
         const __e = Process.enumerateModules()[0];
         // Windows MSVC x64 vita3k
-        const RegisterBlockSig1 = '40 55 53 56 57 41 54 41 56 41 57 48 8D 6C 24 E9 48 81 EC 90 00 00 00 48 8B ?? ?? ?? ?? ?? 48 33 C4 48 89 45 07 4D 8B F1 49 8B F0 48 8B FA 48 8B D9 4C 8B 7D 77 48 8B 01 48 8D 55 C7 FF 50 10';
-        const first = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
+        const RegisterBlockSig1 =
+            '40 55 53 56 57 41 54 41 56 41 57 48 8D 6C 24 E9 48 81 EC 90 00 00 00 48 8B ?? ?? ?? ?? ?? 48 33 C4 48 89 45 07 4D 8B F1 49 8B F0 48 8B FA 48 8B D9 4C 8B 7D 77 48 8B 01 48 8D 55 C7 FF 50 10';
+        let first = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
         if (first) return first.address;
+
+        // DebugSymbol: RegisterBlock
+        // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX_K@Z <- new
+        // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
+        const symbols = DebugSymbol.findFunctionsMatching(
+            'Dynarmic::Backend::X64::EmitX64::RegisterBlock'
+        );
+        if (symbols.length !== 0) {
+            console.warn('Sym RegisterBlock');
+            return symbols[0];
+        }
+
+        const PatchBlockSig1 = '4C 8B DC 49 89 5B ?? 49 89 6B ?? 56 57 41 54 41 56 41 57';
+        first = Memory.scanSync(__e.base, __e.size, PatchBlockSig1)[0];
+        if (first) {
+            console.warn('Sig Patch');
+            idxDescriptor = 1;
+            idxEntrypoint = 2;
+            return first.address;
+        }
     }
 
     throw new Error('RegisterBlock not found!');
@@ -112,7 +135,7 @@ function createFunction_buildRegs() {
 
     body += 'return args;';
     return new Function('context', 'thiz', body);
-};
+}
 
 function setHook(object) {
     for (const key in object) {
