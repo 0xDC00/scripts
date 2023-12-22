@@ -7,6 +7,7 @@
 trans.replace(function (s) {
     return s
         .replace(/㌔/g, '⁉')
+        .replace(/㍉/g, '!!')
         ;
 });
 //------------------------------------------------
