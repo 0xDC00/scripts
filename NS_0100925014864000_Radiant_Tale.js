@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [0100925014864000] Radiance Tale
+// @name         [0100925014864000] Radiant Tale
 // @version      1.0.0
 // @author       Koukdw
 // @description  
