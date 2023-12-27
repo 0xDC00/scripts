@@ -7,6 +7,10 @@ if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
 
+console.warn('[Compatibility]');
+console.warn('Yuzu 1616+');
+console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
+
 const isFastMem = true;
 
 const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
@@ -235,9 +239,6 @@ function setHook(object) {
         }
     }
 
-    console.warn('[Compatibility]');
-    console.warn('Yuzu 1646+');
-    console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
     if (globalThis.gameVer) console.warn('Game version: ' + globalThis.gameVer);
 }
 
