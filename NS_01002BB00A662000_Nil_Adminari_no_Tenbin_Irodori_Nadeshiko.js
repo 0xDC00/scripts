@@ -15,18 +15,15 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        [0x8007C3E8 - 0x80004000]: mainHandler.bind_(null, 0, "name"), // name slow but in order (work on both games)
-        [0x8007c23c - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"), // dialogue slow but in order (work on both games)
+        [0x8005fd5c - 0x80004000]: mainHandler.bind_(null, 0, 0, "name"), // name slow but in order (work on both games)
+        [0x800db0d8 - 0x80004000]: mainHandler.bind_(null, 0, 20, "dialogue"), // dialogue slow but in order (work on both games)
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
-function handler(regs, index, hookname) {
-    const reg = regs[index];
-    // Filter garbage calls causing errors
-    if (reg.vm < 0x8000000 || reg.vm > 0x9999999) return null;
+function handler(regs, index, offset, hookname) {
+    const address = regs[index].value.add(offset);
 
-    console.log('onEnter: ' + hookname);
-    const address = reg.value;
+    //console.log('onEnter: ' + hookname);
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     /* processString */
