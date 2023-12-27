@@ -23,8 +23,8 @@ function handler(regs, index) {
 
         const rubis = s.matchAll(/\<([^\<]+).([^\>]+)./g);
         for (const rubi of rubis) {
-            console.log('rubi', rubi[2]);
-            console.log('rube', rubi[1]);
+            console.log('rubi: ' + rubi[2]);
+            console.log('rube: ' + rubi[1]);
         }
         s = s.replace(/\<([^\<]+).([^\>]+)./g, '$1');
     }

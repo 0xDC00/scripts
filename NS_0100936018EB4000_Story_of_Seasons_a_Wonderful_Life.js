@@ -21,7 +21,7 @@ setHook({
 
 function handler(regs, index, hookname) {
     const address = regs[index].value;
-    //console.log('onEnter', hookname);
+    //console.log('onEnter: ' + hookname);
 
     /* processString */
     let s = address.readUtf32StringLE();

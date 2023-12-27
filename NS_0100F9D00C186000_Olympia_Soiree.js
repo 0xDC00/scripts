@@ -22,7 +22,7 @@ function handler(regs) {
     console.log('onEnter');
 
     /* processString */
-    let s = address.readUtf8String() 
+    let s = address.readUtf8String();
     s = s.replace(/(#Ruby\[)([^,]+).([^\]]+)./g, '$2');
     s = s.replace(/#Color\[[\d]+\]/g, '');
 

@@ -23,7 +23,7 @@ setHook({
 
 function handler(regs, index, hookname) {
     const address = regs[index].value;
-    //console.log('onEnter', hookname);
+    //console.log('onEnter:' + hookname);
 
     /* processString */
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));

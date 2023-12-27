@@ -27,8 +27,8 @@ function handler(regs, index) {
     // print rubi
     const rubis = s.matchAll(patt);
     for (const rubi of rubis) {
-        console.log('rubi', rubi[1]);
-        console.log('rube', rubi[2]);
+        console.log('rubi: ' + rubi[1]);
+        console.log('rube: ' + rubi[2]);
     }
     // remove ruby
     s = s.replace(patt, '$2'); 

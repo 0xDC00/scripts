@@ -34,8 +34,8 @@ function handler(regs, offset) {
     // print rubi
     const rubis = s.matchAll(/(#Ruby\[)([^,]+).([^\]]+)./g);
     for (const rubi of rubis) {
-        console.log('rubi', rubi[3]);
-        console.log('rube', rubi[2]);
+        console.log('rubi: ' + rubi[3]);
+        console.log('rube: ' + rubi[2]);
     }
     // remove rubi
     s = s.replace(/(#Ruby\[)([^,]+).([^\]]+)./g, '$2');

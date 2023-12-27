@@ -21,7 +21,7 @@ setHook({
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
-    console.log('onEnter: ', hookname);
+    console.log('onEnter: ' + hookname);
 
     const address = regs[index].value;
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));

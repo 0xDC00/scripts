@@ -20,7 +20,7 @@ setHook({
         [0x811b95ac - 0x80004000]: mainHandler.bind_(null, 3, "Menu text"), // Menu screen
         [0x80e20290 - 0x80004000]: mainHandler.bind_(null, 3, "Opening Song text etc"), // Opening Song Text etc
         [0x80c43680 - 0x80004000]: mainHandler.bind_(null, 3, "cutscene text"), // Cutscene Text
-        
+
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
@@ -28,12 +28,12 @@ function handler(regs, index, hookname) {
     //console.log('onEnter ' + hookname);
 
     const address = regs[index].value;
-    
+
     /* processString */
     let s = address.readUtf8String()
-    .replace(/\[([^\]]+)\/[^\]]+\]/g, '$1') // Remove furigana
-    .replace(/\s+/g, ' ') // Replace any sequence of whitespace characters with a single space
-    .replace(/\\n/g, ' ') // Replace '\n' with a space
-    .replace(/<[^>]+>|\[[^\]]+\]/g, ''); // Remove anything within < > or [ ]
+        .replace(/\[([^\]]+)\/[^\]]+\]/g, '$1') // Remove furigana
+        .replace(/\s+/g, ' ') // Replace any sequence of whitespace characters with a single space
+        .replace(/\\n/g, ' ') // Replace '\n' with a space
+        .replace(/<[^>]+>|\[[^\]]+\]/g, ''); // Remove anything within < > or [ ]
     return s;
 }

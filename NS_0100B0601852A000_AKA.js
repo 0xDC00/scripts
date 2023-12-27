@@ -25,7 +25,7 @@ setHook({
 let previous = "";
 function handler(regs, index, hookname) {
     const address = regs[index].value;
-    //console.log('onEnter', hookname);
+    //console.log('onEnter: ' + hookname);
 
     /* processString */
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
@@ -33,7 +33,7 @@ function handler(regs, index, hookname) {
     let s = address.add(0x14).readUtf16String(len);
 
     if (s === previous) {
-        return;
+        return null;
     }
     previous = s;
 

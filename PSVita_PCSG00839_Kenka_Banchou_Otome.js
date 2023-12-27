@@ -44,8 +44,8 @@ trans.replace(function (s) {
         const n = parseInt(ruby.match(/\d+\]$/) ?? 0) + 1;
         let q = ruby.indexOf(",");
         q = q !== -1 ? q : ruby.length - 2;
-        console.log("rubi", ruby.substr(1, q));
-        console.log("rube", s.substr(rubi.index + ruby.length, n));
+        console.log("rubi: " + ruby.substr(1, q));
+        console.log("rube: " + s.substr(rubi.index + ruby.length, n));
     }
 
     // remove rubi

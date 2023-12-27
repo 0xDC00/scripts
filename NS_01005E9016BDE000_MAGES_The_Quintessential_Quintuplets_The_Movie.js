@@ -26,7 +26,7 @@ function handler(regs, index, hookname) {
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     let s = address.readUtf8String();
-    
+
     if (pre.indexOf(s) !== -1) {
         return null; // skip duplicate (menu, color)
     }
@@ -37,7 +37,7 @@ function handler(regs, index, hookname) {
     return s;
 }
 
-trans.replace(function(s) {
+trans.replace(function (s) {
     pre = '';
     // print rubi: と[けい]痙[れん]攣
     const patt = /\[[^\]]+./g;
@@ -46,9 +46,9 @@ trans.replace(function(s) {
         const ruby = rubi[0];
         const n = parseInt(ruby.match(/\d+\]$/) ?? 0) + 1;
         let q = ruby.indexOf(',');
-        q = q !== -1 ? q : ruby.length-2;
-        console.log('rubi', ruby.substr(1, q));
-        console.log('rube', s.substr(rubi.index + ruby.length, n));
+        q = q !== -1 ? q : ruby.length - 2;
+        console.log('rubi: ' + ruby.substr(1, q));
+        console.log('rube: ' + s.substr(rubi.index + ruby.length, n));
     }
 
     // remove rubi

@@ -21,13 +21,12 @@ setHook({
 
 function handler(regs, index, hookname) {
     const address = regs[index].value;
-    //console.log('onEnter', hookname);
+    //console.log('onEnter: ' + hookname);
 
     /* processString */
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
     const len = address.add(0x10).readU32() * 2;
     let s = address.add(0x14).readUtf16String(len);
-
 
     return s;
 }

@@ -25,8 +25,8 @@ function handler(regs) {
     // print rubi
     const rubis = s.matchAll(/(#RUBS(#[A-Z0-9]+)*)(.+?(?=#))(#[A-Z0-9]+)+(.+?(?=#))/g);
     for (const rubi of rubis) {
-        console.log('rubi', rubi[3]);
-        console.log('rube', rubi[5]);
+        console.log('rubi: ' + rubi[3]);
+        console.log('rube: ' + rubi[5]);
     }
     // remove rubi
     s = s.replace(/#RUBS(#[A-Z0-9]+)*[^#]+/g, '');
