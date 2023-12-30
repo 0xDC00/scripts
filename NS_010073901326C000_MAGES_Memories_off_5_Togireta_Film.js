@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [010073901326C000] Memories Off #5 Togireta Film
-// @version      1.0.0
+// @version      1.0.0 - 1.0.1
 // @author       Koukdw
 // @description  Yuzu
 // * MAGES. inc.
@@ -18,6 +18,9 @@ setHook({
     "1.0.0": {
         [0x8003f6ac - 0x80004000]: mainHandler.bind_(null, "text"),
     },
+    "1.0.1": {
+        [0x8003f5fc - 0x80004000]: mainHandler.bind_(null, "text"),
+    }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, hookname) {

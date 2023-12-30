@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [010047A013268000] Memories Off 6 ~T-Wave~
+// @name         [0100FFA013272000] Omoide ni Kawaru Kimi ~Memories Off~
 // @version      1.0.0 - 1.0.1
 // @author       Koukdw
 // @description  Yuzu
@@ -16,10 +16,10 @@ const mainHandler = trans.send(handler, "250+");
 
 setHook({
     "1.0.0": {
-        [0x80043d7c - 0x80004000]: mainHandler.bind_(null, "text"),
+        [0x8003ef6c - 0x80004000]: mainHandler.bind_(null, "text"),
     },
     "1.0.1": {
-        [0x80043d5c - 0x80004000]: mainHandler.bind_(null, "text"),
+        [0x8003ef7c - 0x80004000]: mainHandler.bind_(null, "text"),
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
