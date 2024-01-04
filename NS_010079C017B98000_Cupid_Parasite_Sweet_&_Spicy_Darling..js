@@ -7,57 +7,37 @@
 // ==/UserScript==
 
 const gameVer = '1.0.0';
-
+const decoder = new TextDecoder('utf-32');
 const { setHook } = require('./libYuzu.js');
-const mainHandler = trans.send(handler, '200+');
+
+const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-        [0x801a1bf0 - 0x80004000]: mainHandler, // choice
+        [0x80138150 - 0x80004000]: mainHandler.bind_(null, 2, "name + text"), 
+        [0x801a1bf0 - 0x80004000]: mainHandler.bind_(null, 0, "choice"),
 
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
-function handler(regs) {
-    const address = regs[0].value;
+function handler(regs, index, hookname) {
+    const reg = regs[index];
     console.log('onEnter');
+
+
+    console.log('onEnter: ' + hookname);
+    const address = reg.value;
+    //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     /* processString */
     let s = address.readUtf32StringLE()
-    .replace(/【SW】/g,'') 
-    .replace(/【SP】/g,'') 
-        ;
+    s = s.replaceAll(/[\s]/g,'');
+    s = s.replaceAll('#KW','');
+    s = s.replaceAll('#C(TR,0xff0000ff)','');
+    s = s.replace(/【SW】/g,'')
+    s = s.replace(/【SP】/g,'')      
+
+
+
     return s;
 }
-
-globalThis._FIXED_DCODE_ = '$utf-32,|100|00000000,458B6405004589E44D89A7B8000000488B44243041BC1C0000004C01E0448B6424404989C249C1EA270F85A80000004589640500488B44245041BC2C000000'; // dialogue
-
-// globalThis.decode = function(buffer) {
-//  return _decode(buffer);
-// }
-
-globalThis.filters = function filters(s) {
-  s = _filters(s);
-  const array=['#T1'];
-
-array.forEach(e=>{
-
-s=s.replaceAll(e,'')
-
-
-});
-    return s
-  .replace(/(#T2).+/g,'')
-  .replace(/(#T0)/g,'')      
-  .replaceAll('#C(TR,0xff0000ff)','')
-  .replaceAll(/[\s]/g,'');
-
-
-        ;
-}
-
-
-require('_ExecutionWatch.js');
-
-
-
