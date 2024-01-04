@@ -14,7 +14,6 @@ const mainHandler = trans.send(handler, '200+');
 setHook({
     '1.0.1': {
         [0x80169df0 - 0x80004000]: mainHandler, // choice
-
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
@@ -40,6 +39,8 @@ globalThis.filters = function filters(s) {
   s = _filters(s);
   s=s.replaceAll('#C(TR,0xff0000ff)','');
   s=s.replaceAll('#KW','')
+  s=s.replaceAll(/[\s]/g,'');
+    
     ;
   return s;
 }
