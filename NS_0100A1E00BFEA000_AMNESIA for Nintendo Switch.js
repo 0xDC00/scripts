@@ -32,7 +32,7 @@ function handler(regs, index, hookname) {
     /* processString */
     const len = address.add(0x10).readU16() * 2;
     let s = address.add(0x14).readUtf16String(len);
-    s = s.replace(/\n+|(\\n)+/g, ' ');
+    s = s.replaceAll(/[\s]/g,'');
     s = s.replace(/(.+? ")/g,'');
     s = s.replace(/(",.*)/g,'');
     s = s.replace(/(" .*)/g,''); 
