@@ -34,6 +34,7 @@ function handler(regs, index, hookname) {
     s = s.replaceAll(/[\s]/g,'');
     s = s.replaceAll('#KW','')
     s = s.replaceAll('#C(TR,0xff0000ff)','');
+    s = s.replace(/#P\(.*\)/g,'');
 
         ;
     return s;
