@@ -16,12 +16,15 @@ const { setHook } = require('./libYuzu.js');
 const mainHandler = trans.send(handler.bind_(null, 2, 0)); // x2
 const choiceHandler = trans.send(handler.bind_(null, 0, 1), '250+'); // join 250ms; x0
 const helpHandler = trans.send(handler.bind_(null, 1, 2)); // x1
+const messageHandler = trans.send(handler.bind_(null, 1, 1)); // x1
 
 setHook({
     '1.0.0': {
         [0x817e7da8 - 0x80004000]: mainHandler,   // name (x1) + dialogue (x2)
         [0x81429f54 - 0x80004000]: choiceHandler, // choice (x0)
         [0x8180633c - 0x80004000]: helpHandler,   // help (x1)
+        [0x81b728e0 - 0x80004000]: messageHandler,   // message (x1)
+
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
