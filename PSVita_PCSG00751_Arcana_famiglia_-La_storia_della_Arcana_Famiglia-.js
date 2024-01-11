@@ -14,6 +14,8 @@ const mainHandler = trans.send(handler, "200+");
 setHook({
 
   0x80070e30: mainHandler.bind_(null, 2, 0, "all"),
+  0x80070cdc: mainHandler.bind_(null, 1, 0, "ext"),
+
 
 });
 
