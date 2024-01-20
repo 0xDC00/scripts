@@ -8,7 +8,7 @@
 //
 // KnowIssue: No support for 1.0.0 (yet)
 // ==/UserScript==
-const gameVer = '1.3.0';
+const gameVer = '2.0.0';
 
 const { setHook } = require('./libYuzu.js');
 
@@ -17,6 +17,9 @@ const mainHandler = trans.send(handler, "200+");// join 200ms
 setHook({
     '1.3.0': {
         [0x8248c550 - 0x80004000]: mainHandler, // App.Talk3D.TalkLog$$AddLog
+    },
+    '2.0.0': {
+        [0x820C6530 - 0x80004000]: mainHandler, // App.Talk3D.TalkLog$$AddLog
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
