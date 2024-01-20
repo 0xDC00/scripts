@@ -15,10 +15,10 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
-		// Passion Pink & Brilliant Blue
-		[0x8016aecc - 0x80004000]: mainHandler.bind_(null, 0, "name"),
+	// Passion Pink & Brilliant Blue
+	[0x8016aecc - 0x80004000]: mainHandler.bind_(null, 0, "name"),
         [0x80126b9c - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"), 
-		[0x80129160 - 0x80004000]: mainHandler.bind_(null, 2, "choice"),
+	[0x80129160 - 0x80004000]: mainHandler.bind_(null, 2, "choice"),
     }
 	
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
