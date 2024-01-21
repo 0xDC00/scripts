@@ -7,7 +7,6 @@
 // ==/UserScript==
 
 const gameVer = '1.0.1';
-const decoder = new TextDecoder('utf-32');
 const { setHook } = require('./libYuzu.js');
 
 const mainHandler = trans.send(handler, '200+'); // join 200ms
