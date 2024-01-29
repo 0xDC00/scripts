@@ -7,10 +7,10 @@
 // * https://github.com/catmirrors/xlvns/blob/7a4bc8f53d6bd82b4cbee90fa9f7e538b424680c/sizuku.c#L225
 // ==/UserScript==
 const { setHook } = require('./libDOSBoxX.js');
-const Encoding = require('./libHelperEncoding.js',);
+const Encoding = require('./libHelperEncoding.js');
 
 const mainHandler = trans.send(s => s, '150+');
-const enc = new Encoding(__dirname + '/data/tblLeafShizukuJP.txt');
+const enc = new Encoding(__dirname + '/charsets/tblLeafShizukuJP.txt');
 let enable = true;
 
 setHook({
