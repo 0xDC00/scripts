@@ -38,7 +38,7 @@ function firstCharHandler(args) {
         if (enable === true) {
             enable = false;
             console.warn("onEnter");
-            const s = enc.readString(address).trim();
+            const s = enc.readString(address).trim().replace(/ /g, '');
             if (s.length !== 0) {
                 mainHandler(s);
             }
