@@ -16,12 +16,9 @@ const { setHook } = require("./libVita3k.js");
 
 const mainHandler = trans.send(handler, "200+"); // join 200ms
 
+//however when the game goes NVL it will extract the whole box instead of line by line 
 setHook({
     0x80c1f270: mainHandler.bind_(null, 0, 0, "dialogue"),//dialogue+ textmessage 
-
-    //however when the game goes NVL it will extract the whole box instead of line by line 
-
-
 });
 
 function handler(regs, index, offset, hookname) {
