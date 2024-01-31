@@ -19,9 +19,6 @@ const mainHandler = trans.send(handler, "200+"); // join 200ms
 setHook({
     0x828bb50c: mainHandler.bind_(null, 0, 0, "dialogue"),//dialogue
     0x828ba9b6: mainHandler.bind_(null, 0, 0, "name"),//name
-
-
-
 });
 
 function handler(regs, index, offset, hookname) {
