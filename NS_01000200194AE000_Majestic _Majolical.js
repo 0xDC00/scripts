@@ -15,12 +15,7 @@ const mainHandler = trans.send(handler, '200+'); // join 200ms
 setHook({
     '1.0.0': {
         [0x8045518c - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 -  name+dialogue
-
         [0x8059ee94 - 0x80004000]: mainHandler.bind_(null, 0, 3), // x0 - heroine name at the bottom
-
-
-
-
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
