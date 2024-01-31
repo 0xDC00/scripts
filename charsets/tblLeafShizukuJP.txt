@@ -1851,9 +1851,9 @@
 873a=姉
 873b=扶
 873c=養
-# custom; 52, 72 newline=>space
-52= 
-72= 
+# custom; 52, 72 newline=>empty
+52=
+72=
 # multiple END
 # 4B+0=[WaitKey]
 # 6B+0=[Waitkey]

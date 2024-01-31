@@ -42,7 +42,7 @@ function lastCharHandler(args) {
             s = '';
         }
         else if (l === 0xb0) {
-            s += ' '; // newline -> space
+            s += ''; // newline -> empty
         }
         else {
             //// do nothing
