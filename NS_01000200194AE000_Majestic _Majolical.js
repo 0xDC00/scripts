@@ -6,16 +6,25 @@
 // * ENTERGRAM
 // * 
 // ==/UserScript==
+trans.replace(function (s) {
+    return s
+        .replaceAll("\n", '')
+
+        ;
+});
 const gameVer = '1.0.0';
 
 const { setHook } = require('./libYuzu.js');
 
 const mainHandler = trans.send(handler, '200+'); // join 200ms
-
+let r = "";
+let s = "";
+let t = "";
+let tag1 = "";
 setHook({
     '1.0.0': {
         [0x8045518c - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 -  name+dialogue
-        [0x8059ee94 - 0x80004000]: mainHandler.bind_(null, 0, 3), // x0 - heroine name at the bottom
+        [0x8059ee94 - 0x80004000]: mainHandler.bind_(null, 0, 3), // x0 - heroine name 
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
@@ -24,11 +33,26 @@ function handler(regs, index, offset) {
 
     const address = regs[index].value.add(offset); // x0
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
-    let s = readString(address);
+   if (offset == 0) {
+        t = readString(address);
+    }
+    if (tag1 == "@u") {
 
-    return s;
+        if (offset == 3) {
+            r = address.readUtf8String();
+            s = r + t;
+            r = "";
+            tag1 = "";
+            return s;
+
+        }
+    }
+    else if (tag1 != "@u") {
+
+        return t;
+    }
+
 }
-
 
 function readString(address) {
     let s = address.readUtf8String();
@@ -92,8 +116,10 @@ function readString(address) {
                 s += content.replace(/[\d+─]/g, '');
                 counter += 3;
                 continue;
-            default:
+           default:
                 //console.log('Unrecognized dialogue tag: ' + tag);
+                if (tag == "@u")
+                    tag1 = tag;
                 if (content != '01')
                     s += content;
                 counter++
