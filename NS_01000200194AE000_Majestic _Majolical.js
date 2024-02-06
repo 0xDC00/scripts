@@ -6,55 +6,36 @@
 // * ENTERGRAM
 // * 
 // ==/UserScript==
-trans.replace(function (s) {
-    return s
-        .replaceAll("\n", '')
-
-        ;
-});
 const gameVer = '1.0.0';
 
 const { setHook } = require('./libYuzu.js');
 
 const mainHandler = trans.send(handler, '200+'); // join 200ms
-let r = "";
-let s = "";
-let t = "";
-let tag1 = "";
+
 setHook({
     '1.0.0': {
-        [0x8045518c - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 -  name+dialogue
-        [0x8059ee94 - 0x80004000]: mainHandler.bind_(null, 0, 3), // x0 - heroine name 
+        [0x80557408 - 0x80004000]: mainHandler.bind_(null, 0), // x0 - name
+        [0x8059ee94 - 0x80004000]: mainHandler.bind_(null, 3), // x3 - player name
+        [0x80557420 - 0x80004000]: mainHandler.bind_(null, 0), // x0 - dialogue
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
-function handler(regs, index, offset) {
-    console.log('onEnter');
-
-    const address = regs[index].value.add(offset); // x0
+function handler(regs, index) {
+    //console.log('onEnter');
+    const address = regs[index].value; // x0
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
-   if (offset == 0) {
-        t = readString(address);
-    }
-    if (tag1 == "@u") {
-
-        if (offset == 3) {
-            r = address.readUtf8String();
-            s = r + t;
-            r = "";
-            tag1 = "";
-            return s;
-
-        }
-    }
-    else if (tag1 != "@u") {
-
-        return t;
-    }
-
+    let s = readString(address);
+    if(s === "") return null;
+    return s;
 }
 
+
 function readString(address) {
+    // Initialization of static variables
+    if (readString.savedSentence === undefined) {
+        readString.savedSentence = "";
+        readString.playerNameFlag = false;
+    }
     let s = address.readUtf8String();
     const parts = s.split(/(?=@.)/g);
     s = '';
@@ -81,9 +62,15 @@ function readString(address) {
                 s += content.substring(2);
                 counter++
                 continue;
-
+            // @u01
+            case '@u':
+                // Player name detected
+                readString.playerNameFlag = true;
+                readString.savedSentence = "";
+                counter += 3;
+                return "";
             case '@n':
-                s += '\n' + content;
+                s += content;
                 counter++
                 continue;
             // あくあさんの肩の力が抜け、柔らかい笑みを向けてくる。@p@nそれを見た瞬間、僕の心臓が大きく跳ねた。@k
@@ -116,15 +103,32 @@ function readString(address) {
                 s += content.replace(/[\d+─]/g, '');
                 counter += 3;
                 continue;
-           default:
-                //console.log('Unrecognized dialogue tag: ' + tag);
-                if (tag == "@u")
-                    tag1 = tag;
-                if (content != '01')
-                    s += content;
+            default:
+                console.log('Unrecognized dialogue tag: ' + tag);
+                s += content;
                 counter++
                 continue;
         }
     }
-    return s;
+    // STEP 1:
+    // No player name detected, we just return the string.
+    if(!readString.playerNameFlag) {
+        return s;
+    }
+    // STEP 2:
+    // Above check didn't return, meaning playerNameFlag is true, 
+    // if savedSentence is empty it means we are at the sentence hook
+    // We return an empty string so that handler return null and save the sentence for later use
+    if(readString.savedSentence == "") {
+        readString.savedSentence = s;
+        return "";
+    }
+    // STEP 3:
+    // We reach the player name hook, append the savedSentence to the player name and return that
+    else {
+        const savedSentence = readString.savedSentence
+        readString.playerNameFlag = false;
+        readString.savedSentence = "";
+        return s + "\n" + savedSentence;
+    }
 }
