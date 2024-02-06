@@ -83,7 +83,7 @@ function readString(address) {
                 // Player name detected
                 readString.playerNameFlag = true;
                 readString.savedSentence = "";
-                counter += 3;
+                counter++;
                 return "";
             case '@n':
                 s += content;
