@@ -25,7 +25,7 @@ function handler(regs, index, hookname) {
 
     /* processString */
      let s = address.readShiftJisString();
-         s=s.replace(/#n/g,'') ;
+         s = s.replace(/#n/g,'') ;
        
    
     return s;
