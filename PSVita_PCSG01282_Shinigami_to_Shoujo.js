@@ -25,12 +25,13 @@ function handler(regs, index, offset, hookname) {
   // console.log("onEnter: " + hookname);
   // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
+  /* processString */
+  // @w \nけど……#STAND\TOOY01A_N.bmp 3#微妙だっ $お姫様$』 \d
   let s = address.readShiftJisString()
-    .replaceAll(/[\s]/g, '')
-    .replaceAll(/\\n/g, '')
-    .replaceAll(/\\d/g, '')
-    .replace(/@[a-z]/g, "")
-    ;
+      .replace(/(\\n)+/g, ' ')
+      .replace(/\\d$|^\@[a-z]+|#.*?#|\$/g, '') // #.*?# <=> #[^#]+.
+      ;
+  
   if (s === previous) {
     return;
   }
