@@ -27,21 +27,24 @@ setHook({
         [0x82dcee38 - 0x80004000]: mainHandler.bind_(null, 0, "Tutorial Description"),
         [0x82e5cadc - 0x80004000]: mainHandler.bind_(null, 0, "Character Info Name"),
         [0x82e5cc38 - 0x80004000]: mainHandler.bind_(null, 0, "Character Info Description"),
+        [0x82871ac8 - 0x80004000]: mainHandler.bind_(null, 0, "Letter Message"),
+        [0x82e4dad4 - 0x80004000]: mainHandler.bind_(null, 0, "アナザーキー"),
+        [0x82bd65d0 - 0x80004000]: mainHandler.bind_(null, 0, "Message Title"),
+        [0x82bd65f0 - 0x80004000]: mainHandler.bind_(null, 0, "Message Content"),
 }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
-    //console.log('onEnter: ' + hookname);
+    // console.log('onEnter: ' + hookname);
 
     const address = regs[index].value;
-    //let s = address.readUtf16String()
 
     const len = address.add(0x10).readU32() * 2;
     let s = address.add(0x14).readUtf16String(len);
+    
     s = s
     .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/\{([^{}]+):[^{}]+\}/g, '$1'); // Remove furigana formatting {年:ねん} to just 年
-
 
     return s;
 }
