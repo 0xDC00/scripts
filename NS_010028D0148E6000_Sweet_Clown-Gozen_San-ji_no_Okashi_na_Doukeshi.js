@@ -14,33 +14,33 @@ globalThis.ARM = true;
 // Issue is unrelated to this script, text should still be correct
 const { setHook } = require('./libYuzu.js');
 
-const mainHandler = trans.send(handler, '200+');
-// const choiceHandler = trans.send(handler.bind_(null, 3, 'choice'), '250+');
+const mainHandler = trans.send(handler, '250+');
 
 setHook({
     '1.0.2': {
-        0x20dbfc: mainHandler.bind_(null, 0, "dialog"),
-        // 0x214978: choiceHandler ,// called 30 something times but contains all choices
-        // 0x214930: choiceHandler, // works first call only, after that is access violation accessing 0x26853c73f04
+        // 0x21a234:  mainHandler.bind_(null, 0, "all text"), // messy, needs lots of regex
+        0x20dbfc: mainHandler.bind_(null, 0, "dialog"), // need to .add(0x28)s
+        0x214978: mainHandler.bind_(null, 3, "choices"), // many calls, choice only, need to add s.add(0xC)
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
     const address = regs[index].value;
-    // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+    const reg = regs[index];
+
+    if (reg.vm > 1000000000) return null; // janky code to filter out junk calls
 
     let s;
     if (hookname === 'dialog') {
         s = address.add(0x28).readShiftJisString();
     } else {
-        // grab strings for 0x214978, commented out currently
-        // s = address.add(0xC).readShiftJisString();
+        s = address.add(0xC).readShiftJisString();
     }
 
     s = s
         .replace(/{|\/.*?}|\[.*?\]/g, '')
         .replace(/(\\c|\\n)+/g, ' ')
-        // .replace(/,.*$/,' ') // clean strings for 0x214978, commented out currently
+        .replace(/,.*$/,' ')
     ;
 
     return s;
