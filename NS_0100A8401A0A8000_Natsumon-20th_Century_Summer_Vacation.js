@@ -28,8 +28,7 @@ setHook({
 function handler(regs, index, hookname) {
     const address = regs[index].value;
 
-    const len = address.add(0x10).readU32() * 2;
-    let s = address.readUtf16String(len);
+    let s = address.readUtf16String();
 
     s = s
         .replace(/[\r\n]+/g, '') // same page new line text combined for translation
