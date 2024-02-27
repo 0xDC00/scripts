@@ -45,12 +45,14 @@ function swapHandler(regs) {
     if (s === previous) return;
     previous = s;
 
-    text.unshift(s);
+    text.push(s); // Changed from unshift to push
 
     clearTimeout(timerSwap);
     timerSwap = setTimeout(() => {
-        const s = [...text].join('\r\n');
-        trans.send(s);
+        const lastElement = text.pop(); // Remove last element
+        text.unshift(lastElement); // Put it at the front
+        const joinedText = text.join('\r\n'); // Join modified text array
+        trans.send(joinedText);
         text = [];
     }, 300);
 }
