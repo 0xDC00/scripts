@@ -13,14 +13,14 @@ const mainHandler = trans.send(handler, '200+');
 
 setHook({
     '1.0.1': {
-        [0x800e3424 - 0x80004000]: mainHandler.bind_(null, 0, "System Messages + Choices"),
+        [0x800e3424 - 0x80004000]: mainHandler.bind_(null, 0, "System Messages + Choices"), //Also includes the names of characters, but oddly makes the names appear after the text in the hook. 
         [0x800fb080 - 0x80004000]: mainHandler.bind_(null, 3, "Main Text"),
 }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 console.log(`
     * This script works for most of the text in the game. 
-    * The only part that I wasn't able to get working were the tutorial messages after the prologue finished.
+    * The only part that I wasn't able to get working was the tutorial messages after the prologue finished.
     * So for those parts, I recommend using an OCR like Google Lens or ShareX to capture the text.
 `);
 
