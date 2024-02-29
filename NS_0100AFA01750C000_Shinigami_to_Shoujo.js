@@ -34,8 +34,8 @@ function handler(regs, index, hookname) {
         .replaceAll(/[\s]/g, '')
         .replaceAll(/\\n/g, '')
         .replaceAll(/\\d/g, '')
-        .replace(/@[a-z]/g, "")
-        .replace(/$/g, "")
+        .replaceAll(/@[a-z]/g, "")
+        .replaceAll("$","")
         ;
 
     return s;
