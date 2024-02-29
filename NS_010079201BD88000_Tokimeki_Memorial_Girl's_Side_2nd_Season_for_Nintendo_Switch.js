@@ -36,7 +36,7 @@ setHook({
         [0x82269240 - 0x80004000]: dialogueHandler.bind_(null, 0, "profile1"),
         [0x82269138 - 0x80004000]: dialogueHandler.bind_(null, 0, "profile2"),
         [0x822691ec - 0x80004000]: dialogueHandler.bind_(null, 0, "profile3"),
-        [0x8226a7a4 - 0x80004000]: dialogueHandler.bind_(null, 0, "profile4"),
+        [0x82269198 - 0x80004000]: dialogueHandler.bind_(null, 0, "profile4"),
 
 
 
