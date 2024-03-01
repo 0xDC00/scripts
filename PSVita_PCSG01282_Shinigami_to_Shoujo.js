@@ -33,7 +33,7 @@ function handler(regs, index, offset, hookname) {
       ;
   
   if (s === previous) {
-    return;
+    return null;
   }
   previous = s;
   return s;
