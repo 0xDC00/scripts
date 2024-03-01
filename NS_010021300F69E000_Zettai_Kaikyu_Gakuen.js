@@ -31,7 +31,7 @@ function handler(regs, index, hookname) {
         .replaceAll("@", "")
         ;
     if (s === previous) {
-        return;
+        return null;
     }
     previous = s;
     return s;
