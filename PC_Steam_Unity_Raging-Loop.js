@@ -18,7 +18,7 @@ const handlerLine = trans.send((s) => s, '250+');
 
 const BackLog = Mono.use('', '.MainScene$BackLog'); // names + dialog
 
-BackLoggit.attach({
+BackLog.attach({
     onEnter(args) {
         const message = args[1].readMonoString();
         handlerLine(message);
