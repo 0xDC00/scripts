@@ -4,7 +4,7 @@
 // @author       Enfys
 // @description  Steam
 // * KEMCO
-// * Unity (JIT)git 
+// * Unity (JIT)
 //
 // https://store.steampowered.com/app/648100/Raging_Loop/
 // ==/UserScript==
@@ -18,7 +18,7 @@ const handlerLine = trans.send((s) => s, '250+');
 
 const BackLog = Mono.use('', '.MainScene$BackLog'); // names + dialog
 
-BackLog['.ctor'].attach({
+BackLoggit.attach({
     onEnter(args) {
         const message = args[1].readMonoString();
         handlerLine(message);
