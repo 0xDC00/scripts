@@ -31,6 +31,9 @@ setHook({
         [0x82e4dad4 - 0x80004000]: mainHandler.bind_(null, 0, "アナザーキー"),
         [0x82bd65d0 - 0x80004000]: mainHandler.bind_(null, 0, "Message Title"),
         [0x82bd65f0 - 0x80004000]: mainHandler.bind_(null, 0, "Message Content"),
+        [0x82c1ccf0 - 0x80004000]: mainHandler.bind_(null, 0, "Decision Header"),
+        [0x82c1d218 - 0x80004000]: mainHandler.bind_(null, 0, "Decision1"),
+        [0x82c1e43c - 0x80004000]: mainHandler.bind_(null, 0, "Decision2"),
 }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
