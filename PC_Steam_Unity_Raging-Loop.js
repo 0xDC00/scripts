@@ -4,7 +4,7 @@
 // @author       Enfys
 // @description  Steam
 // * KEMCO
-// * Unity (JIT)
+// * Unity (JIT)git 
 //
 // https://store.steampowered.com/app/648100/Raging_Loop/
 // ==/UserScript==
@@ -16,36 +16,19 @@ const {
 
 const handlerLine = trans.send((s) => s, '250+');
 
-setHook('', 'Message', 'Mes', -1, { // dialog + names
-    onEnter(args) {
-        this.thiz = args[0].wrap();
-    },
-    onLeave() {
-        try {
-            const lastMessage = this.thiz.LastMes.getValue().readMonoString();
-            const messageText = this.thiz.MessageText.getValue().readMonoString();
-            const s = lastMessage.replace(/(\n|　)+/g, '');
-            
-            // delay dialog past name
-            messageText.includes("@n") ? setTimeout(() => handlerLine(s), 100) : handlerLine(s); 
-        }
-        catch {
-        }
-    }
-});
+const BackLog = Mono.use('', '.MainScene$BackLog'); // names + dialog
 
-// setHook('', 'Game', 'NewButton', -1, { // access error when calling for certain UI buttons
-//     onEnter(args) {
-//         console.log('on new button enter');
-//      },
-//      onLeave() {
-//     }
-// });
+BackLog['.ctor'].attach({
+    onEnter(args) {
+        const message = args[1].readMonoString();
+        handlerLine(message);
+    },
+})
 
 setHook('', 'Game', 'NewText', -1, { // choices + system text
     onEnter(args) {
-        const s = args[3].readMonoString();
+        const message = args[3].readMonoString();
 
-        if (s.length > 1) handlerLine(s) // filter out dialog
+        if (message.length > 1) handlerLine(message); // filter out dialog
     }
 });
