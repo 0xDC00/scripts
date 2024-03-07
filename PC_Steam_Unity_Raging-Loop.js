@@ -20,8 +20,6 @@ const BackLog = Mono.use('', '.MainScene$BackLog'); // names + dialog
 
 BackLog['.ctor'].attach({
     onEnter(args) {
-        console.log('onEnter: Open1');
-
         const message = args[1].readMonoString().trim();
         handlerLine(message);
     },
@@ -30,7 +28,6 @@ BackLog['.ctor'].attach({
 setHook('', 'Game', 'NewText', -1, { // choices + system text
     onEnter(args) {
         const s = args[3].readMonoString();
-
         if (s.length > 1) handlerLine(s) // filter out dialog
     }
 });
