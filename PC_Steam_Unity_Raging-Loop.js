@@ -22,7 +22,7 @@ BackLog['.ctor'].attach({
     onEnter(args) {
         console.log('onEnter: Open1');
 
-        const message = args[1].readMonoString();
+        const message = args[1].readMonoString().trim();
         handlerLine(message);
     },
 })
