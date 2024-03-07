@@ -17,7 +17,7 @@ const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
 let idxDescriptor = isVirtual === true ? 2 : 1;
 let idxEntrypoint = idxDescriptor + 1;
 const DoJitPtr = getDoJitAddress();
-const buildRegs = createFunction_buildRegs();
+const buildRegs = globalThis.ARM === true ? createFunction_buildRegs32() : createFunction_buildRegs();
 const operations = Object.create(null);
 
 //let EmitX64_vftable;
@@ -223,6 +223,46 @@ function createFunction_buildRegs() {
 
     return new Function('context', 'thiz', body);
 };
+
+// https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
+function createFunction_buildRegs32() {
+    let body = '';
+
+    /* fastmem */
+    // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
+    body += 'const base = context.r13;';
+
+    // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
+    body += 'const regs = context.r15;';
+
+    /* pagetable */
+    // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L831
+
+    // arm32: 0->15 (r0->r15)
+    // arm64: 0->30 (x0->lr) + sp (x31) + pc (x32)
+    body += 'const args = [';
+    for (let i = 0; i < 16; i++) {
+        let offset = i * 4;
+        body += '{';
+        body += `_vm: regs.add(${offset}).readU32(),`;
+        body += `get value() { return base.add(this._vm); },`; // host address
+        body += `set vm(val) { this._vm = val; },`;
+        body += `get vm() { return this._vm },`;
+        body += `save() {regs.add(${offset}).writeU32(this._vm); return this; }`;
+        body += '},';
+    }
+    body += '];';
+
+    //body += 'thiz.context.pc = regs.add(60).readU32();'; // r15 0x3c 60
+    //body += 'thiz.context.sp = regs.add(52).readU32();'; // r13 0x34 52; useless?
+    body += 'thiz.returnAddress = regs.add(56).readU32();'; // r14 0x38 56; lr
+    body += 'thiz.context.lr = args[14];';
+    body += 'thiz.context.fp = args[11];'; // r11 (FP): Frame pointer.
+    body += 'thiz.context.sp = args[13];'; // r13
+
+    body += 'return args;';
+    return new Function('context', 'thiz', body);
+}
 
 /**
  * 
