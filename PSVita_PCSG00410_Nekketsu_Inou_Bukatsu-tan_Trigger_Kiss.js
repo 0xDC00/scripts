@@ -36,11 +36,7 @@ function handler(regs, index, offset, hookname) {
 
 	console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
-	else {
 		let s = address.readShiftJisString();
 
 		return s;
-
-	}
-
 }
