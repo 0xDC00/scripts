@@ -29,14 +29,11 @@ setHook({
 });
 function handler(regs, index, offset, hookname) {
 	const reg = regs[index];
-
 	const address = regs[index].value.add(offset);
 
 	console.log("onEnter: " + hookname);
+	//console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
-	console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
-
-		let s = address.readShiftJisString();
-
-		return s;
+	let s = address.readShiftJisString();
+	return s;
 }
