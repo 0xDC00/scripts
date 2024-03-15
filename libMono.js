@@ -2677,43 +2677,33 @@ function _loadMonoApi(isAot) {
 }
 
 function isMono() {
-    let address = Module.findExportByName(null, 'il2cpp_thread_attach');
-    if (address !== null) {
-        const mod = Process.getModuleByAddress(address);
-        return { isAot: true, module: mod };
+    const functions = [
+        { name: 'il2cpp_thread_attach',      module: 'GameAssembly', isAot: true  },
+        { name: 'il2cpp_runtime_class_init', module: 'GameAssembly', isAot: true  },
+        { name: 'mono_thread_attach',        module: 'mono',         isAot: false },
+    ];
+
+    // attempt to find the export using its respective module
+    for (const func of functions) {
+        const address = Module.findExportByName(func.module, func.name);
+        if (address === null) continue;
+
+        const module = Process.getModuleByAddress(address);
+        return { isAot: func.isAot, module };
     }
 
-    address = Module.findExportByName(null, 'mono_thread_attach');
-    if (address !== null) {
-        const mod = Process.getModuleByAddress(address);
-        return { isAot: false, module: mod };
-    }
+    // fallback to searching all exports
+    const modules = Process.enumerateModules();
 
-    address = Module.findExportByName(null, 'il2cpp_runtime_class_init');
-    if (address !== null) {
-        const mod = Process.getModuleByAddress(address);
-        return { isAot: true, module: mod };
-    }
+    // move the main module to the end
+    modules.push(modules.shift());
 
-    // try again
-    const mods = Process.enumerateModules();
-    for (const mod of mods) {
-        // if (mod.findExportByName('mono_thread_attach') !== null) {
-        //     return { isAot: false, mod: mod };
-        // }
-        // else if (mod.findExportByName('il2cpp_thread_attach') !== null) {
-        //     return { isAot: true, mod: mod };
-        // }
-        const exps = mod.enumerateExports();
-        for (const exp of exps) {
-            if (exp.name.includes('il2cpp_thread_attach') === true
-                || exp.name.includes('il2cpp_runtime_class_init') === true) {
-                console.log('exports: `' + exp.name + '`');
-                return { isAot: true, module: mod };
-            }
-            else if (exp.name.includes('mono_thread_attach') === true) {
-                console.log('exports: `' + exp.name + '`');
-                return { isAot: false, module: mod };
+    for (const module of modules) {
+        const exports = module.enumerateExports()
+        for (const exp of exports) {
+            for (const func of functions) {
+                if (!exp.name.includes(func.name)) continue;
+                return { isAot: func.isAot, module };
             }
         }
     }
