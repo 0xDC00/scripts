@@ -3,7 +3,7 @@
 // @version      0.1
 // @author       GO123
 // @description  Vita3k
-// *Matatabi
+// *Nippon Ichi Software & Regista
 // ==/UserScript==
 trans.replace(function (s) {
     return s
