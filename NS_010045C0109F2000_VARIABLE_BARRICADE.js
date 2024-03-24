@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [010045C0109F2000] VARIABLE BARRICADE NS
+// @name         [010045C0109F2000] VARIABLE BARRICADE
 // @version      1.0.1
 // @scriptauthor [LunaLumin]
 // @description  Yuzu
