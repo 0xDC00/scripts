@@ -13,7 +13,7 @@ trans.replace(function (s) {
 //------------------------------------------------
 const { setHook } = require("./libVita3k.js");
 
-const mainHandler = trans.send(handler, '200+'); // join 300ms
+const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
 
