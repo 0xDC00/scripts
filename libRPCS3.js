@@ -47,14 +47,14 @@ const { _emReg, _jitReg } = (function () {
 
     return { _emReg, _jitReg };
 })();
-
+console.warn("DoJit: " + DoJitPtr.add(6) + " " + _emReg + " " + _jitReg);
 Interceptor.attach(DoJitPtr.add(6), {
     onEnter: function (args) {
         const em_address = this.context[_emReg].readU32(); // func_addr
         const op = operations[em_address];
         if (op !== undefined) {
-            const entrypoint = this.context[_jitReg].readPointer().sub(0x0008000000000000); // ppu_ref
-            console.log('Attach:', ptr(em_address), entrypoint);
+            const entrypoint = this.context[_jitReg].readPointer().and(0x0000FFFFFFFFFFFF); // ppu_ref
+            console.log('Attach:', ptr(em_address), entrypoint, this.context[_jitReg].readPointer());
             Breakpoint.add(entrypoint, function () {
                 const thiz = Object.create(null);
                 thiz.context = Object.create(null);
