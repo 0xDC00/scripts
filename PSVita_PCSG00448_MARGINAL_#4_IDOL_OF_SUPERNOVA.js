@@ -1,28 +1,28 @@
 // ==UserScript==
-// @name         [PCSG01023]  Tsuihou Senkyo
+// @name         [PCSG00448]  MARGINAL#4 IDOL OF SUPERNOVA 
 // @version      0.1
 // @author       GO123
 // @description  Vita3k
-// *Nippon Ichi Software & Regista
+// * Otomate / Rejet
+// * Idea Factory Co., Ltd.
 // ==/UserScript==
 trans.replace(function (s) {
     return s
-        .replace(/<br>/g, '')
-        .replace(/%CF11F/g, "")
-        .replace(/%CFFFF/g, "")
-        .replace(/%K%P/g, '')
-        .replace(/%K%N/g, '')
-        .replaceAll("\n", '')
-
-        ;
+        .replaceAll(/[\s]/g, '')
+        .replace(/(#n)+/g, '') // Single line
+        .replace(/(#[A-Za-z]+\[(\d*[.])?\d+\])+/g, '')
+        .replace(/#Pos\[[\s\S]*?\]/g, '');
+    ;
 });
 //------------------------------------------------
 const { setHook } = require("./libVita3k.js");
 
-const mainHandler = trans.send(handler, "200+"); // join 200ms
+const mainHandler = trans.send(handler, '200++'); // join 300ms
 
 setHook({
-    0x8002e176: mainHandler.bind_(null, 0, 0, "dialogue"),//dialogue+name
+
+    0x800718f8: mainHandler.bind_(null, 0, 0, "dialogue"),
+
 });
 
 function handler(regs, index, offset, hookname) {
@@ -31,8 +31,7 @@ function handler(regs, index, offset, hookname) {
     console.log("onEnter: " + hookname);
     console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
-    let s = address.readShiftJisString();
-
+    let s = address.readShiftJisString()
 
     return s;
 }
