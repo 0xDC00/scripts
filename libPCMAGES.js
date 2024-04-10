@@ -187,6 +187,9 @@ function setHookDialog(callback) {
     let hookAddress = ins.opStr;         // 0x431d57 (mov mem, reg)
     pos = ins.next;
 
+    let nextAddress = pos;
+    let argx = -1;
+
     // find expressions: mov al, byte ptr ds:[reg] => reg
     let expr = '';
     for (let index = 0; index < 200; index++) {
@@ -206,10 +209,39 @@ function setHookDialog(callback) {
         return null;
     }
 
-    console.log('Attach Dialog:', hookAddress, expr);
-    Breakpoint.add(ptr(hookAddress), function () {
-        callback.call(this, this.context, expr);
-    });
+    // check expr: mov reg, dword ptr ss:[esp+0x14]; 8B5C24 14
+    while (nextAddress.compare(pos) !== 0) {
+        ins = Instruction.parse(nextAddress);
+        if (ins.mnemonic === 'mov' && ins.size === 4
+            && ins.operands[0].type === 'reg' && ins.operands[0].value === expr
+            && ins.operands[1].type === 'mem') {
+            console.log(JSON.stringify(ins, null, 2));
+            if (ins.operands[1].value.base === 'esp') {
+                argx = ins.operands[1].value.disp >> 2; // div by 4
+            }
+        }
+        nextAddress = ins.next;
+    }
+
+    if (argx === -1) {
+        console.log('Attach Dialog:', hookAddress, expr);
+        Breakpoint.add(ptr(hookAddress), function () {
+            callback.call(this, this.context, expr);
+        });
+    }
+    else {
+        console.log('Attach Dialog:', hookAddress, expr, argx);
+        const disp = argx << 2;
+        Breakpoint.add(ptr(hookAddress), function () {
+            const ctx = this.context;
+            Object.defineProperty(ctx, argx, {
+                get() {
+                    return ctx.esp.add(disp).readPointer();
+                }
+            });
+            callback.call(this, ctx, argx);
+        });
+    }
 
     return hookAddress;
 }
@@ -229,7 +261,7 @@ function setHookDialog64(callback) {
     let ins = Instruction.parse(pos);    // parse (je 0x431d57)
     pos = ins.next;
     let hookAddress = ins.opStr;         // 0x431d57 (mov mem, reg)
-    
+
     //// 2nd je have more (computer-system; but include previous dialogue too; check r10=0?unableFilter?)
     //// like hook at top function 
     // ins = Instruction.parse(pos); // cmp reg, 1
@@ -237,7 +269,7 @@ function setHookDialog64(callback) {
     // ins = Instruction.parse(pos); // jp 0xAD
     // pos = ins.next;
     // let hookAddress = ins.opStr;  // 0xAD
-    
+
     // find expressions: movzx edx, byte ptr ds:[reg] => reg
     let expr = '';
     for (let index = 0; index < 200; index++) {
@@ -260,7 +292,7 @@ function setHookDialog64(callback) {
     console.log('Attach Dialog:', hookAddress, expr);
     Breakpoint.add(ptr(hookAddress), function () {
         callback.call(this, this.context, expr);
-        
+
     });
 
     return hookAddress;
@@ -317,6 +349,6 @@ function setHookMail(table, cb) {
 
 module.exports = exports = {
     readString,
-    setHookDialog: Process.arch === 'x64' ? setHookDialog64: setHookDialog,
+    setHookDialog: Process.arch === 'x64' ? setHookDialog64 : setHookDialog,
     setHookMail
 }
