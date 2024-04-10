@@ -13,7 +13,7 @@ const mainHandler = trans.send(handler, '250+');
 engine.setHookDialog(mainHandler);
 
 function handler(regs, index) {
-    const address = regs['esp'].add(0x14).readPointer();
+    const address = regs[index];
 
     console.log('onEnter');
     //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
