@@ -11,8 +11,9 @@ const { setHook } = require("./libVita3k.js");
 const mainHandler = trans.send(handler, "200+"); // join 200ms
 
 setHook({
-    0x8004ed22: mainHandler.bind_(null, 0, 0, "name"),
-    0x8006d202: mainHandler.bind_(null, 1, 2, "text"),
+    // 0x8004ed22: mainHandler.bind_(null, 0, 0, "name"),
+    // 0x8006d202: mainHandler.bind_(null, 1, 2, "text"),
+    0x800581a2: mainHandler.bind_(null, 0, 0, "text"),
 });
 
 function handler(regs, index, offset, hookname) {
