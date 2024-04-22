@@ -274,8 +274,8 @@ function setHook(object) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
-            const address = IS_32 === true ? key : uint64(key).add(0x80004000).toNumber();
-            operations[address] = element;
+            const address = IS_32 === true ? unint64(key).add(0x204000) : uint64(key).add(0x80004000);
+            operations[address.toString(10)] = element;
         }
     }
 
