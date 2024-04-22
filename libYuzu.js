@@ -273,6 +273,10 @@ function setHook(object) {
     const IS_32 = globalThis.ARM === true;
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
+            if (key.startsWith('H')) {
+                console.error("Skip: " + key); // warn about Ryujinx mode
+                continue;
+            }
             const element = object[key];
             const address = IS_32 === true ? unint64(key).add(0x204000) : uint64(key).add(0x80004000);
             operations[address.toString(10)] = element;
