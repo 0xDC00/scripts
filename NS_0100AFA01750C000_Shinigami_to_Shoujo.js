@@ -18,7 +18,7 @@ console.log("To solve text display bug, use opengl API and set Grahpics -> Advan
 
 setHook({
     '1.0.2': {
-        0x21cb08: mainHandler.bind_(null, 1, "text"),
+        [0x21cb08 - 0x204000]: mainHandler.bind_(null, 1, "text"),
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 

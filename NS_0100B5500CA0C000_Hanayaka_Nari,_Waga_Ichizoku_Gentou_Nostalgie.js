@@ -18,14 +18,16 @@ setHook({
     '1.0.0': {
         // 
         // SIG: 
-        0x27ca10: mainHandler, // x3 (double trigged), name+text, onscreen 
+        //0x27ca10: mainHandler, // x3 (double trigged), name+text, onscreen 
+        [0x27ca10 - 0x204000]: mainHandler, // x3 (double trigged), name+text, onscreen 
+        //0x77ca14
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs) {
     console.log('onEnter');
 
-    let address = regs[3].value;
+    let address = regs[6].value;
     //console.log(hexdump(regs[3].value.sub(0x10), { header: false, ansi: false, length: 0x50 }));
 
     /* processString */

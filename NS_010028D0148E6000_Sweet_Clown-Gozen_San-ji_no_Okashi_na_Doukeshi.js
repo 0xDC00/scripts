@@ -16,11 +16,13 @@ const { setHook } = require('./libYuzu.js');
 
 const mainHandler = trans.send(handler, '250+');
 
+// I don't know if those scripts have been done before the tracer fix so if there's a problem multiply the register by 2 
+// Old tracer assumed the register were 64bit which was wrong
 setHook({
     '1.0.2': {
         // 0x21a234:  mainHandler.bind_(null, 0, "all text"), // messy, needs lots of regex
-        0x20dbfc: mainHandler.bind_(null, 0, 0x28, "dialog"), // need to .add(0x28)s
-        0x214978: mainHandler.bind_(null, 3, 0xC, "choices"), // many calls, choice only, need to add s.add(0xC)
+        [0x20dbfc - 0x204000]: mainHandler.bind_(null, 0, 0x28, "dialog"), // need to .add(0x28)s
+        [0x214978 - 0x204000]: mainHandler.bind_(null, 3, 0xC, "choices"), // many calls, choice only, need to add s.add(0xC)
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 

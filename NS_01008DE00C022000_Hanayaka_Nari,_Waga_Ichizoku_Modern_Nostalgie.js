@@ -18,7 +18,7 @@ setHook({
     '1.0.0': {
         // (0x2509ac+0x5FDFC000=6004C9AC)
         // SIG: 5C 00 50 E3 ???????? 26 00 50 E3 ???????? 25 00 50 E3 (=> sub_ => first blt)
-        0x2509ac: mainHandler, // x3 (double trigged), name+text, onscreen 
+        [0x2509ac - 0x204000]: mainHandler, // x3 (double trigged), name+text, onscreen 
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
@@ -26,7 +26,7 @@ setHook({
 function handler(regs) {
     console.log('onEnter');
 
-    let address = regs[3].value;
+    let address = regs[6].value;
     //console.log(hexdump(regs[3].value.sub(0x10), { header: false, ansi: false, length: 0x50 }));
 
     /* processString */
