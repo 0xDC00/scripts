@@ -1039,7 +1039,7 @@ function monoInit(isAot) {
                         const index = parseInt(prop);
                         const item = target[index];
                         const p = ptr(item.toString());
-                        return p.readPointer(); // need .value
+                        return p; // need .value
                     }
                     catch {
                         // length, toJSON, ...?
