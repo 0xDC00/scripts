@@ -278,7 +278,7 @@ function setHook(object) {
                 continue;
             }
             const element = object[key];
-            const address = IS_32 === true ? unint64(key).add(0x204000) : uint64(key).add(0x80004000);
+            const address = IS_32 === true ? uint64(key).add(0x204000) : uint64(key).add(0x80004000);
             operations[address.toString(10)] = element;
         }
     }
