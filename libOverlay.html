@@ -25,7 +25,7 @@
                 const _overlay = _layoutLocked.parentElement;
                 let show = true;
                 window._toogleOverlay = function(v) {
-                    show = v ? v : !show;
+                    show = v !== undefined ? v : !show;
                     if (show === true) {
                         _layoutLocked.classList.add("layoutUnlocked");
                         _layoutLocked.style.visibility = 'visible';
