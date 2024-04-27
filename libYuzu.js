@@ -306,6 +306,12 @@ function setHook(object, dfVer) {
 
     if (globalThis.gameVer) console.warn('Game version: ' + globalThis.gameVer);
 
+    // localStorage support wasn't added until v0.1.4
+    // so prevent failure on earlier versions
+    if (localStorage.length === undefined) {
+        return;
+    }
+
     Object.keys(localStorage).map(key => {
         const value = localStorage.getItem(key);
         if (key.startsWith('Yuzu_') === true) {
