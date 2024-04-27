@@ -163,7 +163,9 @@ addEventListener('wssStart', function (e) {
         });
     });
 
-    server.listen(9001, '127.0.0.1');
+    wss.once('error', console.error);
+
+    server.listen(e.detail.port, e.detail.host);
     addEventListener('copyText', broadcast);
     addEventListener('translate', broadcast);
 });
