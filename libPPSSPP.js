@@ -30,19 +30,31 @@ Interceptor.attach(DoJitPtr, {
         const op = operations[em_address];
         if (op !== undefined) {
             console.log('Attach:', ptr(em_address), entrypoint);
-            if (breakpoints[entrypoint] !== undefined) return console.log('Skip');
-            breakpoints[entrypoint] = em_address;
-            Breakpoint.add(entrypoint, function () {
-                const thiz = Object.create(null);
-                thiz.context = Object.create(null);
-                thiz.context.pc = em_address;
-                const regs = buildRegs(this.context, thiz); // a0 a1 a2 ...
-                //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
-                op.call(thiz, regs);
-            });
+            if (jitAttach(em_address, entrypoint, op) === true) {
+                localStorage.setItem('PSP_' + Date.now(), {
+                    guest: em_address,
+                    host: entrypoint
+                });
+            }
         }
     }
 });
+
+function jitAttach(em_address, entrypoint, op) {
+    if (breakpoints[entrypoint] !== undefined) return console.log('Skip');
+    breakpoints[entrypoint] = em_address;
+
+    const thiz = Object.create(null);
+    thiz.context = Object.create(null);
+    thiz.context.pc = em_address;
+    Breakpoint.add(entrypoint, function () {
+        const regs = buildRegs(this.context, thiz); // a0 a1 a2 ...
+        //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
+        op.call(thiz, regs);
+    });
+
+    return true;
+}
 
 function getDoJitAddress() {
     if (Process.platform !== 'windows') {
@@ -208,6 +220,22 @@ function setHook(object) {
             operations[key] = element;
         }
     }
+
+    Object.keys(localStorage).map(key => {
+        const value = localStorage.getItem(key);
+        if (key.startsWith('PSP_') === true) {
+            try {
+                const em_address = value.guest;
+                const entrypoint = ptr(value.host);
+                const op = operations[em_address.toString(10)];
+                console.warn('Re-Attach: ' + ptr(em_address) + ' ' + entrypoint);
+                jitAttach(em_address, entrypoint, op);
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
+    });
 }
 
 module.exports = exports = {

@@ -6,6 +6,10 @@
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
+const __e = Process.mainModule ?? Process.enumerateModules()[0];
+if (module.parent.parent === null && __e.findExportByName('DotNetRuntimeInfo') !== null) {
+    return module.exports = exports = require('./libRyujinx.js');
+}
 
 console.warn('[Compatibility]');
 console.warn('Yuzu 1616+');
@@ -19,7 +23,7 @@ let idxEntrypoint = idxDescriptor + 1;
 const DoJitPtr = getDoJitAddress();
 const buildRegs = globalThis.ARM === true ? createFunction_buildRegs32() : createFunction_buildRegs();
 const operations = Object.create(null);
-
+let _operations = Object.create(null);
 //let EmitX64_vftable;
 /*
 https://github.com/merryhime/dynarmic/blob/e6f9b08d495449e4ca28882c0cb4f12d83fd4549/src/dynarmic/backend/x64/emit_x64.cpp
@@ -61,34 +65,43 @@ Interceptor.attach(DoJitPtr, {
         const op = operations[em_address];
         if (op !== undefined && entrypoint.isNull() === false) {
             console.log('Attach:', ptr(em_address), entrypoint);
-            // Breakpoint.add (slower)
-            Breakpoint.add(entrypoint, function () {
-                const thiz = Object.create(null);
-                //thiz.returnAddress = 0;
-                thiz.context = Object.create(null);
-                thiz.context.pc = em_address;
-                //thiz.context.sp = 0;
-                const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
-                //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
-                op.call(thiz, regs);
+            jitAttach(em_address, entrypoint, op);
+            localStorage.setItem('Yuzu_' + Date.now(), {
+                guest: em_address,
+                host: entrypoint
             });
-
-            // // Interceptor.attach (detach = hook removed, but freeze)
-            // Interceptor.attach(entrypoint, {
-            //     onEnter: function () {
-            //         const thiz = Object.create(null);
-            //         //thiz.returnAddress = 0;
-            //         thiz.context = Object.create(null);
-            //         thiz.context.pc = em_address;
-            //         //thiz.context.sp = 0;
-            //         const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
-            //         //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
-            //         op.call(thiz, regs);
-            //     }
-            // });
         }
     }
 });
+
+function jitAttach(em_address, entrypoint, op) {
+    const thiz = Object.create(null);
+    //thiz.returnAddress = 0;
+    thiz.context = Object.create(null);
+    thiz.context.pc = em_address;
+
+    // Breakpoint.add (slower)
+    Breakpoint.add(entrypoint, function () {
+        //thiz.context.sp = 0;
+        const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
+        //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
+        op.call(thiz, regs);
+    });
+
+    // // Interceptor.attach (detach = hook removed, but freeze)
+    // Interceptor.attach(entrypoint, {
+    //     onEnter: function () {
+    //         const thiz = Object.create(null);
+    //         //thiz.returnAddress = 0;
+    //         thiz.context = Object.create(null);
+    //         thiz.context.pc = em_address;
+    //         //thiz.context.sp = 0;
+    //         const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
+    //         //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
+    //         op.call(thiz, regs);
+    //     }
+    // });
+}
 
 function getDoJitAddress() {
     if (Process.platform !== 'windows') {
@@ -108,8 +121,6 @@ function getDoJitAddress() {
         }
     }
     else {
-        const __e = Process.enumerateModules()[0];
-
         // Windows MSVC x64 2019 (v996-) + 2022 (v997+)
         const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
         const RegisterBlock = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
@@ -268,13 +279,23 @@ function createFunction_buildRegs32() {
  * 
  * @param {EmulatorHook} object
  */
-function setHook(object) {
+function setHook(object, dfVer) {
+    if (dfVer !== undefined) {
+        _operations = object;
+        object = object[dfVer];
+    }
+    else {
+        _operations = {
+            [globalThis.gameVer]: object
+        };
+    }
+
     //console.log(JSON.stringify(object, null, 2));
     const IS_32 = globalThis.ARM === true;
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             if (key.startsWith('H')) {
-                console.error("Skip: " + key); // warn about Ryujinx mode
+                console.error("Skip: " + key);
                 continue;
             }
             const element = object[key];
@@ -284,6 +305,21 @@ function setHook(object) {
     }
 
     if (globalThis.gameVer) console.warn('Game version: ' + globalThis.gameVer);
+
+    Object.keys(localStorage).map(key => {
+        const value = localStorage.getItem(key);
+        if (key.startsWith('Yuzu_') === true) {
+            try {
+                const em_address = value.guest;
+                const entrypoint = ptr(value.host);
+                const op = operations[em_address.toString(10)];
+                jitAttach(em_address, entrypoint, op);
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
+    });
 }
 
 module.exports = exports = {

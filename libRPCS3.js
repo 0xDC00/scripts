@@ -55,17 +55,25 @@ Interceptor.attach(DoJitPtr.add(6), {
         if (op !== undefined) {
             const entrypoint = this.context[_jitReg].readPointer().and(0x0000FFFFFFFFFFFF); // ppu_ref
             console.log('Attach:', ptr(em_address), entrypoint, this.context[_jitReg].readPointer());
-            Breakpoint.add(entrypoint, function () {
-                const thiz = Object.create(null);
-                thiz.context = Object.create(null);
-                thiz.context.pc = em_address;
-                const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
-                //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
-                op.call(thiz, regs);
+            jitAttach(em_address, entrypoint, op);
+            localStorage.setItem('PS3_' + Date.now(), {
+                guest: em_address,
+                host: entrypoint
             });
         }
     }
 });
+
+function jitAttach(em_address, entrypoint, op) {
+    const thiz = Object.create(null);
+    thiz.context = Object.create(null);
+    thiz.context.pc = em_address;
+    Breakpoint.add(entrypoint, function () {
+        const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
+        //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
+        op.call(thiz, regs);
+    });
+}
 
 function createFunction_buildRegs() {
     let body = '';
@@ -81,7 +89,7 @@ function createFunction_buildRegs() {
     // r4: Second word of a function's argument list; second word of a scalar function return.
     // ... r12 (glink)
     body += 'const args = [';
-    for (let i = 3; i < 13; i++) { // skip r0 r1 r2
+    for (let i = 3; i < 32; i++) { // skip r0 r1 r2
         let offset = i * 8;
         body += '{';
         body += `_vm: regs.add(${offset}).readU64().toNumber(),`;
@@ -92,8 +100,32 @@ function createFunction_buildRegs() {
         body += '},';
     }
     body += '];';
+    // r0 r1 r2
+    body += 'args[-3]={';
+    body += `_vm: regs.add(${0}).readU64().toNumber(),`;
+    body += `get value() { return base.add(this._vm); },`; // host address
+    body += `set vm(val) { this._vm = val; },`;
+    body += `get vm() { return this._vm },`;
+    body += `save() {regs.add(${0}).writeU64(this._vm); return this; }`;
+    body += '};';
+    body += 'args[-2]={';
+    body += `_vm: regs.add(${8}).readU64().toNumber(),`;
+    body += `get value() { return base.add(this._vm); },`; // host address
+    body += `set vm(val) { this._vm = val; },`;
+    body += `get vm() { return this._vm },`;
+    body += `save() {regs.add(${8}).writeU64(this._vm); return this; }`;
+    body += '};';
+    body += 'args[-1]={';
+    body += `_vm: regs.add(${16}).readU64().toNumber(),`;
+    body += `get value() { return base.add(this._vm); },`; // host address
+    body += `set vm(val) { this._vm = val; },`;
+    body += `get vm() { return this._vm },`;
+    body += `save() {regs.add(${16}).writeU64(this._vm); return this; }`;
+    body += '};';
 
     // https://github.com/RPCS3/rpcs3/blob/dcfd29c2d9e911d96b1da5d6dced5443c525de52/rpcs3/Emu/Cell/lv2/sys_ppu_thread.h#L33
+    body += `thiz.cr = regs.add(${0x460 - 0x18 - 8 - 4 - 4}).readU32();`; // cr
+    body += `thiz.cr1 = regs.add(${0x100}).readU32();`; // cr
     body += `thiz.returnAddress = regs.add(${0x460 - 0x18}).readU64().toNumber();`; // lr
     //body += `thiz.context.ctr = regs.add(${0x468-0x18}).readU64().toNumber();`; // ctr
     //body += `thiz.context.pc = regs.add(${0x474-0x18}).readU64().toNumber();`; // pc (0x470 = VRSAVE 4byte)
@@ -119,6 +151,22 @@ function setHook(object) {
             operations[key] = element;
         }
     }
+
+    Object.keys(localStorage).map(key => {
+        const value = localStorage.getItem(key);
+        if (key.startsWith('PS3_') === true) {
+            try {
+                const em_address = value.guest;
+                const entrypoint = ptr(value.host);
+                const op = operations[em_address.toString(10)];
+                console.warn('Re-Attach: ' + ptr(em_address) + ' ' + entrypoint);
+                jitAttach(em_address, entrypoint, op);
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
+    });
 }
 
 module.exports = exports = {
