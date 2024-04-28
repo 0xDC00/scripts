@@ -8,6 +8,7 @@
 //------------------------------------------------
 const { setHook } = require("./libVita3k.js");
 
+const encoder = new TextEncoder("shift_jis");
 
 const nvlHandler = trans.send(nvl_handler, -200); // join 200ms
 const mainHandler = trans.send(handler, '200++');
@@ -23,7 +24,6 @@ setHook({
 
 function nvl_handler(regs, index, offset, hookname) {
     let address = regs[index].value;
-    const encoder = new TextEncoder("shift_jis");
     let final_string = ""
     const pattern = '47 ff ff'
     const results = Memory.scanSync(address, 0x50, pattern);
