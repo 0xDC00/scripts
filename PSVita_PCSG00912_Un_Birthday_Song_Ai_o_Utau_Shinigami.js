@@ -41,7 +41,7 @@ function nvl_handler(regs, index, offset, hookname) {
 
 
         let bytes = [address.readU8(), address.add(1).readU8(), address.add(2).readU8()];
-        console.log(hexdump(address, { header: false, ansi: false }))
+        //console.log(hexdump(address, { header: false, ansi: false }))
         if (!(bytes[0] == 0x48 && bytes[1] == 0xFF && bytes[2] == 0xFF)) break;
         address = address.add(3);
         bytes = [address.readU8(), address.add(1).readU8(), address.add(2).readU8()];
