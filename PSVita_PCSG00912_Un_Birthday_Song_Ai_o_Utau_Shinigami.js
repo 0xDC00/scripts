@@ -1,15 +1,10 @@
 // ==UserScript==
 // @name         [PCSG00912]  Un:Birthday Song ~Ai o Utau Shinigami~
 // @version      0.1
-// @author       GO123 (huge thanks to koukdw )
+// @author       GO123 (huge thanks to koukdw For the NVL hook and other edits )
 // @description  Vita3k
 // *honeybee
 // ==/UserScript==
-/*trans.replace(function (s) {
-    return s
-        .replaceAll(/%N/g, '')
-        ;
-});*/
 //------------------------------------------------
 const { setHook } = require("./libVita3k.js");
 
