@@ -163,7 +163,7 @@ addEventListener('wssStart', function (e) {
         });
     });
 
-    wss.once('error', e => console.error(e.stack));
+    wss.once('error', e => console.error(e.message));
 
     server.listen(e.detail.port, e.detail.host);
     addEventListener('copyText', broadcast);
