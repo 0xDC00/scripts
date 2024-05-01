@@ -11,19 +11,15 @@ const gameVer = '1.0.0';
 
 const { setHook } = require('./libYuzu.js');
 const mainHandler = trans.send(handler, '200+');
-const tutorialHandler = trans.send(handler2, '200+');
 
 setHook({
     '1.0.0': {
-        [0x80020bd4 - 0x80004000]: mainHandler,
-        [0x800375a0 - 0x80004000]: tutorialHandler,
-        [0x800781dc - 0x80004000]: mainHandler 
+        [0x80020bd4 - 0x80004000]: mainHandler.bind_(null, 0, 0, "Main"),
+        [0x800375a0 - 0x80004000]: mainHandler.bind_(null, 2, 0, "Tutorial"),
+        [0x800781dc - 0x80004000]: mainHandler.bind_(null, 0, 0, "Chapter"),
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
-function handler(regs) {
-	return regs[0].value.readUtf8String();
-}
-function handler2(regs) {
-	return regs[2].value.readUtf8String();
+function handler(regs, index, offset, hookname) {
+	return regs[index].value.add(offset).readUtf8String();
 }
