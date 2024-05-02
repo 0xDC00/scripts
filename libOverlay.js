@@ -418,8 +418,8 @@
                 if (s === '') return;
 
                 addTextItem(s);
-            }).catch(() => {
-                addTextLog('[Error] Unable to connect to ocr-server');
+            }).catch((e) => {
+                addTextLog('[Error] ocr-server:\n' + e.stack);
             });
     }
 

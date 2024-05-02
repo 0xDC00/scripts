@@ -3,17 +3,18 @@ const { createServer } = require('http');
 const { Readable } = require("node:stream");
 const fs = require('fs');
 
-if (Readable.fromWeb === undefined) {
-    Readable.fromWeb = function (body) {
-        const reader = body.getReader();
-        const rs = new Readable();
-        rs._read = async () => {
-            const result = await reader.read();
-            rs.push(result.done === true ? null : Buffer.from(result.value));
-        };
-        return rs;
-    }
+//// TODO: https://github.com/electron/electron/issues/37285
+//if (Readable.fromWeb === undefined) {
+Readable.fromWeb = function (body) {
+    const reader = body.getReader();
+    const rs = new Readable();
+    rs._read = async () => {
+        const result = await reader.read();
+        rs.push(result.done === true ? null : Buffer.from(result.value));
+    };
+    return rs;
 }
+//}
 
 /** @type WebSocketServer */
 var wss = null;
@@ -66,7 +67,8 @@ addEventListener('wssStart', function (e) {
                     return request.then(r => {
                         res.writeHead(r.status, headers);
                         Readable.fromWeb(r.body).pipe(res, { end: true });
-                    }).catch(() => {
+                    }).catch((e) => {
+                        console.error(e.stack);
                         res.writeHead(500);
                         res.end();
                     });
@@ -113,7 +115,8 @@ addEventListener('wssStart', function (e) {
             return fetch('http://127.0.0.1:8001' + url).then(r => {
                 res.writeHead(r.status, headers);
                 Readable.fromWeb(r.body).pipe(res, { end: true });
-            }).catch(() => {
+            }).catch((e) => {
+                console.error(e.stack);
                 res.writeHead(500);
                 res.end();
             });
