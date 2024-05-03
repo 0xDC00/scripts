@@ -21,7 +21,7 @@ setHook({
         "H1256a912f2e420b4": mainHandler.bind_(null, 1, "Config Description"),
         "Hc458f18e275909c0": mainHandler.bind_(null, 0, "Tutorial Description"),
         "H15ba158e73f99519": mainHandler.bind_(null, 0, "Tutorial Header"),
-},
+    },
     '1.0.2': {
         "H1a98d00ad4ace155": mainHandler.bind_(null, 0, "Text"),
         "H91e46ea2bd93593a": mainHandler.bind_(null, 0, "Action Text"),
@@ -31,7 +31,7 @@ setHook({
         "H3dec18d0b3cab73b": mainHandler.bind_(null, 0, "Config Description"),
         "H04ff99315dbd575e": mainHandler.bind_(null, 0, "Tutorial Description"),
         "H3facc7f0aa142379": mainHandler.bind_(null, 0, "Tutorial Header"),
-},
+    },
     '1.0.3': {
         "H780b9a9953764e4e": mainHandler.bind_(null, 1, "Text"),
         "Hb39168056816e127": mainHandler.bind_(null, 0, "Action Text"),
@@ -41,7 +41,7 @@ setHook({
         "H08f24b44230161db": mainHandler.bind_(null, 0, "Config Description"),
         "H627520e962e95a29": mainHandler.bind_(null, 0, "Tutorial Description"),
         "H8887e8bd21780481": mainHandler.bind_(null, 0, "Tutorial Header"),
-}
+    }
 }, globalThis.gameVer = globalThis.gameVer ?? gameVer);
 
 function handler(regs, index, hookname) {
@@ -54,8 +54,8 @@ function handler(regs, index, hookname) {
     let s = address.add(0x14).readUtf16String(len);
 
     s = s
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/^(?:獲得)$(\r?\n|\r)?/gm, '') // Removing commands
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/^(?:獲得)$(\r?\n|\r)?/gm, '') // Removing commands
 
     return s;
 }
