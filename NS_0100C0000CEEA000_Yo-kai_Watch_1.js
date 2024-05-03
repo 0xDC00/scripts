@@ -14,11 +14,10 @@ const mainHandler = trans.send(handler, '400+');
 setHook({
     '1.3.0': {
         "H669bdbdc4da92463": mainHandler.bind_(null, 1, "Text"),
-}
+    }
 }, globalThis.gameVer = globalThis.gameVer ?? gameVer);
 
 let previous = "";
-
 function handler(regs, index, hookname) {
     const address = regs[index].value;
     // console.log('onEnter: ' + hookname);
@@ -28,10 +27,10 @@ function handler(regs, index, hookname) {
     let s = address.readUtf8String();
 
     s = s
-    .replace(/\[([^\]]+)\/[^\]]+\]/g, '$1') // Remove furigana
-    .replace(/\s+/g, ' ') // Replace any sequence of whitespace characters with a single space
-    .replace(/\\n/g, '\n') // Replace '\n' with line break
-    .replace(/<[^>]+>|\[[^\]]+\]/g, ''); // Remove anything within < > or [ ]
+        .replace(/\[([^\]]+)\/[^\]]+\]/g, '$1') // Remove furigana
+        .replace(/\s+/g, ' ') // Replace any sequence of whitespace characters with a single space
+        .replace(/\\n/g, '\n') // Replace '\n' with line break
+        .replace(/<[^>]+>|\[[^\]]+\]/g, ''); // Remove anything within < > or [ ]
 
     if (s === previous) {
         return;
