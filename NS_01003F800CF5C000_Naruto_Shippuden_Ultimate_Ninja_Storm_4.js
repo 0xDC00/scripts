@@ -23,7 +23,7 @@ setHook({
         "Hdb233d1bf801af8e": mainHandler.bind_(null, 0, "Mission Description"),
         "H00755845f7d9d990": mainHandler.bind_(null, 0, "Objective"),
         "Hab331e772ddd8f8e": mainHandler.bind_(null, 0, "Location"),
-}
+    }
 }, globalThis.gameVer = globalThis.gameVer ?? gameVer);
 
 function handler(regs, index, hookname) {
