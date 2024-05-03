@@ -15,7 +15,7 @@ setHook({
     '1.1.1': {
         "H8293950d558a3cac": mainHandler.bind_(null, 1, "Main Text"),
         "H9afedfb2d5101c93": mainHandler.bind_(null, 1, "Secondary Text"),
-}
+    }
 }, globalThis.gameVer = globalThis.gameVer ?? gameVer);
 
 let previous = "";
@@ -30,8 +30,8 @@ function handler(regs, index, hookname) {
     let s = address.add(0x14).readUtf16String(len);
 
     s = s
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/^(?:そうび|はずす|もどる|もつ|おく|なげる|石|土|雑草|たべる)$(\r?\n|\r)?/gm, '') // Removing commands
+        .replace(/<[^>]*>/g, '') // Remove HTML tags
+        .replace(/^(?:そうび|はずす|もどる|もつ|おく|なげる|石|土|雑草|たべる)$(\r?\n|\r)?/gm, '') // Removing commands
 
     if (s === previous) {
         return;
