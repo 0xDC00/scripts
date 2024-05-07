@@ -10,14 +10,14 @@ const gameVer = '1.0.0';
 
 const { setHook } = require('./libYuzu.js');
 
-const mainHandler = trans.send(handler, '200+'); // join 200ms
+const mainHandler = trans.send(handler, -200); // join 200ms
 
 setHook({
     '1.0.0': {
-        [0x8049d968 - 0x80004000]: mainHandler.bind_(null, 0, 1), // x0 - name
-        [0x8049d980 - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - dialogue
-
-        //[0x805622AC - 0x80004000]: mainHandler, // x1 - dialogue - name 
+     //   [0x8049d968 - 0x80004000]: mainHandler.bind_(null, 0, 1), // x0 - name
+     //   [0x8049d980 - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - dialogue
+          [0x804e4870- 0x80004000]: mainHandler.bind_(null, 0, 0) //better dialouge hook
+       
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
