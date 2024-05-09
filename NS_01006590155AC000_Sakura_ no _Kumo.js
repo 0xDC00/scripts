@@ -14,21 +14,32 @@ const mainHandler = trans.send(handler, -200); // join 200ms
 
 setHook({
     '1.0.0': {
-     //   [0x8049d968 - 0x80004000]: mainHandler.bind_(null, 0, 1), // x0 - name
-     //   [0x8049d980 - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - dialogue
-          [0x804e4870- 0x80004000]: mainHandler.bind_(null, 0, 0) //better dialouge hook
-       
+        //   [0x8049d968 - 0x80004000]: mainHandler.bind_(null, 0, 1), // x0 - name
+        //   [0x8049d980 - 0x80004000]: mainHandler.bind_(null, 0, 0), // x0 - dialogue
+        [0x804e4858 - 0x80004000]: handlerName.bind_(null, 3, 1), // x3 + 1 - name
+        [0x804e4870 - 0x80004000]: mainHandler.bind_(null, 0, 0) // x0 - dialogue
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
-function handler(regs, index, offset) {
-    console.log('onEnter');
-    const address = regs[index].value.add(offset); // x0
-    //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
-    let s = readString(address);
-    return s;
+let name = "";
+function handlerName(regs, index, offset) {
+    const address = regs[index].value.add(offset); // x3
+    //console.log(hexdump(address, { header: false, ansi: false, length: 0x80 }));
+    try {
+        let s = readString(address);
+        name = s;
+    } catch (error) {
+        // We might error when there's the delay command just ignore it. It's fine.
+    }
 }
 
+function handler(regs, index, offset) {
+    //console.log('onEnter');
+    const address = regs[index].value.add(offset); // x0
+    //console.log(hexdump(address, { header: false, ansi: false, length: 0x80 }));
+    let s = readString(address);
+    return name !== "" ? name + "\n" + s : s;
+}
 
 function readString(address) {
     let s = address.readUtf8String();
