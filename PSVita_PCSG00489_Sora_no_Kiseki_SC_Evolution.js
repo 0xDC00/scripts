@@ -83,6 +83,18 @@ function _lootAndHandBooksHandler(regs, index, offset, hookName) {
     let info = address.readShiftJisString();
     if (SHOW_HOOK_NAME) console.warn(hookName);
 
+    if(info.includes("を修得した。")) { // When obtaining a new craft in case at least two characters get a new one
+        if(!infoContent.includes(info)) { 
+            infoContent.push(info);
+            return info;
+        }
+    
+        if(infoContent.includes(info)) { 
+            resetInfoTimer();
+            return null;
+        }
+    }
+
     if (hookName === "other text")
         previousQuest = ""; // To display the quest at the top of the list again if it was the last one selected (in handbook)
 
@@ -341,5 +353,7 @@ trans.replace(function (s) {
         .replace(/\\n/g, '\n')      // make the extracted '\n' actually act as a new line
         .replace(/\b\d{1,2}\/\s\d{1,2}\b/g, '') // remove things like '5/ 0' on recipe page
         .replace(/\b\d{1,2}\/\d{1,2}\b/g, '') // remove things like '5/10' on recipe page
+        .replace(/【氏\s名】/, "【氏名】")
+        .replace(/【所\s属/, "【所属")
         .trim();
 });
