@@ -96,6 +96,18 @@ function _lootAndHandBooksHandler(regs, index, offset, hookName) {
     const address = regs[index].value.add(offset);
     let info = address.readShiftJisString();
 
+    if(info.includes("を修得した。")) { // When obtaining a new craft in case at least two characters get a new one
+        if(!infoContent.includes(info)) { 
+            infoContent.push(info);
+            return info;
+        }
+    
+        if(infoContent.includes(info)) { 
+            resetInfoTimer();
+            return null;
+        }
+    }
+
     if (hookName === "other text" && info.includes("【属性:") || /^.{1,3}：/.test(info))
         return null; // The hook overlaps with quartz and arts info
 

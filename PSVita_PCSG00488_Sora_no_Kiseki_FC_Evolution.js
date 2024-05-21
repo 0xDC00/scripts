@@ -60,7 +60,7 @@ function _questHandler(regs, index, offset, hookName) {
     const content = address.readShiftJisString();
     if (SHOW_HOOK_NAME) console.warn(hookName);
 
-    if(hookName === "quests on board" && previousDescription.includes(content) || contentIncludesAny(content, gameOptions))
+    if(hookName === "quests on board" && previousDescription.includes(content) || contentIncludesAny(content, gameOptions) || previousText.includes(content))
         return null; // The hook overlaps with a few other hooks, so this is also to not print unnecessary stuff
 
     switch(hookName) {
@@ -153,7 +153,19 @@ function _lootAndHandBooksHandler(regs, index, offset, hookName) {
     const address = regs[index].value.add(offset);
     let info = address.readShiftJisString();
 
-    questName = "";
+    questName = ""; // To display the quest at the top of the list again if it was the last one selected
+
+    if(info.includes("を修得した。")) { // When obtaining a new craft in case at least two characters get a new one
+        if(!infoContent.includes(info)) { 
+            infoContent.push(info);
+            return info;
+        }
+    
+        if(infoContent.includes(info)) { 
+            resetInfoTimer();
+            return null;
+        }
+    }
 
     if (infoContent.includes(info) && isInfoDisplayed) {
         resetInfoTimer();
@@ -181,7 +193,7 @@ function resetInfoTimer() {
 }
 
 function clearInfoContent() {
-    infoContent = []; // Clear the loot content array
+    infoContent = []; 
     isInfoDisplayed = false;
     fullInfo = "";
 }
@@ -277,6 +289,7 @@ function nameHandler(regs, index, offset, hookName) {
 
 let timer;
 let gate = true;
+let previousText = "";
 function mainTextHandler(regs, index, offset, hookName) {
     if (!gate) return;
     gate = false;
@@ -284,6 +297,7 @@ function mainTextHandler(regs, index, offset, hookName) {
     if (SHOW_HOOK_NAME) console.warn(hookName);
     if (ENABLE_HEXDUMP) console.warn(hexdump(address));
     let s = readString(address, { showName: true, newLine: false });
+
     trans.send(s);
     // force open the gate after 4 sec of no text
     clearTimeout(timer);
@@ -342,6 +356,12 @@ function readString(address, options) {
             }
         }
     }
+
+    if(previousText.includes(s) && previousText.length - s.length >= 1)
+        return ""; // Somehow the same message can be extracted twice in a row but one character shorter
+
+    previousText = s;
+
     if (previousName !== "" && options.showName) {
         s = previousName + "\n" + s;
     }
@@ -359,5 +379,8 @@ trans.replace(function (s) {
         .replace(/[0-9]{4}[A-z]/g, '')   // remove control codes 
         .replace(/\\n/g, '\n')      // make the extracted '\n' actually act as a new line
         .replace(/\b\d{1,2}\/\s\d{1,2}\b/g, '') // remove things like '5/ 0' on recipe page
+        .replace(/【報\s酬】/, "【報酬】")
+        .replace(/【氏\s名】/, "【氏名】")
+        .replace(/【所\s属/, "【所属")
         .trim();
 });
