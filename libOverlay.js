@@ -203,7 +203,7 @@
                 _divTextTran.value = '';
                 if (s === '') return;
 
-                addTextItem(s);
+                addTextItem(s); // TODO: GPT
             }
             else if (e.key === 'Escape') {
                 _divTextTran.value = '';
@@ -526,6 +526,7 @@
             _options.otpColorSize++;
             _textView.style.setProperty('--text-view-font-size', _options.otpColorSize + 'px');
             saveOptions();
+            flowScroll();
         }
         inputColorOriginal.oninput = () => {
             const color = inputColorOriginal.value;
@@ -558,6 +559,7 @@
             _options[target.id] = checked;
             saveOptions();
             refeshVisibility();
+            flowScroll();
         }
         inputShowDiscordLock.parentElement.onclick = onClick;
         inputShowOverlayLock.parentElement.onclick = onClick;
