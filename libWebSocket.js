@@ -16,6 +16,20 @@ Readable.fromWeb = function (body) {
 }
 //}
 
+if (globalThis.JSON5 === undefined) {
+    const { runInNewContext } = require('vm');
+    const sandbox = {};
+    globalThis.JSON5 = {
+        parse(s) {
+            runInNewContext('_SAFE_EVAL_=' + s, sandbox);
+            return sandbox._SAFE_EVAL_;
+        }
+    }
+}
+const _OCRURL = atob('aHR0cHM6Ly9sZW5zLmdvb2dsZS5jb20vdjMvdXBsb2FkP3N0Y3M9');
+const _COOKIE = atob('U09DUz1DQUVTRXdnREVnazBPREUzTnprM01qUWFBbVZ1SUFFYUJnaUFfTHlhQmc=').split('=');
+cookieStore.set({ url: _OCRURL.split('/v')[0], name: _COOKIE[0], value: _COOKIE[1], secure: true, httpOnly: true, sameSite: 'no_restriction' });
+
 /** @type WebSocketServer */
 var wss = null;
 /** @type Server */
@@ -112,14 +126,60 @@ addEventListener('wssStart', function (e) {
             });
         }
         else if (url.startsWith('/api/ocr') === true) {
-            return fetch('http://127.0.0.1:8001' + url).then(r => {
-                res.writeHead(r.status, headers);
-                Readable.fromWeb(r.body).pipe(res, { end: true });
-            }).catch((e) => {
+            // if (__vue.opt_ocr === 'ext') {
+            //     return fetch('http://127.0.0.1:8001' + url).then(r => {
+            //         res.writeHead(r.status, headers);
+            //         Readable.fromWeb(r.body).pipe(res, { end: true });
+            //     }).catch((e) => {
+            //         console.error(e.stack);
+            //         res.writeHead(500);
+            //         res.end();
+            //     });
+            // }
+
+            const params = new URL(url, 'http://0').searchParams;
+            const x = parseInt(params.get('x'));
+            const y = parseInt(params.get('y'));
+            const w = parseInt(params.get('w'));
+            const h = parseInt(params.get('h'));
+
+            ipc.screenSnip(x, y, w, h).then(pngBytes => {
+                const timestamp = Date.now().toString();
+                const body = new FormData();
+                body.append('encoded_image', new Blob([pngBytes], { type: 'image/png' }), 'text_' + timestamp + '.png');
+                return fetch(_OCRURL + timestamp, {
+                    method: 'POST',
+                    body: body,
+                    credentials: 'include',
+                    timeout: 5000
+                });
+            }).then(r => {
+                return r.text();
+            }).then(v => {
+                const regex = />AF_initDataCallback\(({key: 'ds:1'.*?)\);<\/script>/;
+                const match = regex.exec(v);
+                if (match === null) {
+                    res.writeHead(200, headers);
+                    res.write('{"text": "Regex error!"}');
+                    return;
+                }
+
+                let result = '';
+                const lensObj = JSON5.parse(match[1]);
+                const text = lensObj.data[3][4][0];
+                if (text.length !== 0) {
+                    result = text[0].join('\r\n');
+                }
+
+                res.writeHead(200, headers);
+                res.write('{"text":' + JSON.stringify(result) + '}');
+            }).catch(e => {
                 console.error(e.stack);
                 res.writeHead(500);
+            }).finally(() => {
                 res.end();
             });
+            return;
         }
         else if (url.endsWith('/libOverlay.js') === true) {
             res.writeHead(200, { 'content-type': 'text/javascript; charset=UTF-8' });
