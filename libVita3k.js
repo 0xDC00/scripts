@@ -39,7 +39,7 @@ Interceptor.attach(DoJitPtr, {
         if (op !== undefined) {
             console.log('Attach:', ptr(em_address), entrypoint);
             jitAttach(em_address, entrypoint, op);
-            localStorage.setItem('PSVita_' + Date.now(), {
+            sessionStorage.setItem('PSVita_' + Date.now(), {
                 guest: em_address,
                 host: entrypoint
             });
@@ -153,8 +153,8 @@ function setHook(object) {
         }
     }
 
-    Object.keys(localStorage).map(key => {
-        const value = localStorage.getItem(key);
+    Object.keys(sessionStorage).map(key => {
+        const value = sessionStorage.getItem(key);
         if (key.startsWith('PSVita_') === true) {
             try {
                 const em_address = value.guest;

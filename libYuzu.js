@@ -7,7 +7,7 @@ if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
 const __e = Process.mainModule ?? Process.enumerateModules()[0];
-if (module.parent.parent === null && __e.findExportByName('DotNetRuntimeInfo') !== null) {
+if (null !== (Process.platform === 'linux' ? Module.findExportByName(null, 'DotNetRuntimeInfo') : __e.findExportByName('DotNetRuntimeInfo'))) {
     return module.exports = exports = require('./libRyujinx.js');
 }
 
@@ -66,7 +66,7 @@ Interceptor.attach(DoJitPtr, {
         if (op !== undefined && entrypoint.isNull() === false) {
             console.log('Attach:', ptr(em_address), entrypoint);
             jitAttach(em_address, entrypoint, op);
-            localStorage.setItem('Yuzu_' + Date.now(), {
+            sessionStorage.setItem('Yuzu_' + Date.now(), {
                 guest: em_address,
                 host: entrypoint
             });
@@ -306,8 +306,8 @@ function setHook(object, dfVer) {
 
     if (globalThis.gameVer) console.warn('Game version: ' + globalThis.gameVer);
 
-    Object.keys(localStorage).map(key => {
-        const value = localStorage.getItem(key);
+    Object.keys(sessionStorage).map(key => {
+        const value = sessionStorage.getItem(key);
         if (key.startsWith('Yuzu_') === true) {
             try {
                 const em_address = value.guest;

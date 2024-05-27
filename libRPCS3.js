@@ -56,7 +56,7 @@ Interceptor.attach(DoJitPtr.add(6), {
             const entrypoint = this.context[_jitReg].readPointer().and(0x0000FFFFFFFFFFFF); // ppu_ref
             console.log('Attach:', ptr(em_address), entrypoint, this.context[_jitReg].readPointer());
             jitAttach(em_address, entrypoint, op);
-            localStorage.setItem('PS3_' + Date.now(), {
+            sessionStorage.setItem('PS3_' + Date.now(), {
                 guest: em_address,
                 host: entrypoint
             });
@@ -152,8 +152,8 @@ function setHook(object) {
         }
     }
 
-    Object.keys(localStorage).map(key => {
-        const value = localStorage.getItem(key);
+    Object.keys(sessionStorage).map(key => {
+        const value = sessionStorage.getItem(key);
         if (key.startsWith('PS3_') === true) {
             try {
                 const em_address = value.guest;

@@ -31,7 +31,7 @@ Interceptor.attach(pCreateCacheBlock, {
             const blockStart = retVal.add(0x10).readPointer();
             console.log('Attach: ' + ptr(ip_point) + ' ' + blockStart);
             jitAttach(blockStart, op);
-            localStorage.setItem("dbx_" + Date.now(), {
+            sessionStorage.setItem("dbx_" + Date.now(), {
                 guest: ip_point,
                 host: blockStart
             });
@@ -203,8 +203,8 @@ function setHook(object) {
         }
     }
 
-    Object.keys(localStorage).map(key => {
-        const value = localStorage.getItem(key);
+    Object.keys(sessionStorage).map(key => {
+        const value = sessionStorage.getItem(key);
         if (key.startsWith('dbx_') === true) {
             try {
                 const ip_point = value.guest;
