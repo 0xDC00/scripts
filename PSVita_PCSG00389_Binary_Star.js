@@ -16,12 +16,12 @@ trans.replace(function (s) {
 //------------------------------------------------
 const { setHook } = require("./libVita3k.js");
 
-const mainHandler = trans.send(handler, '300+'); // join 300ms
+const mainHandler = trans.send(handler, '200++'); // join 200ms
 
 setHook({
 
-    0x80058608: mainHandler.bind_(null, 1, 0, "dialogue"),
-    0x80021292: mainHandler.bind_(null, 0, 0, "name"),
+    0x80058606: mainHandler.bind_(null, 1, 0, "dialogue"),
+    
 
 });
 
@@ -31,7 +31,7 @@ function handler(regs, index, offset, hookname) {
     //console.log("onEnter: " + hookname);
    // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
-    let s = address.readShiftJisString()
+    let s = address.add(0xD).readShiftJisString()
 
     return s;
 }
