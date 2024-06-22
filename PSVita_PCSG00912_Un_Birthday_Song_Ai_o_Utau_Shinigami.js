@@ -16,10 +16,9 @@ const mainHandler = trans.send(handler, '200++');
 setHook({
 
     // 0x800379ae: nvlHandler.bind_(null, 3, 0x0, "dialogue NVL"),
+    //  0x80004b52: mainHandler.bind_(null, 3, 0x5, "dialogue"),
     0x80038538: nvlHandler.bind_(null, 1, 0x0, "dialogue NVL"),
-    0x80004b52: mainHandler.bind_(null, 3, 0x5, "dialogue"),
-
-
+    0x80033d66: mainHandler.bind_(null, 3, 0x4, "dialogue"),
 });
 
 function nvl_handler(regs, index, offset, hookname) {
