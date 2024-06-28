@@ -1,5 +1,5 @@
 console.warn('[Compatibility]');
-console.warn('Ryujinx 1.1.1325++');
+console.warn('Ryujinx 1.1.1340++');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
 console.log(`
