@@ -17,9 +17,9 @@ const handler4 = trans.send(s => s, '200+'); // other descriptions
 
 function sanitizeText(some_text){
     var text = some_text.replace(/#[0-9]+[A-z]/g, '').replace(/#[A-z]/g, '').replace("\u0001", "\n").replace("\u0002", "")
-    while(text[0].match(/[A-z]/g || text.slice(0,2).match(/[0-9]/g))){
-        text = text.slice(1)
-    }
+    // while(text[0].match(/[A-z]/g || text.slice(0,2).match(/[0-9]/g))){
+    //     text = text.slice(1)
+    // }
     return text
 }
 
@@ -62,11 +62,16 @@ function sanitizeText(some_text){
     Interceptor.attach(address, function (args) { //dialog and chest items
         var text
         if(args[2].readU8()!=6){
+            var pointer = args[2]
+            if(pointer.readU8() == 0x11) {
+                pointer = pointer.add(0x05)
+                if(pointer.readU8() == 0x23) pointer = pointer.add(0x6)
+            }
             try{
-                text = args[2].add(0x1).readUtf8String()
+                text = pointer.readUtf8String()
             }
             catch (e){
-                text = args[2].readUtf8String()
+                console.error("Dialogue format not recognized.")
             }
             handler(sanitizeText(text))
         }
