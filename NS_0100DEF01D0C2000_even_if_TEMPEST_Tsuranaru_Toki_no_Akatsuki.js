@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [010095E01581C000] even if TEMPEST: Tsuranaru Toki no Akatsuki
+// @name         [0100DEF01D0C2000] even if TEMPEST: Tsuranaru Toki no Akatsuki
 // @version      1.0.2
 // @author       Mansive
 // @description  Ryujinx
