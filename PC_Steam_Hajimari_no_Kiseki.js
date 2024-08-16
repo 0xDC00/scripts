@@ -65,7 +65,9 @@ function sanitizeText(some_text){
             var pointer = args[2]
             if(pointer.readU8() == 0x11) {
                 pointer = pointer.add(0x05)
-                if(pointer.readU8() == 0x23) pointer = pointer.add(0x6)
+                while((pointer.readU8()^0xE0)>0xF){
+                    pointer=pointer.add(0x1)
+                }
             }
             try{
                 text = pointer.readUtf8String()
