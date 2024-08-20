@@ -8,17 +8,7 @@
 // ==/UserScript==
 trans.replace(function (s) {
     return s
-        .replace(/#Pos\[[\s\S]*?\]/g, '')
-
-        .replaceAll(/Pos\[[\s\S]*?\]/g, '')
-        .replaceAll(/Scale\[[\s\S]*?\]/g, '')
-        .replaceAll(/#Scale\[[\s\S]*?\]/g, '')
-        .replaceAll(/#Color\[[\s\S]*?\]/g, '')
-        .replaceAll(/Color\[[\s\S]*?\]/g, '')
-        .replaceAll(/#Speed\[[\s\S]*?\]/g, '')
-        .replaceAll(/Speed\[[\s\S]*?\]/g, '')
-        .replaceAll(/#Effect\[[\s\S]*?\]/g, '')
-        .replaceAll(/Effect\[[\s\S]*?\]/g, '')
+       .replaceAll(/<\w+=[^>]+>|<\/\w+>/g, '')
 
         ;
 });
