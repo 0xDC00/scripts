@@ -8,7 +8,7 @@
 // ==/UserScript==
 trans.replace(function (s) {
     return s
-       .replaceAll(/<\w+=[^>]+>|<\/\w+>/g, '')
+        .replaceAll(/<\w+=[^>]+>|<\/\w+>/g, '')
 
         ;
 });
@@ -26,7 +26,7 @@ setHook({
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
-    //console.log('onEnter ' + hookname);
+    
 
     const address = regs[index].value;
     //console.log("onEnter: " + hookname);
