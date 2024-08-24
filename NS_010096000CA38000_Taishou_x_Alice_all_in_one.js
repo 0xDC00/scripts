@@ -30,8 +30,16 @@ let inMenu = false;
 let previous = "";
 let previousImmediate = "";
 
+function bracketsMatch(text) {
+  return (
+    (text.at(0) === "「" && text.at(-1) === "」") ||
+    (text.at(0) === "『" && text.at(-1) === "』") ||
+    (text.at(0) === "（" && text.at(-1) === "）")
+  );
+}
 function resetOpenTimer() {
   open = false;
+  delayed = false;
 
   clearTimeout(timer);
   timer = setTimeout(() => {
@@ -51,9 +59,8 @@ function handler(regs, index, hookname) {
 
   let s = address
     .readUtf16String()
-    .replace(/^.+@/, "") // remove names '$t1オイゲン@「そう」' to '「そう」'
     .replace(/\$\w{1,2}/g, "") // remove noise '$A1'
-    .replace(/\$\[|\$\/.+]/g, ""); // remove furigana '$[彷徨$/さまよ$]' to '彷徨'
+    .replace(/\$\[|\$\/.+?]/g, ""); // remove furigana '$[彷徨$/さまよ$]' to '彷徨'
 
   // prevent backlog spam
   if (s === "＿" || (s === previous && delayed === false)) {
@@ -61,14 +68,27 @@ function handler(regs, index, hookname) {
     return null;
   }
 
+  // remove names '$t1オイゲン@「そう」' to '「そう」'
+  // if length has decreased after name removal, it means the text was dialogue
+  let isDialogue = false;
+  if (s.length > (s = s.replace(/^.+@/, "")).length) {
+    isDialogue = true;
+  }
+
   if (delayed === true) {
     s = (previousImmediate + s).trim();
-    delayed = false;
+    if (bracketsMatch(s) === true) {
+      delayed = false;
+    }
   }
   previousImmediate = s;
 
   // missing closing bracket means it's probably dialogue with delayed text
-  if (s.at(0).search(/[「『（]/) === 0 && s.at(-1).search(/[」』）]/) === -1) {
+  if (
+    isDialogue === true &&
+    hookname === "text" &&
+    bracketsMatch(s) === false
+  ) {
     delayed = true;
   }
 
@@ -82,7 +102,6 @@ function handler(regs, index, hookname) {
     } else {
       inMenu = false;
     }
-
     trans.send([...texts].join("\r\n")); // joins choices
     texts.clear();
   }, 200);
