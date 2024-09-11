@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [01003D2017FEA000] 十三支演義 偃月三国伝1・2 for Nintendo Switch
+// @name         [01003D2017FEA000] 十三支演義 偃月三国伝1・2 for Nintendo Switch (Juuzaengi ~Engetsu Sangokuden~)
 // @version      1.0.0
 // @author       [zooo]
 // @description  Yuzu
