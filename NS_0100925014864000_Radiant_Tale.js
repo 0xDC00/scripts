@@ -18,6 +18,7 @@ setHook({
         [0x80075190 - 0x80004000]: mainHandler.bind_(null, 1, "prompt"),
         [0x8002fb18 - 0x80004000]: mainHandler.bind_(null, 0, "name"),
         [0x8002fd7c - 0x80004000]: mainHandler.bind_(null, 0, "text"),
+        [0x8004cf28 - 0x80004000]: mainHandler.bind_(null, 1, "choices"),
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
