@@ -28,7 +28,7 @@ function handler(regs, index, hookname) {
 
   let s = address
     .readUtf8String()
-    .replace(/^\s|\s$/g, "")
+    .replace(/^\s+|\s+$/g, "")
     .replace(/\s*(#n)*\s*/g, "")
     .replace(/#\w+(\[.+?\])?/g, "");
 
