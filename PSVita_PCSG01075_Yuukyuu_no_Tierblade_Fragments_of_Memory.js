@@ -34,7 +34,7 @@ function handler(regs, index, hookname) {
   if (hookname === "text") {
     // frag H can be called in backlog; disable it when advancing text
     open = false;
-  } else if (hookname === "title screen" || hookname === "frag vertical") {
+  } else if (hookname === "title screen") {
     // we're back in title screen, so it's fine to re-enable frag H
     open = true;
     return null;
