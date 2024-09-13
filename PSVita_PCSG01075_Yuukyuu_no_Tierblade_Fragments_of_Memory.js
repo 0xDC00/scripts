@@ -10,7 +10,6 @@ const { setHook } = require("./libVita3k.js");
 
 // const mainHandler = trans.send(handler, "700+"); // lines up name with text but very slow
 const mainHandler = trans.send(handler, "200+");
-const DEADHandler = trans.send(() => {}, "200+");
 
 setHook({
   0x80035f44: mainHandler.bind_(null, 10, "text"),
