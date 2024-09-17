@@ -1,9 +1,10 @@
 // ==UserScript==
-// @name         Higurashi
+// @name         Higurashi When They Cry Hou
 // @version      
 // @author       samheiden
 // @description  Steam
-// *
+// * 07th Expansion
+// * MangaGamer
 // * Unity (JIT)
 //
 // https://store.steampowered.com/app/310360/Higurashi_When_They_Cry_Hou__Ch1_Onikakushi/
