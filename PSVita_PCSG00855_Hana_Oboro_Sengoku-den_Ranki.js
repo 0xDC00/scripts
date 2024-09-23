@@ -16,11 +16,12 @@ setHook({
   // 0x80014e78: mainHandler.bind_(null, 8, "name"),
   0x80037600: mainHandler.bind_(null, 6, "text"),
   0x80036580: mainHandler.bind_(null, 6, "choice"),
-  0x801a2ada: dictHandler.bind_(null, 0, "dict word"),
-  0x801a2ba8: dictHandler.bind_(null, 0, "dict meaning"),
+  0x801a2ada: dictHandler.bind_(null, 0, "word"),
+  0x801a2ba8: dictHandler.bind_(null, 0, "meaning"),
 });
 
-let previous = "";
+let previousWord = "";
+let previousMeaning = "";
 
 function handler(regs, index, hookname) {
   const address = regs[index].value;
@@ -41,10 +42,15 @@ function handler2(regs, index, hookname) {
   const address = regs[index].value;
   let s = address.readUtf8String();
 
-  if (s === previous) {
+  if (s === previousWord || s === previousMeaning) {
     return null;
   }
-  previous = s;
+
+  if (hookname === "word") {
+    previousWord = s;
+  } else if (hookname === "meaning") {
+    previousMeaning = s;
+  }
 
   // fix up dictionary text
   s = s
