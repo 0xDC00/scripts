@@ -16,8 +16,12 @@ setHook({
   // 0x80014e78: mainHandler.bind_(null, 8, "name"),
   0x80037600: mainHandler.bind_(null, 6, "text"),
   0x80036580: mainHandler.bind_(null, 6, "choice"),
+  // select entry, back out
   0x801a2ada: dictHandler.bind_(null, 0, "word"),
   0x801a2ba8: dictHandler.bind_(null, 0, "meaning"),
+  // switch between entries without backing out
+  0x801a2d9e: dictHandler.bind_(null, 0, "word"),
+  0x801a2e68: dictHandler.bind_(null, 0, "meaning"),
 });
 
 let previousWord = "";
@@ -34,6 +38,9 @@ function handler(regs, index, hookname) {
   if (s === "") {
     return null;
   }
+
+  previousWord = "";
+  previousMeaning = "";
 
   return s;
 }
