@@ -25,7 +25,7 @@ function ChoicesHandler(regs, index, hookname) {
     let address = regs[index].value;
     let s = address.readShiftJisString();
     
-    //if sentence ends with punctions assume it's not a choice
+    //if sentence ends with punctuations assume it's not a choice
     let doesNotEndWithPunctuation = /[^…。！？]$/.test(s);
     if (doesNotEndWithPunctuation)
         return s;
