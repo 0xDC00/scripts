@@ -1,23 +1,39 @@
 // ==UserScript==
 // @name         [NPJH50127] Tokimeki Memorial 4
 // @version      0.1
-// @author       [Levanphoenix]
+// @author       Levanphoenix
 // @description  PPSSPP x64
 // * 
 // * 
-// KnownIssues: character names not shown,only last choise gets captured, menu item descriptions not captured.
+// KnownIssues: menu item descriptions not captured.
 // Not Tested: doki doki mode.
 // ==/UserScript==
 const { setHook } = require("./libPPSSPP.js");
 
+const mainHandler = trans.send(MainHandler, -200);
+const mailHandler = trans.send(MailHandler, -200);
+const choicesHandler = trans.send(ChoicesHandler, '400+');
+
 setHook({
-    0x899a510: trans.send(MailHandler, 400), // mail
-    0x88719dc: trans.send(MainHandler, 400) // main handler
+    0x899a510: mailHandler.bind_(null,2,"mail"), // mail
+    0x88719dc: mainHandler.bind_(null,1,"text"), // text handler(no choices)
+    0x8850270: choicesHandler.bind_(null,1,"choices"), // text(no names,no tutorial texts) + choices
 });
 
-function MainHandler(regs) {
+function ChoicesHandler(regs, index, hookname) {
 
-    let address = regs[1].value;
+    let address = regs[index].value;
+    let s = address.readShiftJisString();
+    
+    //if sentence ends with punctions assume it's not a choice
+    let doesNotEndWithPunctuation = /[^…。！？]$/.test(s);
+    if (doesNotEndWithPunctuation)
+        return s;
+}
+
+function MainHandler(regs, index, hookname) {
+
+    let address = regs[index].value;
     let s = address.readShiftJisString();
     //console.log("Main handler");
 
@@ -26,9 +42,9 @@ function MainHandler(regs) {
     return cleanedText;
 }
 
-function MailHandler(regs) {
+function MailHandler(regs, index, hookname) {
 
-    let address = regs[2].value;
+    let address = regs[index].value;
     let s = address.readShiftJisString();
     //console.log("Mail handler");
     let fixedText = s.replace(/\\n/g, '\n');
