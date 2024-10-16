@@ -2,7 +2,7 @@
 // @name         [01000BB01CB8A000] Moeyo! Otome Doushi ~Kayuu Koigatari~ (燃えよ！ 乙女道士 ～華遊恋語～)
 // @version      1.0.0
 // @author       Mansive
-// @description  Sudachi, Ryujinx
+// @description  Ryujinx
 // * Otomate
 // * Design Factory Co., Ltd. & Idea Factory Co., Ltd.
 // ==/UserScript==
