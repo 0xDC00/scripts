@@ -5,6 +5,7 @@
 // @description  Yuzu/Sudachi, Ryujinx
 // * TAKUYO
 // ==/UserScript==
+
 const gameVer = '1.0.0';
 
 globalThis.ARM = true;
@@ -16,6 +17,7 @@ setHook({
         [0x2210d0 - 0x204000]: mainHandler.bind_(null, 0, "text"),    // dialogue + names
         [0x221768 - 0x204000]: mainHandler.bind_(null, 0, "choices"),
  }  
+
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
 function handler(regs, index, hookname) {
@@ -28,7 +30,7 @@ function handler(regs, index, hookname) {
         .replace(/(\\n)+/g, ' ')  
         .replace(/\\d$|^\@[a-z]+|#.*?#|\$/g, '')
         .replace(/\u3000+/gu, '')
-        .replace(/@w/g, '');
+        .replace(/@w|\\c/g, '');
         
     if (hookname === "choices") {
     s = s.replace(/, ?\w+/g, '');
