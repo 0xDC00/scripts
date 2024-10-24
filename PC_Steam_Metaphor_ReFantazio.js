@@ -9,12 +9,24 @@
 
 
 const __e = Process.enumerateModules()[0];
-const handlerLine = trans.send((s) => s, '250+');
+
+let textSet = new Set();
+let timerText
+function handlerLine(s) {
+    textSet.add(s);
+
+    clearTimeout(timerText);
+    timerText = setTimeout(() => {
+        const s = [...textSet].join('\r\n');
+        trans.send(s);
+        textSet.clear();
+    }, 250);
+}
 
 const hookFilterPatterns = [
     {
         name: 'TextPattern',
-        desc: 'Subtitles, dialogue, inner-thought',
+        desc: 'Subtitles, dialogue, inner-thought and more...',
         pattern: '90 4C 8D 85 90 00 00 00 33 D2',
         enabled: true
     },
@@ -22,6 +34,12 @@ const hookFilterPatterns = [
         name: 'NamePattern',
         desc: 'Name associated with the text',
         pattern: '90 48 8B 8D C0 00 00 00 EB 0C',
+        enabled: true
+    },
+    {
+        name: 'ChoicePattern',
+        desc: 'Choice when a npc ask you a question',
+        pattern: '90 48 83 7c 24 60 00',
         enabled: true
     }
 ];
@@ -49,23 +67,18 @@ Interceptor.attach(tagFunctionAddr, {
         // ...
     },
     onLeave(retVal) {
-        const callstack = Thread.backtrace(this.context, Backtracer.FUZZY);
-        // console.warn('called from:\n\t' +
-        //     stack.join('\n\t'));
-        // console.error(`sp = ${this.returnAddress}`);
-        //console.log(JSON.stringify(stack, null, 4));
-        for(let callstackaddr of callstack) {
-            if(shouldNotFilter(callstackaddr, addresses))
-            {
-                const address = retVal.readPointer();
-                const str_ptr = address.readPointer();
-                const str_end_ptr = address.add(8).readPointer();
-                const len = str_end_ptr - str_ptr;
-                //console.warn(hexdump(str_ptr, { length: 0x100 }))
-                let str = str_ptr.readUtf32StringLE(len);
-                str = str.replaceAll("\n", " ");
-                handlerLine(str);
-            }
+        //const callstack = Thread.backtrace(this.context, Backtracer.FUZZY);
+        //console.error(`sp = ${this.returnAddress}`);
+        if(shouldNotFilter(this.returnAddress, addresses))
+        {
+            const address = retVal.readPointer();
+            const str_ptr = address.readPointer();
+            const str_end_ptr = address.add(8).readPointer();
+            const len = str_end_ptr - str_ptr;
+            //console.warn(hexdump(str_ptr, { length: 0x100 }))
+            let str = str_ptr.readUtf32StringLE(len);
+            str = str.replaceAll("\n", " ");
+            handlerLine(str);
         }
     }
     
