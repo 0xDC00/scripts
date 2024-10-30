@@ -1,23 +1,25 @@
 // ==UserScript==
-// @name         [0100F9D00C186000] Olympia Soiree
+// @name         [0100F9D00C186000] Olympia Soiree (オランピアソワレ)
 // @version      1.0.0
-// @author       [Owlie]
+// @author       [Owlie], Mansive
 // @description  Yuzu, Ryujinx
-// * 	HYDE, Inc. & Otomate
-// *
+// * HYDE, Inc. & Otomate
+// * Idea Factory Co., Ltd.
 // ==/UserScript==
 const gameVer = "1.0.0";
 
 const { setHook } = require("./libYuzu.js");
 
 const mainHandler = trans.send(handler, "200++");
+const choiceHandler = trans.send(handler, "200+");
 const popupDictHandler = trans.send(handler2, "200");
 const menuDictHandler = trans.send(handler3, "200");
 
 setHook(
   {
     "1.0.0": {
-      [0x8002ad04 - 0x80004000]: mainHandler.bind_(null, 0, "text"),
+      [0x8002ad60 - 0x80004000]: mainHandler.bind_(null, 31, "text"), // good
+      [0x8004b9e0 - 0x80004000]: choiceHandler.bind_(null, 1, "choice"),
       [0x800add34 - 0x80004000]: popupDictHandler.bind_(null, 1, "popup dict"),
       [0x80059460 - 0x80004000]: menuDictHandler.bind_(null, 0, "menu dict"),
     },
@@ -27,18 +29,29 @@ setHook(
 const RE =
   /[\p{Script=Han}\p{Script=Katakana}\p{Script=Hiragana}！-～\u3000-\u303f]/u;
 let previous = "";
+let isChoice = false;
 
 function handler(regs, index, hookname) {
+  isChoice = hookname === "choice" ? true : false;
+
   const address = regs[index].value;
-  console.log("onEnter: ", hookname);
+  // console.log("onEnter: ", hookname);
   // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
   const s = address.readUtf8String();
+
+  if (s === "") {
+    return null;
+  }
 
   return s;
 }
 
 function handler2(regs, index, hookname) {
+  if (isChoice === true) {
+    return null;
+  }
+
   const address = regs[index].value;
   let temp = address;
   // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
