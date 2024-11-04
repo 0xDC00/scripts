@@ -20,11 +20,11 @@ setHook({
 let previous = "";
 
 function handler(regs, index, hookname) {
-    console.log('onEnter: ' + hookname);
+    // console.log('onEnter: ' + hookname);
 
     const address = regs[index].value;
 
-    console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+    // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
     const len = address.add(0x10).readU16() * 2;
     let s = address.add(0x14).readUtf16String(len);
 
@@ -33,6 +33,7 @@ function handler(regs, index, hookname) {
     s = s
     .replace(/(<cspace=[^>]*>)(.*?)(<\/cspace>)/g, '') // Remove Furigana
     .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/\n/gu, "") // Remove Newline
     .replace(/\[.*?\]/g, '') // Remove anything inside []
     .replace(/^(?:メニュー|システム|Ver.)$(\r?\n|\r)?/gm, '') // Removing commands
     .replace(/^\s*$/gm, ''); // Remove empty lines
