@@ -28,7 +28,7 @@ function handler(regs, index, hookname) {
     const len = address.add(0x10).readU16() * 2;
     let s = address.add(0x14).readUtf16String(len);
 
-    console.log(s)
+    // console.log(s)
 
     s = s
     .replace(/(<cspace=[^>]*>)(.*?)(<\/cspace>)/g, '') // Remove Furigana
