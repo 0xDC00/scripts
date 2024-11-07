@@ -273,30 +273,14 @@ const ctx = {
     iopRegs
 }
 
-const dynarecCheckBreakpoint = symbols.find(x => x.name === 'dynarecCheckBreakpoint');
-
-// NOP dynarecCheckBreakpoint (for EE)
+// replace dynarecCheckBreakpoint (for EE)
 // This results in the same outcome as creating a breakpoint with an unsatisfiable condition in the UI (like 1 < 0)
-Memory.patchCode(dynarecCheckBreakpoint.address, dynarecCheckBreakpoint.size, function (code)
-  {
-    const cw = new X86Writer(code, {pc: dynarecCheckBreakpoint.address});
-    cw.putNopPadding(dynarecCheckBreakpoint.size);
-    cw.putRet();
-    cw.flush();
-  }
-);
+const dynarecCheckBreakpoint = symbols.find(x => x.name === 'dynarecCheckBreakpoint');
+Interceptor.replace(dynarecCheckBreakpoint.address, new NativeCallback(() => { return; }, 'void', []));
 
+// replace psxDynarecCheckBreakpoint (for IOP)
 const psxDynarecCheckBreakpoint = symbols.find(x => x.name === 'psxDynarecCheckBreakpoint');
-
-// NOP psxDynarecCheckBreakpoint (for IOP)
-Memory.patchCode(psxDynarecCheckBreakpoint.address, psxDynarecCheckBreakpoint.size, function (code)
-  {
-    const cw = new X86Writer(code, {pc: psxDynarecCheckBreakpoint.address});
-    cw.putNopPadding(psxDynarecCheckBreakpoint.size);
-    cw.putRet();
-    cw.flush();
-  }
-);
+Interceptor.replace(psxDynarecCheckBreakpoint.address, new NativeCallback(() => { return; }, 'void', []));
 
 async function setHookEE(object) {
     for (const key in object) {
