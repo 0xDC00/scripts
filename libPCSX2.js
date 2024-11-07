@@ -31,7 +31,7 @@ Interceptor.attach(recRecompile, {
         if (op !== undefined) {
             console.log('Attach EE:', ptr(startpc));
             Breakpoint.add(recPtr, () => {
-                op.call(op[0], ctx);
+                op.call(op[0], context);
             });
         }
 
@@ -51,7 +51,7 @@ Interceptor.attach(iopRecRecompile, {
         if (op !== undefined) {
             console.log('Attach IOP:', ptr(startpc));
             Breakpoint.add(recPtr, () => {
-                op.call(op[0], ctx);
+                op.call(op[0], context);
             });
         }
         // console.log('iopRecRecompile: 0x' + startpc.toString(16) + ' -> ' + recPtr);
@@ -64,7 +64,6 @@ const eeMem = symbols.find(x => x.name === 'eeMem').address.readPointer();
 const cpuRegsPtr = symbols.find(x => x.name === '_cpuRegistersPack').address;
 const iopMem = symbols.find(x => x.name ===  'iopMem').address.readPointer();
 const psxRegsPtr = symbols.find(x => x.name === 'psxRegs').address;
-
 
 // regs functions take a Typed Array View and run the constructor
 // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Typed_arrays)
@@ -266,7 +265,7 @@ const iopRegs = {
     }
 }
 
-const ctx = {
+const context = {
     eeMem,
     eeRegs,
     iopMem,
@@ -299,12 +298,18 @@ async function setHookIOP(object) {
             const element = object[key];
             operations[key] = element;
             var addBp = new NativeFunction(recAddBreakpoint, 'void', ['uint8', 'uint32', 'bool', 'bool']);
-            addBp(0x00, parseInt(key), 0x00, 0x01);
+            addBp(0x02, parseInt(key), 0x00, 0x01);
         }
     }
 }
 
+function asPsxPtr(bytes)
+{
+    return context.eeMem.add(ptr(new Uint32Array(bytes)[0]));
+}
+
 module.exports = exports = {
     setHookEE,
-    setHookIOP
+    setHookIOP,
+    asPsxPtr
 }
