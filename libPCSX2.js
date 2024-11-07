@@ -40,7 +40,7 @@ Interceptor.attach(recRecompile, {
 function jitAttachEE(startpc, recPtr, op)
 {
     const thiz = Object.create(null, {});
-    thiz.context = context;
+    thiz.context = eeContext;
 
     Breakpoint.add(recPtr, () => {
         op.call(thiz, op[0]);
@@ -71,7 +71,7 @@ Interceptor.attach(iopRecRecompile, {
 function jitAttachIOP(startpc, recPtr, op)
 {
     const thiz = Object.create(null, {});
-    thiz.context = context;
+    thiz.context = iopContext;
 
     Breakpoint.add(recPtr, () => {
         op.call(thiz, op[0]);
@@ -84,14 +84,15 @@ function jitAttachIOP(startpc, recPtr, op)
 
 const symbols = Process.mainModule.enumerateSymbols();
 
-const eeMem = symbols.find(x => x.name === 'eeMem').address.readPointer();
 const cpuRegsPtr = symbols.find(x => x.name === '_cpuRegistersPack').address;
-const iopMem = symbols.find(x => x.name ===  'iopMem').address.readPointer();
+const eeMem = symbols.find(x => x.name === 'eeMem').address.readPointer();
 const psxRegsPtr = symbols.find(x => x.name === 'psxRegs').address;
+const iopMem = symbols.find(x => x.name ===  'iopMem').address.readPointer();
 
 // regs functions take a Typed Array View and run the constructor
 // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Typed_arrays)
-const eeRegs = {
+const eeContext = {
+    mem: eeMem,
     r0: function(view) {
         return new view(cpuRegsPtr.readByteArray(16))
     },
@@ -190,7 +191,8 @@ const eeRegs = {
     }
 }
 
-const iopRegs = {
+const iopContext = {
+    mem: iopMem,
     r0: function(view) {
         return new view(psxRegsPtr.readByteArray(4))
     },
@@ -289,13 +291,6 @@ const iopRegs = {
     }
 }
 
-const context = {
-    eeMem,
-    eeRegs,
-    iopMem,
-    iopRegs
-}
-
 // replace dynarecCheckBreakpoint (for EE)
 // This results in the same outcome as creating a breakpoint with an unsatisfiable condition in the UI (like 1 < 0)
 const dynarecCheckBreakpoint = symbols.find(x => x.name === 'dynarecCheckBreakpoint');
@@ -359,7 +354,7 @@ async function setHookIOP(object) {
 
 function asPsxPtr(bytes)
 {
-    return context.eeMem.add(ptr(new Uint32Array(bytes)[0]));
+    return eeContext.mem.add(ptr(new Uint32Array(bytes)[0]));
 }
 
 module.exports = exports = {
