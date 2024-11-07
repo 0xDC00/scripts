@@ -39,8 +39,11 @@ Interceptor.attach(recRecompile, {
 
 function jitAttachEE(startpc, recPtr, op)
 {
+    const thiz = Object.create(null, {});
+    thiz.context = context;
+
     Breakpoint.add(recPtr, () => {
-        op.call(op[0], context);
+        op.call(thiz, op[0]);
         sessionStorage.setItem('PCSX2_EE_' + Date.now(), {
             guest: startpc,
             host: recPtr
@@ -67,8 +70,11 @@ Interceptor.attach(iopRecRecompile, {
 
 function jitAttachIOP(startpc, recPtr, op)
 {
+    const thiz = Object.create(null, {});
+    thiz.context = context;
+
     Breakpoint.add(recPtr, () => {
-        op.call(op[0], context);
+        op.call(thiz, op[0]);
         sessionStorage.setItem('PCSX2_IOP_' + Date.now(), {
             guest: startpc,
             host: recPtr
