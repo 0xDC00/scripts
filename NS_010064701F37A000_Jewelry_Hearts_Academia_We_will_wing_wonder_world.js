@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [010064701f37a000]Jewelry Hearts Academia -We will wing wonder world- 
 // @version      1.0.0
-// @author       GO123
+// @author       GO123 (With help from Koukdw)
 // @description  Ryujinx
 // * ENTERGRAM
 // * 
