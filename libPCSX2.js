@@ -30,14 +30,23 @@ Interceptor.attach(recRecompile, {
         const op = operations[startpc];
         if (op !== undefined) {
             console.log('Attach EE:', ptr(startpc));
-            Breakpoint.add(recPtr, () => {
-                op.call(op[0], context);
-            });
+            jitAttachEE(startpc, recPtr, op);
         }
 
         // console.log('recRecompile: 0x' + startpc.toString(16) + ' -> ' + recPtr);
     }
 });
+
+function jitAttachEE(startpc, recPtr, op)
+{
+    Breakpoint.add(recPtr, () => {
+        op.call(op[0], context);
+        sessionStorage.setItem('PCSX2_EE_' + Date.now(), {
+            guest: startpc,
+            host: recPtr
+        });
+    });
+}
 
 Interceptor.attach(iopRecRecompile, {
     onEnter(args) {
@@ -50,13 +59,22 @@ Interceptor.attach(iopRecRecompile, {
         const op = operations[startpc];
         if (op !== undefined) {
             console.log('Attach IOP:', ptr(startpc));
-            Breakpoint.add(recPtr, () => {
-                op.call(op[0], context);
-            });
+            jitAttachIOP(startpc, recPtr, op);
         }
         // console.log('iopRecRecompile: 0x' + startpc.toString(16) + ' -> ' + recPtr);
     }
 });
+
+function jitAttachIOP(startpc, recPtr, op)
+{
+    Breakpoint.add(recPtr, () => {
+        op.call(op[0], context);
+        sessionStorage.setItem('PCSX2_IOP_' + Date.now(), {
+            guest: startpc,
+            host: recPtr
+        });
+    });
+}
 
 const symbols = Process.mainModule.enumerateSymbols();
 
@@ -290,6 +308,21 @@ async function setHookEE(object) {
             addBp(0x01, parseInt(key), 0x00, 0x01);
         }
     }
+
+    Object.keys(sessionStorage).map(key => {
+        const value = sessionStorage.getItem(key);
+        if (key.startsWith('PCSX2_EE_') === true) {
+            try {
+                const startpc = value.guest;
+                const recPtr = ptr(value.host);
+                const op = operations[startpc.toString()];
+                jitAttachEE(startpc, recPtr, op);
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
+    });
 }
 
 async function setHookIOP(object) {
@@ -301,6 +334,21 @@ async function setHookIOP(object) {
             addBp(0x02, parseInt(key), 0x00, 0x01);
         }
     }
+
+    Object.keys(sessionStorage).map(key => {
+        const value = sessionStorage.getItem(key);
+        if (key.startsWith('PCSX2_IOP_') === true) {
+            try {
+                const startpc = value.guest;
+                const recPtr = ptr(value.host);
+                const op = operations[startpc.toString()];
+                jitAttachIOP(startpc, recPtr, op);
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
+    });
 }
 
 function asPsxPtr(bytes)
