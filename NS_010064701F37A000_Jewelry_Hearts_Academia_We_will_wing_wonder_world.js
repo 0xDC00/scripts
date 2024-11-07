@@ -10,7 +10,7 @@ const gameVer = '1.0.0';
 
 const { setHook } = require('./libYuzu.js');
 
-const mainHandler = trans.send(handler, '200++'); // join 200ms
+const mainHandler = trans.send(handler, '200+'); // join 200ms
 
 setHook({
     '1.0.0': {
