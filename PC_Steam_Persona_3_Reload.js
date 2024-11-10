@@ -32,6 +32,10 @@ let patterns = {
 }
 
 console.log(`
+EDIT: This script is broken in latest version of P3R, i don't have gamepass anymore so i  can't fix it.
+So either give up or download an old version with depot_downloader
+
+
 Supported (Non exhaustive, i need some test to know that):
 * Self dialogue (Mind)
 * Dialogue
