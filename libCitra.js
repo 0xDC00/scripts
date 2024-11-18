@@ -1,5 +1,5 @@
 // @name         Citra JIT Hooker
-// @version      nightly-1757+ - https://github.com/citra-emu/citra-nightly/releases
+// @version      r608383e - https://github.com/PabloMK7/citra/releases/tag/r608383e
 // @author       [DC]
 // @description  windows, linux, macOS (x64)
 
@@ -52,9 +52,10 @@ function getDoJitAddress() {
         // Unix
         // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm.cold
         const names = [
-            '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm', // linux x64
-            // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm
-            'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)' // macOS x64 (demangle)
+            "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm", // linux 64 new
+            "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m", // linux x64
+            // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
+            "Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)", // macOS x64 (demangle)
         ];
         for (const name of names) {
             const addresss = DebugSymbol.findFunctionsNamed(name);
@@ -66,11 +67,63 @@ function getDoJitAddress() {
     else {
         const __e = Process.enumerateModules()[0];
 
-        // Windows MingGW x64 Citra
-        const RegisterBlockSig2 = '41 57 41 56 41 55 41 54 55 57 56 53 48 81 EC C8 00 00 00 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 48 8B';
-        const second = Memory.scanSync(__e.base, __e.size, RegisterBlockSig2)[0];
-        if (second) {
-            return second.address;
+        console.warn("Find RegisterBlock");
+        // Windows MSVC x64 2019 (v996-) + 2022 (v997+)
+        const RegisterBlockSig1 =
+            "E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89";
+        const RegisterBlock = Memory.scanSync(
+            __e.base,
+            __e.size,
+            RegisterBlockSig1
+        )[0];
+        if (RegisterBlock) {
+            const beginSubSig1 = "CC 40 5? 5? 5?";
+            const lookbackSize = 0x400;
+            const address = RegisterBlock.address.sub(lookbackSize);
+            const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
+            if (subs.length !== 0) {
+                return subs[subs.length - 1].address.add(1);
+            }
+        }
+
+        console.warn("Find Patch");
+        // fallback to Patch when RegisterBlock not found (wrong signature or target inlined)
+        const PatchSig1 =
+            "4????? 4????? 4????? FF?? ?? 4????? ?? 4????? 75 ?? 4????? ?? 4?";
+        const Patch = Memory.scanSync(__e.base, __e.size, PatchSig1)[0];
+        if (Patch) {
+            const beginSubSig1 = "4883EC ?? 48";
+            const lookbackSize = 0x80;
+            const address = Patch.address.sub(lookbackSize);
+            const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
+            if (subs.length !== 0) {
+                idxDescriptor = 1;
+                idxEntrypoint = 2;
+                return subs[subs.length - 1].address;
+            }
+        }
+
+        console.warn("Sym RegisterBlock");
+        // DebugSymbol: RegisterBlock
+        // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX_K@Z <- new
+        // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
+        const symbols = DebugSymbol.findFunctionsMatching(
+            "Dynarmic::Backend::X64::EmitX64::RegisterBlock"
+        );
+        if (symbols.length !== 0) {
+            return symbols[0];
+        }
+
+        console.warn("Sym Patch");
+        // DebugSymbol: Patch
+        // ?Patch@EmitX64@X64@Backend@Dynarmic@@IEAAXAEBVLocationDescriptor@IR@4@PEBX@Z
+        const patchs = DebugSymbol.findFunctionsMatching(
+            "Dynarmic::Backend::X64::EmitX64::Patch"
+        );
+        if (patchs.length !== 0) {
+            idxDescriptor = 1;
+            idxEntrypoint = 2;
+            return patchs[0];
         }
     }
 
