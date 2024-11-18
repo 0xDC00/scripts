@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [00001595] Shin Megami Tensei: Devil Survivor 2: Record Breaker (USA)
+// @name         [0004000000159500] Shin Megami Tensei: Devil Survivor 2 Record Breaker (USA)
 // @version      0.1
 // @author       [DC]
 // @description  Citra
