@@ -1,8 +1,9 @@
 // ==UserScript==
-// @name         PS2_SLPS-25332_SNOW.js
-// @version      0.0
+// @name         [SLPS25332] SNOW
+// @version      0.1
 // @author       logantgt
 // @description  PCSX2 x64
+// * Interchannel/Prototype Legacy Engine
 // ==/UserScript==
 
 const { setHookEE, asPsxPtr } = require("./libPCSX2.js");

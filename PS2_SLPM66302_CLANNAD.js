@@ -1,8 +1,9 @@
 // ==UserScript==
-// @name         PS2_SLPM-66302_Clannad.js
-// @version      0.0
+// @name         [SLPM66302] CLANNAD
+// @version      0.1
 // @author       logantgt
 // @description  PCSX2 x64
+// * Interchannel/Prototype Legacy Engine
 // ==/UserScript==
 
 const { setHookEE } = require("./libPCSX2.js");
