@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [010079200C26E000] Gensou Kissa Enchanté
-// @version      1.0.4
+// @version      1.0.0
 // @author       Mansive
 // @description  Yuzu, Ryujinx
 // * Design Factory Co., Ltd. & Otomate
