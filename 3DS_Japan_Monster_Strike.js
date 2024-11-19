@@ -23,7 +23,7 @@ function handler(regs, index) {
 
     // filters
     s = s
-        .replace(/(\n)+/g, ' ') // page break
+        .replace(/(\n)+/g, '　') // page break
         ;
 
     return s;
