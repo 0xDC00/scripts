@@ -18,12 +18,11 @@ setHook({
         [0x819ade74 - 0x80004000]: mainHandler.bind_(null, 1, "text1"),
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
-let previous = "";
+
 function handler(regs, index, hookname) {
-    const reg = regs[index];
+    const address = regs[index].value;
     // console.log('onEnter: ' + hookname);
-    const address = reg.value;
-    console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+    //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
     /* processString */
     const len = address.add(0x10).readU32() * 2;
     let s = address.add(0x14).readUtf16String(len)
