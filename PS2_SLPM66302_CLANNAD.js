@@ -6,8 +6,7 @@
 // * Interchannel/Prototype Legacy Engine
 // ==/UserScript==
 
-const { setHookEE } = require("./libPCSX2.js");
-const { asPsxPtr } = require("./libPCSX2.js");
+const { setHookEE, asPsxPtr } = require("./libPCSX2.js");
 
 setHookEE({
     0x14AC38: trans.send(handler)
