@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [SLPS25332] SNOW
-// @version      0.1
+// @version      0.2
 // @author       logantgt
 // @description  PCSX2 x64
 // * Interchannel/Prototype Legacy Engine
@@ -15,20 +15,25 @@ setHookEE({
 });
 
 function handler(args) {
-        /* processString */
         let s = "";
+
+        // Read string at right position
         if(new Uint8Array(this.context.a0(asPsxPtr).readByteArray(1))[0] == 0x2C) {
-          s = this.context.a0(asPsxPtr).add(1).readCustomString(enc).split('($5200)')[0];
+          s = this.context.a0(asPsxPtr).add(1).readCustomString(enc);
         }
         else {
-          s = this.context.a0(asPsxPtr).readCustomString(enc).split('($5200)')[0];
+          s = this.context.a0(asPsxPtr).readCustomString(enc);
         }
         
-        s = s 
+        // Process string, replace MC name variables
+        s = s
+        .split('($')[0]
         .replace(/(\\n)+/g, ' ')  
         .replace(/\\d$|^\@[a-z]+|#.*?#|\$/g, '')
         .replace(/\u3000+/gu, '')
         .replace(/@w|\\c/g, '')
+        .replace("＊Ａ", "出雲")
+        .replace("＊Ｂ", "彼方")
 
         return s;        
 }
