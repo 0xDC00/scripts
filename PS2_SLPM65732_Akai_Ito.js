@@ -12,8 +12,8 @@ setHookEE({
 });
 
 function handler(args) {
-        // don't read character names
-        if(this.context.t0(Uint32Array)[0] == 0x49FB40) return;
+        // return if not dialogue buffer
+        if(this.context.t0(Uint32Array)[0] != 0x49F8B0) return;
 
         let s = this.context.t0(asPsxPtr).readShiftJisString();
         
