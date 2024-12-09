@@ -24,17 +24,3 @@ function handler(args) {
 
     return s.trim();
 }
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
