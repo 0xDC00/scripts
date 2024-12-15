@@ -313,7 +313,7 @@ function rumorNameHandler(regs, index, name) {
   const address = regs[index];
   const text = address.readUtf8String();
 
-  genericHandler2(text, 250);
+  genericHandler2(text);
   return text;
 }
 
@@ -321,7 +321,7 @@ function questNameHandler(regs, index, name) {
   const address = regs[index];
   const text = address.readPointer().readUtf8String();
 
-  genericHandler2(text, 250);
+  genericHandler2(text);
   return text;
 }
 
