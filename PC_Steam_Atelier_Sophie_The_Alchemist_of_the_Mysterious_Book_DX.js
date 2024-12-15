@@ -21,8 +21,9 @@ let timer3 = null;
 
 let previous = "";
 
-let texts1 = new Set();
-let texts2 = new Set();
+const texts1 = new Set();
+const texts2 = new Set();
+
 let topText = "";
 let middleText = "";
 const bottomTexts = new Set();
