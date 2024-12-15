@@ -130,7 +130,7 @@ function attach(name, pattern, register, handler) {
 
   Interceptor.attach(address, function (args) {
     if (hooksStatus[name].enabled === false) {
-      console.log(`skipped: ${name}`);
+      console.log("skipped: " + name);
       return null;
     }
 
@@ -154,7 +154,7 @@ function attachFast(name, pattern, register, handler) {
 
       Interceptor.attach(address, function () {
         if (hooksStatus[name].enabled === false) {
-          console.log(`skipped: ${name}`);
+          console.log("skipped: " + name);
           return null;
         }
 
@@ -551,13 +551,13 @@ ui.options = [
       },
     ],
     defaultValue: "DialogueText",
-    ephemeral: true,
   },
   {
     id: "selectedHookCharacterCount",
     type: "number",
     label: "Character count for selected hook",
-    help: "Displays the total number of characters outputted by the selected hook. Resets with each session.",
+    help: `Displays the total number of characters outputted by the selected hook.
+    <br>Resets with each session.`,
     readOnly: true,
     defaultValue: 0,
     ephemeral: true,
