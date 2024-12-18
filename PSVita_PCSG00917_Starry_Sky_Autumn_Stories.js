@@ -30,7 +30,7 @@ function handler(regs, index, hookname) {
   // console.log("onEnter: ", hookname);
   // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
-  let s = address.readShiftJisString().replace("%N", "");
+  const s = address.readShiftJisString().replace(/%N/g, "");
 
   return s;
 }
