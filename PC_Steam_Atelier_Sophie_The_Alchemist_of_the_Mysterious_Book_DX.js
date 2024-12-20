@@ -65,6 +65,7 @@ const hooks = [
   ["EventObjective", "E8 C66A2800", "rdx", scrollHandler3],
   ["StatusSkillName", "E8 A5E6F6FF", "rdx", mainHandler2],
   ["StatusSkillInfo", "E8 50EAF6FF", "rdx", scrollHandler],
+  ["StatusAbilityInfo", "E8 E3E9F6FF", "rdx", scrollHandler],
   ["ItemName", "E8 AA760900", "rdx", scrollHandler],
   ["RecipeName", "E8 D4E8F5FF", "rdx", scrollHandler],
   ["RecipeObtainedName", "E8 18792100", "rdx", scrollHandler2],
@@ -495,6 +496,7 @@ ui.options = [
       { value: "EventObjective", text: "EventObjective" },
       { value: "StatusSkillName", text: "StatusSkillName" },
       { value: "StatusSkillInfo", text: "StatusSkillInfo" },
+      { value: "StatusAbilityInfo", text: "StatusAbilityInfo" },
       { value: "ItemName", text: "ItemName" },
       { value: "RecipeName", text: "RecipeName" },
       { value: "RecipeObtainedName", text: "RecipeObtainedName" },
@@ -619,6 +621,7 @@ ui.options = [
       { value: "EventObjective", text: "EventObjective", selected: true },
       { value: "StatusSkillName", text: "StatusSkillName", selected: true },
       { value: "StatusSkillInfo", text: "StatusSkillInfo", selected: true },
+      { value: "StatusAbilityInfo", text: "StatusAbilityInfo", selected: true },
       { value: "ItemName", text: "ItemName", selected: true },
       { value: "RecipeName", text: "RecipeName", selected: true },
       {
