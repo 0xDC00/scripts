@@ -18,6 +18,7 @@ setHook(
       Ha9b2cf6f4d0bfe76: mainHandler.bind_(null, 0, "name"),
       H6334e8ad8bbcf969: mainHandler.bind_(null, 0, "text"),
       Hde8f0580587f1f6c: mainHandler.bind_(null, 0, "choice"),
+      H6390233a04312065: mainHandler.bind_(null, 0, "extra"),
     },
   }[(globalThis.gameVer = globalThis.gameVer ?? gameVer)]
 );
@@ -33,6 +34,7 @@ function handler(regs, index, hookname) {
     .add(0x14)
     .readUtf16String(len)
     .replace(/^\u3000|\n\u3000?/gu, "") // single line
+    .replace(/<[^>]+>/g, "")
     .trimEnd();
 
   if (s === "") {
