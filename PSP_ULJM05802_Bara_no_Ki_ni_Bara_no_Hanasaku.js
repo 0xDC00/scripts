@@ -11,7 +11,8 @@ const { setHook } = require("./libPPSSPP.js");
 const mainHandler = trans.send(handler, "200+");
 
 setHook({
-  0x880e6fc: mainHandler.bind_(null, 3, "text"),
+  0x880e6fc: mainHandler.bind_(null, 3, "name"),
+  0x880be70: mainHandler.bind_(null, 3, "text"),
 });
 
 function handler(regs, index, hookname) {
@@ -20,11 +21,17 @@ function handler(regs, index, hookname) {
   const address = regs[index].value;
   // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
-  const s = address
-    .readShiftJisString()
-    .replace(/^[^\r]+\r\n/, "") // remove name
-    .replace(/\r\n\u3000*/gu, "") // single line
-    .trim();
+  let s = address.readShiftJisString().replace(/\n/g, "");
+
+  if (hookname === "name") {
+    return s.replace(/\r.*/g, "");
+  } else if (hookname === "text") {
+    return s.replace(/^[^\r]+\r/, "").replace(/\r\u3000*/gu, ""); // single line
+  }
 
   return s;
 }
+
+trans.replace((s) => {
+  return s.trim();
+});
