@@ -12,8 +12,8 @@ const mainHandler = trans.send(handler, "200+");
 const choiceHandler = trans.send(handler2, "200+");
 
 setHook({
-  0x8863f60: mainHandler.bind_(null, 0, 0, "text"),
-  0x8863928: choiceHandler.bind_(null, 1, 0, "choice"),
+  0x8863f60: mainHandler.bind_(null, 0, "text"),
+  0x8863928: choiceHandler.bind_(null, 1, "choice"),
 });
 
 console.log(`
@@ -22,13 +22,13 @@ console.log(`
 
 let previous = "";
 
-function handler(regs, index, offset, hookname) {
+function handler(regs, index, hookname) {
   console.log("onEnter:", hookname);
 
   const address = regs[index].value;
   // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
-  let s = address.add(offset).readShiftJisString();
+  let s = address.readShiftJisString();
 
   if (s === previous) {
     return null;
@@ -43,11 +43,11 @@ function handler(regs, index, offset, hookname) {
   return s;
 }
 
-function handler2(regs, index, offset, hookname) {
+function handler2(regs, index, hookname) {
   // console.log("onEnter:", hookname);
 
   const address = regs[index].value;
-  const s = address.add(offset).readShiftJisString();
+  const s = address.readShiftJisString();
 
   if (s.startsWith("_SELR")) {
     console.log("attempt:", hookname);
