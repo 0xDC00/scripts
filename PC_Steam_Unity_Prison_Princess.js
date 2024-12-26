@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Prison Princess
 // @version      1.0
-// @author       Tom (tomrock645) with help of Koukdw
+// @author       Koukdw
 // @description  Steam
 // @developer & publisher: qureate
 //
