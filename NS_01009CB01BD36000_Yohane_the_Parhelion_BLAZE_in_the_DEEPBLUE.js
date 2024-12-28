@@ -58,6 +58,8 @@ function handler(regs, index, hookname)
       previousDescription = s;
     }
 
+    s = hardcode(s); // Some parts needing some hardcoding as the hook wouldn't grab the names.
+
     s = s
       .replace(/<[^>]+>/g, "")
       .replace(/^を\n/g, "[アイテム]を\n"); // Menu dialogue can't hook the name of an item, so this makes it generic
@@ -110,6 +112,43 @@ function processBinaryString(address, hookname)
 
     trans.send(s);
   }
+}
+
+function hardcode(s)
+{
+  // To include the members' names when upgrading their attacks.
+  if (s.includes("バップガンの弾がより遠くに飛ぶようになった")) // チカ
+      s = "チカ" + s;
+
+    else if (s.includes("地形を貫通する火炎魔法攻撃")) // リコ
+      s = "リコ" + s;
+
+    else if (s.includes("トノサマによる連続ラッシュパンチ")) // カナン
+      s = "カナン" + s;
+
+    else if (s.includes("ノートＰＣが強力な大爆発を起こす")) // ハナマル
+      s = "ハナマル" + s;
+
+    else if (s.includes("デルタによる電撃突進攻撃")) // ダイヤ
+      s = "ダイヤ" + s;
+
+    else if (s.includes("コットンキャンディが周囲のものを飲み込み始める")) // ルビィ 
+      s = "ルビィ" + s;
+
+    else if (s.includes("時間を凍てつかせ")) // マリ
+      s = "マリ" + s;
+
+    else if (s.includes("無敵の砲弾と化したヨハネがすべてを貫く")) // ヨウ
+      s = "ヨウ" + s;
+
+
+    // After talking to マリ at ヨハネ's for the first time
+    else if (s.includes("が購入可能になった")) 
+    s = "「シャイ煮」と「堕天使の涙」が購入可能になった！";
+
+
+    
+    return s;
 }
 
 
