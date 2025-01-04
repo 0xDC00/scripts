@@ -68,9 +68,6 @@ setHook({
 
 function handler(regs, index, hookname) {
     const reg = regs[index];
-    console.log('onEnter');
-
-
     console.log('onEnter: ' + hookname);
     const address = reg.value;
     console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
