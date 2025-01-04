@@ -13,7 +13,6 @@ trans.replace(function (s) {
 });
 //------------------------------------------------
 
-const decoder = new TextDecoder('utf-16');
 const { setHook } = require('./libYuzu.js');
 
 const nameHandler = trans.send(handler, '200+'); // join 250ms
