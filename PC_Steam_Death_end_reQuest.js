@@ -204,7 +204,7 @@ let menuPopUp = ""; // Initializing here for a condition check with menuInfo
 (function () {
     const helpSig = 'e8 ?? ?? ?? ?? ?? 89 7b 08?? 85 ff ?? 8b bc ?? ?? ?? ?? ?? 74'
     var results = Memory.scanSync(__e.base, __e.size, helpSig);
-    console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
         console.error('[helpPattern] Hook not found!');
