@@ -201,6 +201,29 @@ let menuPopUp = ""; // Initializing here for a condition check with menuInfo
 })();
 
 
+(function () {
+    const helpSig = 'e8 ?? ?? ?? ?? ?? 89 7b 08?? 85 ff ?? 8b bc ?? ?? ?? ?? ?? 74'
+    var results = Memory.scanSync(__e.base, __e.size, helpSig);
+    console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[helpPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[helpPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: help");
+
+        const helpAddress = this.context.rdx;
+        let help = helpAddress.readUtf8String();
+        help = cleanText(help);
+        mainHandler(help);
+    })
+})();
+
+
 let itemDescription = "temp text";  // Initializing it here due to a check with menuInformation
 (function () {
     const itemListSig = 'e8 ?? ?? ?? ?? 0f 28 b4 ?? ?? ?? ?? ?? 0f 28 bc ?? ?? ?? ?? ?? ?? 8b ?? ?? ?? ?? ?? ?? 33';
