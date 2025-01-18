@@ -16,6 +16,7 @@ console.warn("- It's possible some quests extract the completion message instead
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send(s => s, 200);
+const keyItemsHandler = trans.send(s => s, '200+');
 
 const encoder = new TextEncoder('utf-8');
 const decoder = new TextDecoder('utf-8');
@@ -46,7 +47,6 @@ let currentName = "";
 })();
 
 
-let currentText = "temporary text"; // Initializing it here for a condition with menuInformation
 (function () {
     const dialogueSig = 'e8 ?? ?? ?? ?? ?? 8b 4b 48 ?? 8d ?? ?? 20 ?? 8d 15 ?? ?? ?? ?? e8 ?? ?? ?? ?? ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8d';
     var results = Memory.scanSync(__e.base, __e.size, dialogueSig);
@@ -63,7 +63,7 @@ let currentText = "temporary text"; // Initializing it here for a condition with
         // console.warn("in: dialogue");
 
         const dialogueAddress = this.context.rsi;
-        currentText = dialogueAddress.readUtf8String();
+        let currentText = dialogueAddress.readUtf8String();
 
         if (!isNamed)
             mainHandler(currentText);
@@ -76,7 +76,6 @@ let currentText = "temporary text"; // Initializing it here for a condition with
 })();
 
 
-let choices = "temp text"; // Initializing here for a condition check with menuInfo;
 (function () {
     const choicesSig = 'e8 ?? ?? ?? ?? 33 ff ?? 83 c3 18'
     var results = Memory.scanSync(__e.base, __e.size, choicesSig);
@@ -93,7 +92,7 @@ let choices = "temp text"; // Initializing here for a condition check with menuI
         // console.warn("in: choices");
 
         const choicesAddress = this.context.rdx;
-        choices = choicesAddress.readUtf8String();
+        let choices = choicesAddress.readUtf8String();
 
         choices = readString(choicesAddress, "choices").trim();
         mainHandler(choices);
@@ -148,7 +147,6 @@ let choices = "temp text"; // Initializing here for a condition check with menuI
     })
 })();
 
-let menuPopUp = ""; // Initializing here for a condition check with menuInfo
 (function () {
     const menuPopUpSig = 'e8 ?? ?? ?? ?? ?? 8b 5c ?? ?? ?? 8b 74 ?? ?? ?? 8b c7 ?? 8b 6c';
     var results = Memory.scanSync(__e.base, __e.size, menuPopUpSig);
@@ -165,7 +163,7 @@ let menuPopUp = ""; // Initializing here for a condition check with menuInfo
         // console.warn("in: menuPopUp");
 
         const menuPopUpAddress = this.context.rbp;
-        menuPopUp = menuPopUpAddress.readUtf8String();
+        let menuPopUp = menuPopUpAddress.readUtf8String();
         menuPopUp = cleanText(menuPopUp);
 
         mainHandler(menuPopUp);
@@ -224,7 +222,6 @@ let menuPopUp = ""; // Initializing here for a condition check with menuInfo
 })();
 
 
-let itemDescription = "temp text";  // Initializing it here due to a check with menuInformation
 (function () {
     const itemListSig = 'e8 ?? ?? ?? ?? 0f 28 b4 ?? ?? ?? ?? ?? 0f 28 bc ?? ?? ?? ?? ?? ?? 8b ?? ?? ?? ?? ?? ?? 33';
     var results = Memory.scanSync(__e.base, __e.size, itemListSig);
@@ -241,7 +238,7 @@ let itemDescription = "temp text";  // Initializing it here due to a check with 
         // console.warn("in: itemList");
 
         const itemListAddress = this.context.rdi;
-        itemDescription = itemListAddress.readUtf8String();
+        let itemDescription = itemListAddress.readUtf8String();
 
         itemDescription = cleanText(itemDescription);
         mainHandler(itemDescription);
@@ -410,6 +407,52 @@ let itemDescription = "temp text";  // Initializing it here due to a check with 
         let difficulty = difficultyAddress.readUtf8String();
         difficulty = cleanText(difficulty);
         mainHandler(difficulty);
+    })
+})();
+
+
+(function () { // Irl main menu. I can't find a hook for the one from the battle select command screen
+    const battleJackMenuSig = 'e8 91 4f b4 ff';
+    var results = Memory.scanSync(__e.base, __e.size, battleJackMenuSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[battleJackMenuPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[battleJackMenuPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: battleJackMenu");
+
+        const battleJackMenuAddress = this.context.r8;
+        let battleJackMenu = battleJackMenuAddress.readUtf8String();
+        battleJackMenu = cleanText(battleJackMenu);
+        mainHandler(battleJackMenu);
+    })
+})();
+
+
+(function () { 
+    const keyItemsSig = 'e8 ?? ?? ?? ?? ff c7 ?? 83 c7 08';
+    var results = Memory.scanSync(__e.base, __e.size, keyItemsSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[keyItemsPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[keyItemsPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: keyItems");
+
+        const keyItemsAddress = this.context.rax;
+        let keyItems = keyItemsAddress.readUtf8String();
+        keyItems = cleanText(keyItems);
+        keyItemsHandler(keyItems);
     })
 })();
 
