@@ -16,7 +16,7 @@ console.warn("- If you skip an event the last message of that event will be extr
 
 
 const __e = Process.enumerateModules()[0];
-const mainHandler = trans.send(s => s, 200);
+const mainHandler = trans.send(s => s, 300);
 const tipsHandler = trans.send(s => s, -200);
 
 const encoder = new TextEncoder('utf-8');
@@ -48,10 +48,9 @@ let currentName = "";
 })();
 
 
-
-let lastCallTime = 0;
-const DIALOGUE_COOLDOWN = 200; // Value should be about 2000 to (presumably) prevent all messages to be extracted when loading a save file mid-dialogue but that might prevents some messages from being extracted 
-// if the player reads fast or accidentally pressed the button to proceed to the next message too quickly. Most still getting extracted are > 500ms.
+// Actually I'm not sure anymore if the cooldown changes something, but might as well keep it just in case.
+// let lastCallTime = 0;
+// const DIALOGUE_COOLDOWN = 200; 
 (function () {
     const dialogueSig = 'e8 ?? ?? ?? ?? ?? 8b 4b 48 ?? 8d ?? ?? 20 ?? 8d 15 ?? ?? ?? ?? e8 ?? ?? ?? ?? ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8d';
     var results = Memory.scanSync(__e.base, __e.size, dialogueSig);
@@ -66,15 +65,15 @@ const DIALOGUE_COOLDOWN = 200; // Value should be about 2000 to (presumably) pre
     console.log('[dialoguePattern] Found hook', address);
     Interceptor.attach(address, function (args) {
         // console.warn("in: dialogue");
-        const currentTime = Date.now();
-        console.warn(`[Debug] Time since last call: ${currentTime - lastCallTime}ms`);
+        // const currentTime = Date.now();
+        // // console.warn(`[Debug] Time since last call: ${currentTime - lastCallTime}ms`);
 
-        // Saving and loading a save file mid-dialogue will have messages extracted up until the current one, so this prevents *some* of them.
-        if (currentTime - lastCallTime < DIALOGUE_COOLDOWN) {
-            lastCallTime = currentTime;
-            return;
-        }
-        lastCallTime = currentTime;
+        // // Saving and loading a save file mid-dialogue will have messages extracted up until the current one, so this prevents *some* of them.
+        // if (currentTime - lastCallTime < DIALOGUE_COOLDOWN) {
+        //     lastCallTime = currentTime;
+        //     return;
+        // }
+        // lastCallTime = currentTime;
 
         const dialogueAddress = this.context.rsi;
         let currentText = dialogueAddress.readUtf8String();
