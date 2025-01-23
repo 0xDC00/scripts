@@ -10,13 +10,13 @@
 // ==/UserScript==
 
 
-console.warn("Most text gets extracted but there were still some I couldn't find a hook for, so an OCR tool might be needed at times (I use YomiNinja)");
+console.warn("Most text gets extracted but there's still some I couldn't find a hook for, so an OCR tool might be needed at times (I use YomiNinja)");
 console.warn("Known issues:\n- When skipping an event, the last text of that event will be extracted.");
-console.warn("- It's possible some quests extract the completion message instead of the details (they are stored weirdly in the game's data). If that happens, tell me on Discord (ideally with a save file for testing).");
+console.warn("- If you load a save file that was saved mid-dialogue, some of the previous messages in that event will be extracted.")
 
 const __e = Process.enumerateModules()[0];
-const mainHandler = trans.send(s => s, 200);
-const keyItemsHandler = trans.send(s => s, '200+');
+const mainHandler = trans.send(s => s, 300);
+const secondaryHandler = trans.send(s => s, '200+');
 
 const encoder = new TextEncoder('utf-8');
 const decoder = new TextDecoder('utf-8');
@@ -146,6 +146,7 @@ let currentName = "";
         mainHandler(menuIconDescription);
     })
 })();
+
 
 (function () {
     const menuPopUpSig = 'e8 ?? ?? ?? ?? ?? 8b 5c ?? ?? ?? 8b 74 ?? ?? ?? 8b c7 ?? 8b 6c';
@@ -319,6 +320,31 @@ let currentName = "";
 })();
 
 
+(function () { // For the warp screen unlocked in chapter 7
+    const overworldMapSig = 'e8 bf 84 15 00 ?? 83 7b 60 00';
+    var results = Memory.scanSync(__e.base, __e.size, overworldMapSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[overworldMapPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[overworldMapPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: overworldMap");
+
+        const overworldMapAddress = this.context.rdx;
+        let overworldMapName = readString(overworldMapAddress, "overworldMap");
+        overworldMapName = cleanText(overworldMapName);
+
+        let overWorldDetails = overworldMapAddress.readUtf8String();
+        mainHandler(overworldMapName + "\n--------------------\n" + overWorldDetails);
+    })
+})();
+
+
 (function () { // pop ups related to the camp
     const campSig = 'e8 ?? ?? ?? ?? ?? 8b 4b 48 e8 ?? ?? ?? ?? ?? 8b 4b 48 0f 28 f0';
     var results = Memory.scanSync(__e.base, __e.size, campSig);
@@ -435,6 +461,75 @@ let currentName = "";
 
 
 (function () { 
+    const battleJackUpgradeSig = 'e8 ?? ?? ?? ?? ?? 39 73 58 75';
+    var results = Memory.scanSync(__e.base, __e.size, battleJackUpgradeSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[battleJackUpgradePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[battleJackUpgradePattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: battleJackUpgrade");
+
+        const battleJackUpgradeAddress = this.context.rdx;
+        let battleJackUpgrade = battleJackUpgradeAddress.readUtf8String();
+        battleJackUpgrade = cleanText(battleJackUpgrade);
+        mainHandler(battleJackUpgrade);
+    })
+})();
+
+
+(function () {
+    const summonSig = 'e8 ?? ?? ?? ?? 8b 87 04 02 00 00 85';
+    var results = Memory.scanSync(__e.base, __e.size, summonSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[summonPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[summonPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: summon");
+
+        const summonAddress = this.context.rdx;
+        let summon = summonAddress.readUtf8String();
+        // summon = cleanText(summon);
+        mainHandler(summon);
+    })
+})();
+
+
+(function () {
+    const summonUpgradeSig = 'e8 ?? ?? ?? ?? f3 0f 10 35 ?? ?? ?? ?? ?? 8d 9e d0 00 00 00';
+    var results = Memory.scanSync(__e.base, __e.size, summonUpgradeSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[summonUpgradePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[summonUpgradePattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: summonUpgrade");
+
+        const summonUpgradeAddress = this.context.rdx;
+        let summonUpgrade = summonUpgradeAddress.readUtf8String();
+        summonUpgrade = cleanText(summonUpgrade);
+        mainHandler(summonUpgrade);
+    })
+})();
+
+
+(function () { 
     const keyItemsSig = 'e8 ?? ?? ?? ?? ff c7 ?? 83 c7 08';
     var results = Memory.scanSync(__e.base, __e.size, keyItemsSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
@@ -452,11 +547,58 @@ let currentName = "";
         const keyItemsAddress = this.context.rax;
         let keyItems = keyItemsAddress.readUtf8String();
         keyItems = cleanText(keyItems);
-        keyItemsHandler(keyItems);
+        secondaryHandler(keyItems);
     })
 })();
 
 
+(function () { 
+    const StrainPopUpSig = 'e8 ba 03 18 00';
+    var results = Memory.scanSync(__e.base, __e.size, StrainPopUpSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[StrainPopUpPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[StrainPopUpPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: StrainPopUp");
+
+        const StrainPopUpAddress = this.context.rdx;
+        let StrainPopUp = StrainPopUpAddress.readUtf8String();
+        StrainPopUp = cleanText(StrainPopUp);
+        mainHandler(StrainPopUp);
+    })
+})();
+
+
+(function () { 
+    const strainDialogueSig = 'e8 b6 19 18 00';
+    var results = Memory.scanSync(__e.base, __e.size, strainDialogueSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[strainDialoguePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[strainDialoguePattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: strainDialogue");
+
+        const strainDialogueAddress = this.context.rdx;
+        let strainDialogue = strainDialogueAddress.readUtf8String();
+        strainDialogue = cleanText(strainDialogue);
+        mainHandler(strainDialogue);
+    })
+})();
+
+
+const invertedQuests = ["武勇伝その２", "武勇伝その３", "武勇伝その4"]; // These quests have the completion messages and details order mixed up for some reason
 function readString(address, hookName) {
     let s = '', c;
     let nullCount = 0;
@@ -505,6 +647,7 @@ function readString(address, hookName) {
                 return s;
             }
 
+        case "overworldMap":
         case "tips":
             {
                 // Read the bytes backwards
@@ -528,7 +671,7 @@ function readString(address, hookName) {
 
                         // // Skip the second part as it's the added message once the quest is cleared. Also means it won't be extracted once the quest is cleared... oh, well. Not that important anyway.
 
-                        if (s === "武勇伝その２" && nullCount === 1) { // For some reason this quest stores the quest's details before the cleared message... Are there more like this?
+                        if (invertedQuests.includes(s) && nullCount === 1) { // Quests having the completion message before the quests' details
                             s += "\n--------------------\n";
 
                             while ((c = address.readU8()) !== 0x00) {
