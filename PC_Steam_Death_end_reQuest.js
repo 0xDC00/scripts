@@ -553,24 +553,24 @@ let currentName = "";
 
 
 (function () { 
-    const StrainPopUpSig = 'e8 ba 03 18 00';
-    var results = Memory.scanSync(__e.base, __e.size, StrainPopUpSig);
+    const strainPopUpSig = 'e8 ba 03 18 00';
+    var results = Memory.scanSync(__e.base, __e.size, strainPopUpSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[StrainPopUpPattern] Hook not found!');
+        console.error('[strainPopUpPattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[StrainPopUpPattern] Found hook', address);
+    console.log('[strainPopUpPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: StrainPopUp");
+        // console.warn("in: strainPopUp");
 
-        const StrainPopUpAddress = this.context.rdx;
-        let StrainPopUp = StrainPopUpAddress.readUtf8String();
-        StrainPopUp = cleanText(StrainPopUp);
-        mainHandler(StrainPopUp);
+        const strainPopUpAddress = this.context.rdx;
+        let strainPopUp = strainPopUpAddress.readUtf8String();
+        strainPopUp = cleanText(strainPopUp);
+        mainHandler(strainPopUp);
     })
 })();
 
