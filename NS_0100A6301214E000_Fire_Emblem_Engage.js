@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [0100A6301214E000] Fire Emblem Engage
-// @version      1.3.0
+// @version      1.3.0, 2.0.0
 // @author       [Sphyralg zx96]
 // @description  Yuzu
 // * Intelligent Systems Co., Ltd
