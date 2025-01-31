@@ -451,8 +451,8 @@ function getHookOptions() {
 // getHookOptions();
 
 ui.title = "Atelier Sophie";
-ui.description = `Configure text output and which hooks are enabled.
-<br>Hold the <code>Ctrl</code> key while clicking on hooks to enable or disable them individually.
+ui.description = /*html*/ `Configure text output and which hooks are enabled.
+<br>Hold the <code>Ctrl</code> key while clicking on hooks to toggle them individually.
 <br>Press <code>Ctrl + A</code> after clicking on a hooks box to enable all hooks in it.
 <br>Check Agent's console output to see each text's corresponding hook.`;
 
