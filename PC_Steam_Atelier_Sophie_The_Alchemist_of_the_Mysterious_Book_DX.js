@@ -47,6 +47,8 @@ const hooks = [
   ["BattleSkillInfo1", "E8 7B1DF4FF", "rdx", scrollHandler], // first skill on menu open
   ["BattleSkillInfo2", "E8 0163FBFF", "rbx", scrollHandler], // rbx; scrolling through menu
   ["BattleAction", "E8 8A3CF4FF", "rdx", mainHandler2],
+  ["BattleActionSpecial", "E8 413AF4FF", "rdx", mainHandler2],
+  ["BattleActionEnemySpecial", "E8 AC0B3600", "rax", mainHandler2],
   ["SkillObtained", "E8 4768F4FF", "rdx", mainHandler2],
   ["WorldMapAreaName", "E8 63FEF3FF", "rdx", mainHandler2],
   ["TownMapAreaName", "E8 93311E00", "rdx", mainHandler2],
@@ -54,11 +56,12 @@ const hooks = [
   ["MainMenuDialogue", "E8 C1A90000", "rdx", mainMenuDialogueHandler],
   ["EventName", "E8 F4692800", "rdx", scrollHandler2],
   ["EventInfo", "E8 C4692800", "rdx", scrollHandler],
-  ["QuestName", "E8 960DD3FF", "rdx", questNameHandler], // pointer
+  // ["QuestName", "E8 960DD3FF", "rdx", questNameHandler], // pointer
+  ["QuestName", "E8 29C22200", "rsi", questRumorNameHandler],
   ["QuestEnemyName", "E8 7BF9F1FF", "rdx", scrollHandler2],
   ["QuestItemName", "E8 08FBF1FF", "rdx", scrollHandler2],
   ["QuestInfo", "E8 A1E42200", "rdx", questRumorInfoHandler],
-  ["RumorName", "E8 12B92200", "rdx", rumorNameHandler],
+  ["RumorName", "E8 12B92200", "rdx", questRumorNameHandler],
   ["RumorTypeName", "E8 D6E12200 EB 16", "rdx", scrollHandler2],
   ["RumorKnownInfo", "E8 BAE22200", "rdx", questRumorInfoHandler],
   ["RumorUnknownInfo", "E8 25E32200", "rdx", questRumorInfoHandler],
@@ -83,6 +86,8 @@ const hooks = [
   ["CraftRecipeMaterial2", "E8 69572300", "rdx", scrollHandler3],
   ["DMakerMaterialCategory", "E8 CC650900", "rdx", scrollHandler3],
   ["DMakerMaterialTrait", "E8 AD640900", "rdx", scrollHandler3],
+  ["ExtraSoundRoomName", "E8 8464F9FF", "rdx", scrollHandler2],
+  ["ExtraSoundRoomInfo", "E8 1564F9FF", "rdx", scrollHandler],
   // encyclopedia
   ["EncyclopediaItemName", "E8 B9723100", "rdx", scrollHandler2],
   ["EncyclopediaFacilityName", "E8 A0A03100", "rdx", scrollHandler2],
@@ -311,7 +316,7 @@ function mainMenuDialogueHandler(regs, index, name) {
   return text;
 }
 
-function rumorNameHandler(regs, index, name) {
+function questRumorNameHandler(regs, index, name) {
   const address = regs[index];
   const text = address.readUtf8String();
 
@@ -436,12 +441,18 @@ function getHookOptions() {
     hookNames.push({ value: hook[0], text: hook[0] });
     // console.log(JSON.stringify({ value: hook[0], text: hook[0] }) + ",");
   }
-  return hookNames;
+
+  hookNames.sort((a, b) => a.value.localeCompare(b.text));
+
+  for (const thing of hookNames) {
+    console.log(JSON.stringify(thing) + ",");
+  }
 }
+// getHookOptions();
 
 ui.title = "Atelier Sophie";
-ui.description = `Configure text output and which hooks are enabled.
-<br>Hold the <code>Ctrl</code> key while clicking on hooks to enable or disable them individually.
+ui.description = /*html*/ `Configure text output and which hooks are enabled.
+<br>Hold the <code>Ctrl</code> key while clicking on hooks to toggle them individually.
 <br>Press <code>Ctrl + A</code> after clicking on a hooks box to enable all hooks in it.
 <br>Check Agent's console output to see each text's corresponding hook.`;
 
@@ -469,80 +480,46 @@ ui.options = [
     label: "Display character count from...",
     help: "Select a hook to display its character count.",
     options: [
-      { value: "DialogueName", text: "DialogueName" },
-      { value: "DialogueText", text: "DialogueText" },
-      { value: "Choice", text: "Choice" },
-      { value: "NotificationBanner", text: "NotificationBanner" },
       { value: "AreaNameBanner", text: "AreaNameBanner" },
-      { value: "SideDialogue", text: "SideDialogue" },
+      { value: "BattleAction", text: "BattleAction" },
+      { value: "BattleActionEnemySpecial", text: "BattleActionEnemySpecial" },
+      { value: "BattleActionSpecial", text: "BattleActionSpecial" },
       { value: "BattleEnemyName", text: "BattleEnemyName" },
       { value: "BattleSkillInfo1", text: "BattleSkillInfo1" },
       { value: "BattleSkillInfo2", text: "BattleSkillInfo2" },
-      { value: "BattleAction", text: "BattleAction" },
-      { value: "SkillObtained", text: "SkillObtained" },
-      { value: "WorldMapAreaName", text: "WorldMapAreaName" },
-      { value: "TownMapAreaName", text: "TownMapAreaName" },
-      { value: "MainMenuDialogue", text: "MainMenuDialogue" },
-      { value: "EventName", text: "EventName" },
-      { value: "EventInfo", text: "EventInfo" },
-      { value: "QuestName", text: "QuestName" },
-      { value: "QuestEnemyName", text: "QuestEnemyName" },
-      { value: "QuestItemName", text: "QuestItemName" },
-      { value: "QuestInfo", text: "QuestInfo" },
-      { value: "RumorName", text: "RumorName" },
-      { value: "RumorTypeName", text: "RumorTypeName" },
-      { value: "RumorKnownInfo", text: "RumorKnownInfo" },
-      { value: "RumorUnknownInfo", text: "RumorUnknownInfo" },
-      { value: "EventObjective", text: "EventObjective" },
-      { value: "StatusSkillName", text: "StatusSkillName" },
-      { value: "StatusSkillInfo", text: "StatusSkillInfo" },
-      { value: "StatusAbilityInfo", text: "StatusAbilityInfo" },
-      { value: "ItemName", text: "ItemName" },
-      { value: "RecipeName", text: "RecipeName" },
-      { value: "RecipeObtainedName", text: "RecipeObtainedName" },
-      { value: "RecipeMaterial1", text: "RecipeMaterial1" },
-      { value: "RecipeMaterial2", text: "RecipeMaterial2" },
-      { value: "MaterialQuality", text: "MaterialQuality" },
-      { value: "MaterialEffect", text: "MaterialEffect" },
-      { value: "MaterialTrait", text: "MaterialTrait" },
-      { value: "MaterialCategory", text: "MaterialCategory" },
-      { value: "RelatedRecipe", text: "RelatedRecipe" },
-      {
-        value: "SynthesisTransferTraitInfo",
-        text: "SynthesisTransferTraitInfo",
-      },
-      { value: "CraftTransferTraitInfo", text: "CraftTransferTraitInfo" },
-      { value: "CraftRecipeName", text: "CraftRecipeName" },
+      { value: "Choice", text: "Choice" },
       { value: "CraftRecipeMaterial1", text: "CraftRecipeMaterial1" },
       { value: "CraftRecipeMaterial2", text: "CraftRecipeMaterial2" },
+      { value: "CraftRecipeName", text: "CraftRecipeName" },
+      { value: "CraftTransferTraitInfo", text: "CraftTransferTraitInfo" },
       { value: "DMakerMaterialCategory", text: "DMakerMaterialCategory" },
       { value: "DMakerMaterialTrait", text: "DMakerMaterialTrait" },
-      { value: "EncyclopediaItemName", text: "EncyclopediaItemName" },
+      { value: "DialogueName", text: "DialogueName" },
+      { value: "DialogueText", text: "DialogueText" },
+      { value: "EncyclopediaDialogue", text: "EncyclopediaDialogue" },
+      { value: "EncyclopediaEffectInfo", text: "EncyclopediaEffectInfo" },
+      { value: "EncyclopediaEffectName", text: "EncyclopediaEffectName" },
+      { value: "EncyclopediaEnemyName", text: "EncyclopediaEnemyName" },
       { value: "EncyclopediaFacilityName", text: "EncyclopediaFacilityName" },
       { value: "EncyclopediaFieldName", text: "EncyclopediaFieldName" },
-      { value: "EncyclopediaEnemyName", text: "EncyclopediaEnemyName" },
-      { value: "EncyclopediaDialogue", text: "EncyclopediaDialogue" },
-      { value: "EncyclopediaEffectName", text: "EncyclopediaEffectName" },
-      { value: "EncyclopediaEffectInfo", text: "EncyclopediaEffectInfo" },
-      { value: "EncyclopediaTraitName", text: "EncyclopediaTraitName" },
-      { value: "EncyclopediaTraitInfo", text: "EncyclopediaTraitInfo" },
-      { value: "EncyclopediaHelpName", text: "EncyclopediaHelpName" },
       { value: "EncyclopediaHelpInfo", text: "EncyclopediaHelpInfo" },
+      { value: "EncyclopediaHelpName", text: "EncyclopediaHelpName" },
+      { value: "EncyclopediaItemName", text: "EncyclopediaItemName" },
+      {
+        value: "EncyclopediaRecipeCategory",
+        text: "EncyclopediaRecipeCategory",
+      },
       {
         value: "EncyclopediaRecipeCompleteName",
         text: "EncyclopediaRecipeCompleteName",
-      },
-      {
-        value: "EncyclopediaRecipeIncompleteName",
-        text: "EncyclopediaRecipeIncompleteName",
       },
       {
         value: "EncyclopediaRecipeCondition",
         text: "EncyclopediaRecipeCondition",
       },
       {
-        value: "EncyclopediaRecipeCategory",
-        text: "EncyclopediaRecipeCategory",
+        value: "EncyclopediaRecipeIncompleteName",
+        text: "EncyclopediaRecipeIncompleteName",
       },
       {
         value: "EncyclopediaRecipeMaterial1",
@@ -552,6 +529,44 @@ ui.options = [
         value: "EncyclopediaRecipeMaterial2",
         text: "EncyclopediaRecipeMaterial2",
       },
+      { value: "EncyclopediaTraitInfo", text: "EncyclopediaTraitInfo" },
+      { value: "EncyclopediaTraitName", text: "EncyclopediaTraitName" },
+      { value: "EventInfo", text: "EventInfo" },
+      { value: "EventName", text: "EventName" },
+      { value: "EventObjective", text: "EventObjective" },
+      { value: "ExtraSoundRoomInfo", text: "ExtraSoundRoomInfo" },
+      { value: "ExtraSoundRoomName", text: "ExtraSoundRoomName" },
+      { value: "ItemName", text: "ItemName" },
+      { value: "MainMenuDialogue", text: "MainMenuDialogue" },
+      { value: "MaterialCategory", text: "MaterialCategory" },
+      { value: "MaterialEffect", text: "MaterialEffect" },
+      { value: "MaterialQuality", text: "MaterialQuality" },
+      { value: "MaterialTrait", text: "MaterialTrait" },
+      { value: "NotificationBanner", text: "NotificationBanner" },
+      { value: "QuestEnemyName", text: "QuestEnemyName" },
+      { value: "QuestInfo", text: "QuestInfo" },
+      { value: "QuestItemName", text: "QuestItemName" },
+      { value: "QuestName", text: "QuestName" },
+      { value: "RecipeMaterial1", text: "RecipeMaterial1" },
+      { value: "RecipeMaterial2", text: "RecipeMaterial2" },
+      { value: "RecipeName", text: "RecipeName" },
+      { value: "RecipeObtainedName", text: "RecipeObtainedName" },
+      { value: "RelatedRecipe", text: "RelatedRecipe" },
+      { value: "RumorKnownInfo", text: "RumorKnownInfo" },
+      { value: "RumorName", text: "RumorName" },
+      { value: "RumorTypeName", text: "RumorTypeName" },
+      { value: "RumorUnknownInfo", text: "RumorUnknownInfo" },
+      { value: "SideDialogue", text: "SideDialogue" },
+      { value: "SkillObtained", text: "SkillObtained" },
+      { value: "StatusAbilityInfo", text: "StatusAbilityInfo" },
+      { value: "StatusSkillInfo", text: "StatusSkillInfo" },
+      { value: "StatusSkillName", text: "StatusSkillName" },
+      {
+        value: "SynthesisTransferTraitInfo",
+        text: "SynthesisTransferTraitInfo",
+      },
+      { value: "TownMapAreaName", text: "TownMapAreaName" },
+      { value: "WorldMapAreaName", text: "WorldMapAreaName" },
     ],
     defaultValue: "DialogueText",
   },
@@ -595,6 +610,16 @@ ui.options = [
       { value: "BattleSkillInfo1", text: "BattleSkillInfo1", selected: true },
       { value: "BattleSkillInfo2", text: "BattleSkillInfo2", selected: true },
       { value: "BattleAction", text: "BattleAction", selected: true },
+      {
+        value: "BattleActionSpecial",
+        text: "BattleActionSpecial",
+        selected: true,
+      },
+      {
+        value: "BattleActionEnemySpecial",
+        text: "BattleActionEnemySpecial",
+        selected: true,
+      },
       { value: "SkillObtained", text: "SkillObtained", selected: true },
     ],
   },
@@ -759,6 +784,16 @@ ui.options = [
       {
         value: "EncyclopediaRecipeMaterial2",
         text: "EncyclopediaRecipeMaterial2",
+        selected: true,
+      },
+      {
+        value: "ExtraSoundRoomName",
+        text: "ExtraSoundRoomName",
+        selected: true,
+      },
+      {
+        value: "ExtraSoundRoomInfo",
+        text: "ExtraSoundRoomInfo",
         selected: true,
       },
     ],
