@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [0100982015606000] Toraware no Paruma
+// @name         [010044800D2EC000] Toraware no Paruma
 // @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
