@@ -2,10 +2,11 @@
 // @name         Death end re;Quest 2
 // @version      
 // @author       Tom (tomrock645)
-// @description  Steam
+// @description  GOG, Steam
 // * developer   Idea Factory, compile Heart
 // * publisher   Idea Factory International
 //
+// https://www.gog.com/en/game/death_end_request_2
 // https://store.steampowered.com/app/1266220/Death_end_reQuest_2/
 // ==/UserScript==
 
