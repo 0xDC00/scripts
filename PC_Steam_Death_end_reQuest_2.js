@@ -487,6 +487,7 @@ function cleanText(text) {
         .replace(/�/g, '')
         .replace(/sm\d+_\d+/g, "")
         .replace(/#Key\[[^\]]*\]/g, "　")
+        .replace(/#Key\[Options/g, '')
         .replace(/#Color\[[^\]]*\]/g, "")
         .replace(/#Speed\[[^\]]*\]/g, "")
         .replace(/#Type\[[^\]]*\]/g, "")
