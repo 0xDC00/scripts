@@ -30,8 +30,10 @@ Mono.setHook('', 'TM', 'SetNameText', -1,
 Mono.setHook('', 'TM', 'SetNewText', -1,
     {
         onEnter(args) {
-            // console.warn("In: subtitles");
+            // console.warn("In: text");
             let text = args[1].readMonoString();
+
+            text = text.replace(/￥/g, '');
 
             if (name !== '') {
                 mainHandler(name + "\n" + text);
@@ -135,13 +137,14 @@ let wantedName = '';
 Mono.setHook('', 'GMain', 'WantedName', -1,
     {
         onLeave(retVal) {
-            // console.warn("leave: wanted text");
+            // console.warn("leave: wanted name");
             wantedName = retVal.readMonoString();
         }
     })
 
 
 
+// Even if the player completes a bounty the text will be the original instead of the completion one. At least it's nothing to worry about as it's a general 'bounty cleared' message.
 Mono.setHook('', 'GMain', 'WantedExplain', -1,
     {
         onLeave(retVal) {
