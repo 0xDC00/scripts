@@ -75,18 +75,38 @@ const hooks = [
     const lastTwentyStrings = [];
     Interceptor.attach(hook.address, {
       onEnter(args) {
-        const newString = args[hook.argIndex]
-          .readCString()
-          .replace(/<[^>]*>/g, "")
-          .replace(/\[(.*?)\/(.*?)\]/g, "$1")
-          .replace(/\\n/g, "\n");
+        const string = args[hook.argIndex].readCString();
 
-        if (!lastTwentyStrings.includes(newString)) {
-          handlerLine(newString);
-          lastTwentyStrings.push(newString);
-          if (lastTwentyStrings.size > 20) {
-            lastTwentyStrings.shift();
-          }
+        // The help text hook also gets triggered when drawing some icons or
+        // when displaying things like last saved times. Most ASCII-only strings
+        // aren't particularly useful anyways, so we'll just filter them all
+        // out.
+        if (string.match(/^[\x00-\x7F]+$/)) {
+          return;
+        }
+
+        // We also need to get rid of:
+        const cleaned = string
+          // The HTML-like markup (e.g. `<color:#5>ＭＰ</color>`)
+          .replace(/<[^>]*>/g, "")
+          // Icons and other graphics (e.g. `[menu][btn_sta]セーブ`)
+          .replace(/\[[\x00-\x5A\x5C-\x7F]+\]/g, "")
+          // Furigana (e.g. `[商会/しょうかい] => 商会`)
+          .replace(/\[([^/\]]+)\/[^/\]]+\]/g, "$1")
+          // And literal line feeds
+          .replace(/\\n/g, "\n")
+          .trim();
+
+        // Some of these hooks are called every frame with the same value(s), so
+        // duplicate values need to be filtered out
+        if (cleaned === "" || lastTwentyStrings.includes(cleaned)) {
+          return;
+        }
+
+        handlerLine(cleaned);
+        lastTwentyStrings.push(cleaned);
+        if (lastTwentyStrings.size > 20) {
+          lastTwentyStrings.shift();
         }
       },
     });
