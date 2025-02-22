@@ -32,6 +32,15 @@ const hooks = [
     argIndex: 0,
     address: null,
   },
+  {
+    // Covers quest objectives, help text, menu options, and a lot more. This
+    // can be a bit noisy, so if you're not interested in this you may want to
+    // comment this hook out.
+    name: "Help text",
+    signature: "EB ?? ?? ?? ?? ?? ?? ?? ?? 42 ?? ?? ?? 75 ?? 48 ?? ?? ?? ?? ?? ?? E8", // E8 C8DEF2FF
+    argIndex: 1,
+    address: null,
+  },
 ];
 
 (function () {
