@@ -230,7 +230,7 @@ let currentPauseChapterDescription = '';
             return;
         }
 
-        currentPauseChapterDescription = PauseChapterDescription;
+        currentPauseChapterDescription = pauseChapterDescription;
 
         mainHandler(pauseChapterName + "\n-------------------\n" + chapterClearCondition + "\n\n" + pauseChapterDescription);
 

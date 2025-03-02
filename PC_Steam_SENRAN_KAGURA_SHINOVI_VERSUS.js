@@ -157,7 +157,7 @@ let selectChapterClearCondition = '';
 })();
 
 
-let ChapterDescription = ''; // Also used for the pause version since I can't seem to hook the description
+let chapterDescription = ''; // Also used for the pause version since I can't seem to hook the description
 (function () {
     const selectChapterDescriptionSig = '0f b7 07 83 c4 0c 66 85 c0 0f 84 ?? ?? ?? ?? ba';
     var results = Memory.scanSync(__e.base, __e.size, selectChapterDescriptionSig);
@@ -176,10 +176,10 @@ let ChapterDescription = ''; // Also used for the pause version since I can't se
         const chapterDescriptionAddress = this.context.edi;
         let currentChapterDescription = chapterDescriptionAddress.readUtf16String();
 
-        if (ChapterDescription === currentChapterDescription)
+        if (chapterDescription === currentChapterDescription)
             return;
 
-        ChapterDescription = currentChapterDescription;
+        chapterDescription = currentChapterDescription;
 
         mainHandler(selectChapterName + "\n--------------------------\n" + selectChapterClearCondition + "\n\n" + currentChapterDescription);
     })

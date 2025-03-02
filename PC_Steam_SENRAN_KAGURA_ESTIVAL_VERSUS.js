@@ -290,7 +290,7 @@ let counter = 0;
 })();
 
 
-let characterIntroduction
+let characterIntroduction;
 let timer = null;
 (function () {
     const characterIntroductionSig = 'ff 15 ?? ?? ?? ?? ?? 8b 5c ?? ?? ?? 8b 74 ?? ?? ?? 8b 7c';
