@@ -2,7 +2,7 @@
 // @name         [0100D7E01E998000] Fuyuzono Sacrifice
 // @version      1.0.0
 // @author       emilybrooks
-// @description  Yuzu
+// @description  Sudachi, Ryujinx 1.1.1403
 // * Design Factory Co., Ltd. & Otomate
 // *
 // ==/UserScript==
