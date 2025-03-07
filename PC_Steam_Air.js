@@ -32,7 +32,6 @@ trans.replace(function (s) {
           console.warn(`[${name}] has ${results.length} results`);
         }
 
-        console.log(`[${name}] Found hook ${address}`);
         Interceptor.attach(address, function (args) {
             const text = this.context[register].readUtf16String();
             handler(text);
