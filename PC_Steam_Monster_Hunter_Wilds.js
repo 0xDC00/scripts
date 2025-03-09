@@ -16,6 +16,7 @@ __e.size = 0x10000000;
 
 const texts = new Set();
 let timer = null;
+let timerDialogueEnable = null;
 let open = false;
 
 //#region Hooks
@@ -99,16 +100,16 @@ function genericHandler(text) {
 }
 
 /** Temporarily enable {@link dialogueHandler}. */
-function dialogueEnableHandler(name, address) {
+function dialogueEnableHandler(name) {
   console.log(`onEnter: ${name}`);
 
   open = true;
 
-  clearTimeout(timer);
-  timer = setTimeout(() => {
+  clearTimeout(timerDialogueEnable);
+  timerDialogueEnable = setTimeout(() => {
     open = false;
     texts.clear();
-  }, 1000);
+  }, 500);
 }
 
 function dialogueHandler(name, address) {
@@ -176,3 +177,5 @@ function start() {
 }
 
 start();
+
+//#endregion
