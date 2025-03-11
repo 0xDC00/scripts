@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Monster Hunter Wilds
-// @version      1.000.04.00
+// @version      1.000.05.00
 // @author       Mansive
 // @description  Steam
 // * CAPCOM Co., Ltd.
@@ -8,7 +8,6 @@
 // https://store.steampowered.com/app/2246340/Monster_Hunter_Wilds/
 // ==/UserScript==
 
-const ui = require("./libUI.js");
 const __e = Process.enumerateModules()[0];
 
 // using original size leads to access violation
@@ -108,7 +107,6 @@ function dialogueEnableHandler(name) {
   clearTimeout(timerDialogueEnable);
   timerDialogueEnable = setTimeout(() => {
     open = false;
-    texts.clear();
   }, 500);
 }
 
@@ -132,20 +130,23 @@ function dialogueHandler(name, address) {
  * Installing REFramework involves placing a customized dinput8.dll into the
  * game's folder.
  *
- * Because REFramework uses ImGui, we can detect if REFramework is installed
- * by checking if the game's dinput8.dll contains an export from ImGui.
+ * The function returns true if the string "REFramework" is found in the game's
+ * dinput8.dll.
  */
 function checkForREFramework() {
   let found = false;
 
   // there can be multiple dinput8.dll, need to check each one
   for (const module of Process.enumerateModules()) {
-    if (
-      module.name.toLowerCase() === "dinput8.dll" &&
-      module.findExportByName("igText") !== null
-    ) {
-      found = true;
-      break;
+    if (module.name.toLowerCase() === "dinput8.dll") {
+      // bytes of the string "REFramework"
+      const pattern = "52 45 46 72 61 6d 65 77 6f 72 6b";
+      const results = Memory.scanSync(module.base, module.size, pattern);
+
+      if (results.length !== 0) {
+        found = true;
+        break;
+      }
     }
   }
 
