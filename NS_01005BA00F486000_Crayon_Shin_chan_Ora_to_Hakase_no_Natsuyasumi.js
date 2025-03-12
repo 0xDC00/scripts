@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name         [01007B601C608000] Crayon Shin-chan Ora to Hakase no Natsuyasumi
-// @version      1.0.1
+// @name         [01005BA00F486000] Crayon Shin-chan Ora to Hakase no Natsuyasumi
+// @version      1.1.1
 // @author       [bpwhelan]
 // @description  Yuzu
 // * Neos Corporation
