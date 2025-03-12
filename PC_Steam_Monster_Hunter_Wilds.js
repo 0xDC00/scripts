@@ -112,13 +112,13 @@ function dialogueEnableHandler(name) {
 
 function dialogueHandler(name, address) {
   if (open === false) {
-    console.log(`\x1b[2mskipped: ${name}\x1b[0m`);
+    // console.log(`\x1b[2mskipped: ${name}\x1b[0m`);
     return null;
   }
 
   console.log(`onEnter: ${name}`);
 
-  const text = address.readUtf16String();
+  const text = address.readUtf16String().replace(/<\/?ITALIC>/g, "");
   genericHandler(text);
 }
 
