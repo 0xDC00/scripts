@@ -118,7 +118,10 @@ function dialogueHandler(name, address) {
 
   console.log(`onEnter: ${name}`);
 
-  const text = address.readUtf16String().replace(/<\/?ITALIC>/g, "");
+  const text = address
+    .readUtf16String()
+    .replace(/<\/?ITALIC>/g, "")
+    .replace(/<.+>/g, "");
   genericHandler(text);
 }
 
