@@ -2,7 +2,7 @@
 // @name         [0100A89019EEC000] Sakura, Moyu. -as the Night's, Reincarnation-
 // @version      1.0.0
 // @author       [GO123]
-// @description 
+// @description yuzu  & ryujinx
 // * Unity
 // ==/UserScript==
 trans.replace(function (s) {
