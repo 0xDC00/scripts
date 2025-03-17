@@ -50,37 +50,6 @@ function processText() {
 }
 
 
-let nameMovie = '';
-Mono.setHook('', 'InHouseLibrary.ADV.Local.AdvTalk', 'SetName', 1, {
-    onEnter(args) {
-        let text = args[1].readMonoString();
-    }
-});
-
-
-let textMovie = [];
-Mono.setHook('', 'InHouseLibrary.ADV.Local.AdvTalk', 'SetBody', 1, {
-    onEnter(args) {
-        let text = args[1].readMonoString();
-
-        setTimeout(processTextMovie, 50);
-    }
-});
-
-function processTextMovie() {
-    let fullText = textMovie.join("\n");
-
-    if (nameMovie && textMovie)
-        mainHandler(nameMovie + "\n" + fullText);
-
-    else
-        mainHandler(fullText);
-
-    nameMovie = '';
-    textMovie = [];
-}
-
-
 Mono.setHook('', 'Game.UI.MainMenu.ComboMake.SkillExplain.GameUiMainMenuComboMakeSkillExplain', 'CreateLetter', 1, {
     onEnter(args) {
         // console.warn("In: GameUiMainMenuComboMakeSkillExplain CreateLetter");
