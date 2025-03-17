@@ -1,5 +1,5 @@
 // @name         Vita3k JIT Hooker
-// @version      0.1.9 3520+ -
+// @version      0.2.0 3742+ -
 // @author       [DC]
 // @description  windows, linux, macOS (x64)
 
@@ -8,7 +8,7 @@ if (module.parent === null) {
 }
 
 console.warn('[Compatibility]');
-console.warn('Vita3k 0.1.9 3520+');
+console.warn('Vita3k 0.2.0 3742+');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
 const buildRegs = createFunction_buildRegs();
