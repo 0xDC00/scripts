@@ -9,9 +9,6 @@
 // ==/UserScript== 
 
 
-console.warn("The game can be played uncensored. The guide is near the bottom of this doc https://docs.google.com/document/d/1RURQG0_8fPcl-UV23cqJ8uu5bTg2B7L2uPEWzK-NwRQ/edit?tab=t.0");
-
-
 const Mono = require('./libMono.js');
 const mainHandler = trans.send(s => s, 200);
 const secondaryHandler = trans.send(s => s, '200+');
@@ -24,7 +21,7 @@ Mono.setHook('', 'TM', 'SetNameText', -1,
             // console.warn("In: name");
             name = args[1].readMonoString();
         }
-    })
+    });
 
 
 Mono.setHook('', 'TM', 'SetNewText', -1,
@@ -43,7 +40,7 @@ Mono.setHook('', 'TM', 'SetNewText', -1,
             else
                 mainHandler(text);
         }
-    })
+    });
 
 
 // Choices
@@ -54,7 +51,7 @@ Mono.setHook('', 'TM', 'Select_SetText', -1,
             let text = args[3].readMonoString();
             secondaryHandler(text);
         }
-    })
+    });
 
 
 Mono.setHook('', 'TM', 'BattleText', -1,
@@ -68,7 +65,7 @@ Mono.setHook('', 'TM', 'BattleText', -1,
 
             mainHandler(text);
         }
-    })
+    });
 
 
 let skillName = '';
@@ -78,7 +75,7 @@ Mono.setHook('', 'GMain', 'SklName', -1,
             // console.warn("leave: skill name");
             skillName = retVal.readMonoString();
         }
-    })
+    });
 
 
 Mono.setHook('', 'GMain', 'SklText', -1,
@@ -88,7 +85,7 @@ Mono.setHook('', 'GMain', 'SklText', -1,
             let text = retVal.readMonoString();
             mainHandler(skillName + "\n" + text);
         }
-    })
+    });
 // Unfortunately I don't know how to extract passive skills. 
 // The text is at GMain.GetPSkillStr but I really have no clue how to make it work.
 
@@ -100,7 +97,7 @@ Mono.setHook('', 'GMain', 'GetStageName', -1,
             // console.warn("leave: stage name");
             stageName = retVal.readMonoString();
         }
-    })
+    });
 
 
 Mono.setHook('', 'GMain', 'GetStageText', -1,
@@ -110,7 +107,7 @@ Mono.setHook('', 'GMain', 'GetStageText', -1,
             let text = retVal.readMonoString();
             mainHandler(stageName + "\n" + text);
         }
-    })
+    });
 
 
 let itemName = '';
@@ -120,7 +117,7 @@ Mono.setHook('', 'GMain', 'ItemName', -1,
             // console.warn("leave: item name");
             itemName = retVal.readMonoString();
         }
-    })
+    });
 
 
 Mono.setHook('', 'GMain', 'ItemExplain', -1,
@@ -130,7 +127,7 @@ Mono.setHook('', 'GMain', 'ItemExplain', -1,
             let text = retVal.readMonoString();
             mainHandler(itemName + "\n" + text);
         }
-    })
+    });
 
 
 let wantedName = '';
@@ -140,7 +137,7 @@ Mono.setHook('', 'GMain', 'WantedName', -1,
             // console.warn("leave: wanted name");
             wantedName = retVal.readMonoString();
         }
-    })
+    });
 
 
 
@@ -152,7 +149,7 @@ Mono.setHook('', 'GMain', 'WantedExplain', -1,
             let text = retVal.readMonoString();
             mainHandler(wantedName + "\n---------------\n" + text);
         }
-    })
+    });
 
 
 Mono.setHook('', 'TM', 'YesNo_Show', -1,
@@ -162,4 +159,7 @@ Mono.setHook('', 'TM', 'YesNo_Show', -1,
             let text = args[1].readMonoString();
             mainHandler(text);
         }
-    })
+    });
+
+
+console.warn("The game can be played uncensored. The guide is near the bottom of this doc https://docs.google.com/document/d/1RURQG0_8fPcl-UV23cqJ8uu5bTg2B7L2uPEWzK-NwRQ/edit?tab=t.0");
