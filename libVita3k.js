@@ -1,5 +1,5 @@
 // @name         Vita3k JIT Hooker
-// @version      0.1.9 3520+ -
+// @version      0.2.0 3742+ -
 // @author       [DC]
 // @description  windows, linux, macOS (x64)
 
@@ -8,7 +8,7 @@ if (module.parent === null) {
 }
 
 console.warn('[Compatibility]');
-console.warn('Vita3k 0.1.9 3520+');
+console.warn('Vita3k 0.2.0 3742+');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
 const buildRegs = createFunction_buildRegs();
@@ -92,7 +92,7 @@ function getDoJitAddress() {
             return symbols[0];
         }
 
-        const PatchBlockSig1 = '4C 8B DC 49 89 5B ?? 49 89 6B ?? 56 57 41 54 41 56 41 57';
+        const PatchBlockSig1 = '4C 8B DC 49 89 5B ?? 49 89 6B ?? 56 57 41 54 41 56 41 57 48 83';
         first = Memory.scanSync(__e.base, __e.size, PatchBlockSig1)[0];
         if (first) {
             console.warn('Sig Patch');
