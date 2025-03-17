@@ -92,7 +92,7 @@ function getDoJitAddress() {
             return symbols[0];
         }
 
-        const PatchBlockSig1 = '4C 8B DC 49 89 5B ?? 49 89 6B ?? 56 57 41 54 41 56 41 57';
+        const PatchBlockSig1 = '4C 8B DC 49 89 5B ?? 49 89 6B ?? 56 57 41 54 41 56 41 57 48 83';
         first = Memory.scanSync(__e.base, __e.size, PatchBlockSig1)[0];
         if (first) {
             console.warn('Sig Patch');
