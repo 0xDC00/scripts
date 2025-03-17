@@ -19,8 +19,9 @@ let name = '';
 Mono.setHook('', 'InHouseLibrary.ADV.Local.Talk.AdvTalkController', 'SetName', 1, {
     onEnter(args) {
         // console.warn("In: AdvTalkController SetName");
-        if (!args[1].isNull())
-            name = args[1].readMonoString();
+        let args1 = args[1];
+        if (!args1.isNull())
+            name = args1.readMonoString();
     }
 });
 
@@ -103,8 +104,9 @@ Mono.setHook('', 'Game.UI.WipeTalk.GameUiWipeTalk', 'Play', 8, {
 Mono.setHook('', 'Game.UI.Confirm.Local.GameUiConfirmAccess', 'SetQuestion', 1, {
     onEnter(args) {
         // console.warn("In: GameUiConfirmAccess SetQuestion");
-        if (!args[1].isNull()) {
-            let text = args[1].readMonoString();
+        let args1 = args[1];
+        if (!args1.isNull()) {
+            let text = args1.readMonoString();
             text = cleanText(text);
             mainHandler(text);
         }
@@ -115,8 +117,9 @@ Mono.setHook('', 'Game.UI.Confirm.Local.GameUiConfirmAccess', 'SetQuestion', 1, 
 Mono.setHook('', 'Game.UI.Help.Parts.Basic$Message', 'CreateText', 1, {
     onEnter(args) {
         // console.warn("In: Basic CreateText");
-        if (!args[1].isNull()) {
-            let text = args[1].readMonoString();
+        let args1 = args[1];
+        if (!args1.isNull()) {
+            let text = args1.readMonoString();
             text = cleanText(text);
             mainHandler(text);
         }
