@@ -61,7 +61,7 @@ Interceptor.attach(DoJitPtr, {
         //const entrypoint_far = args[4];
         //const size = args[5];
 
-        const em_address = descriptor.readU64().toNumber();
+        const em_address = descriptor.readU64().and(0xFFFFFFFF).toNumber();
         const op = operations[em_address];
         if (op !== undefined && entrypoint.isNull() === false) {
             console.log('Attach:', ptr(em_address), entrypoint);
