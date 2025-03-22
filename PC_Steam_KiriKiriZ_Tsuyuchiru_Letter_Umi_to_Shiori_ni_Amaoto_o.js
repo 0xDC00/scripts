@@ -14,13 +14,6 @@
 const engine = require('./libPCKiriKiriZ.js');
 
 engine.hookTextrenderDll(function (text) {
-    text = cleanText(text);
     trans.send(text);
     return text;
 });
-
-function cleanText(text) {
-    return text
-        .replace(/\[[^\]]*\]/g, '') // Furigana
-        .replace(/\\n/g, ' ');
-}
