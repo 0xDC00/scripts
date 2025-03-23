@@ -22,20 +22,22 @@ var timerChoice;
 
 let patterns = {
     // Main text (dialogue, help text content, system prompt content, dictionnary etc..)
-    mainText: "89 7D DB 43 0F B6 14 08",
+    // mainText: "89 ?? ?? 43 0F B6 14 08",
+    mainText: "43 0FB6 14 08 85 D2", // moved forward one instruction
+
     // Secondary text (Title, Names, Headings)
-    secondaryText: "8B 15 ???????? 81 EA ???????? 48 89 ?? 24 ?? b9",
+    // secondaryText: "8B 15 ???????? 81 EA ???????? 48 89 ?? 24 ?? b9",
+    secondaryText: "48 89 83 90 00 00 00 48 8B 0E", // moved forward after nop in latest
+
     // Choice text (and variants)
     choiceText: "48 89 43 20 48 89 D9",
+
     // Used for inserting text
-    difficulty: "48 8d ?? ?? ?? ?? ?? 48 8b 3c c7",
+    difficulty1: "48 8d ?? ?? ?? ?? ?? 48 8b 3c c7", // lea
+    difficulty2: "e8 ?? ?? ?? ?? 4? 8b ?? ?? 4? 8b ?? 4? 85 ?? 74 ?? 4? 83", // lea was replaced with call in latest
 }
 
 console.log(`
-EDIT: This script is broken in latest version of P3R, i don't have gamepass anymore so i  can't fix it.
-So either give up or download an old version with depot_downloader
-
-
 Supported (Non exhaustive, i need some test to know that):
 * Self dialogue (Mind)
 * Dialogue
@@ -61,17 +63,60 @@ This debugging text isn't copied to the clipboard, so you can use a texthooking 
 
 console.warn(`DEBUGGING: ${IS_DEBUG ? "ON" : "OFF"}`);
 
+function getDifficultySearchAddress() {
+    const results = Memory.scanSync(__e.base, __e.size, patterns.difficulty1);
+    if (results.length === 0) {
+        return null;
+    } else if (results.length > 1) {
+        console.warn(`DifficultySearchAddress1 has ${results.length} results`);
+    }
 
-const results = Memory.scanSync(__e.base, __e.size, patterns.difficulty);
-if (results.length === 0) {
-    console.error('[difficultyPattern] no result!');
-    return;
+    const difficultySearchAddress = results[results.length - 1].address;
+
+    return difficultySearchAddress;
 }
-let difficultySearchAddress = results[results.length - 1].address
-console.log('[difficultySearchAddress] @ ' + difficultySearchAddress);
+
+function getDifficultySearchFallbackAddress() {
+    const results = Memory.scanSync(__e.base, __e.size, patterns.difficulty2);
+    if (results.length === 0) {
+        return null;
+    } else if (results.length > 1) {
+        console.warn(`DifficultySearchAddress2 has ${results.length} results`);
+    }
+
+    // call procedure
+    let ins = Instruction.parse(results[0].address);    // call P3R.exe+125C650
+
+    // follow the call
+    ins = Instruction.parse(ptr(ins.opStr));            // movsxd  rax,ecx
+    ins = Instruction.parse(ins.next);                  // lea rcx,[P3R.exe+5686690]
+
+    if (ins.mnemonic !== "lea") {
+        console.error(`Unexpected instruction: ${ins.mnemonic}`);
+        return null;
+    }
+
+    const difficultySearchFallbackAddress = ins.address;
+
+    return difficultySearchFallbackAddress;
+}
+
+
+let difficultySearchAddress = getDifficultySearchAddress();
+if (difficultySearchAddress === null) {
+    console.log("Trying fallback...")
+
+    difficultySearchAddress = getDifficultySearchFallbackAddress();
+    if (difficultySearchAddress === null) {
+        console.error("[DifficultyPattern] no result!")
+        return;
+    }
+}
+console.log('[DifficultySearchAddress] @ ' + difficultySearchAddress);
+
 let ins = Instruction.parse(difficultySearchAddress);
 let difficultyAddress = ins.next.add(ins.operands[1].value.disp);
-console.log('[difficultyAddress] @ ' + difficultyAddress);
+console.log('[DifficultyAddress] @ ' + difficultyAddress);
 
 
 (function () {
@@ -83,6 +128,11 @@ console.log('[difficultyAddress] @ ' + difficultyAddress);
     }
     let hookAddress = results[results.length - 1].address
     console.log('[MainTextAddress] @ ' + hookAddress);
+
+    // for (const thing of results) {
+    //     console.warn(thing.address);
+    // }
+
     // Breakpoint.add(hookAddress, {
     //     onEnter(args) {
     //         let address = this.context.rax;
@@ -107,6 +157,11 @@ console.log('[difficultyAddress] @ ' + difficultyAddress);
     }
     let hookAddress = results[results.length - 1].address
     console.log('[SecondaryTextAddress] @ ' + hookAddress);
+
+    // for (const thing of results) {
+    //     console.warn(thing.address);
+    // }
+
     // Breakpoint.add(hookAddress, {
     //     onEnter(args) {
     //         let address = this.context.rax;
@@ -131,6 +186,11 @@ console.log('[difficultyAddress] @ ' + difficultyAddress);
     }
     let hookAddress = results[results.length - 1].address
     console.log('[ChoiceTextAddress] @ ' + hookAddress);
+    
+    // for (const thing of results) {
+    //     console.warn(thing.address);
+    // }
+
     // Breakpoint.add(hookAddress, {
     //     onEnter(args) {
     //         let address = this.context.rax;
@@ -178,6 +238,11 @@ console.log('[difficultyAddress] @ ' + difficultyAddress);
         }
         let hookAddress = results[results.length - 1].address
         console.log('[DbgAddress] @ ' + hookAddress);
+
+        // for (const thing of results) {
+        //     console.warn(thing.address);
+        // }
+        
         // Breakpoint.add(hookAddress, {
         //     onEnter(args) {
         //         const command = this.context.rcx;
