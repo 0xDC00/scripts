@@ -15,6 +15,7 @@ function hookTextrenderDll(callback) {
         if (timer !== null) {
             const address = this.context.eax;
             let s = address.readUtf16String();
+            s = cleanText(s);
             callback.call(null, s);
         }
 
@@ -47,4 +48,11 @@ function hookTextrenderDll(callback) {
 
 module.exports = exports = {
     hookTextrenderDll
+};
+
+function cleanText(text) {
+    return text
+        .replace(/\[[^\]]*\]/g, '') // Furigana
+        .replace(/%[^;]*;/g, '') // Font change?
+        .replace(/\\n/g, ' ');
 }
