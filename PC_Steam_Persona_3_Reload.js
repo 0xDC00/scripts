@@ -63,6 +63,13 @@ This debugging text isn't copied to the clipboard, so you can use a texthooking 
 
 console.warn(`DEBUGGING: ${IS_DEBUG ? "ON" : "OFF"}`);
 
+/** @param {MemoryScanMatch[]} results  */
+function logMatches(results) {
+    for (const result of results) {
+        console.warn(result.address);
+    }
+}
+
 function getDifficultySearchAddress() {
     const results = Memory.scanSync(__e.base, __e.size, patterns.difficulty1);
     if (results.length === 0) {
@@ -71,9 +78,9 @@ function getDifficultySearchAddress() {
         console.warn(`DifficultySearchAddress1 has ${results.length} results`);
     }
 
-    const difficultySearchAddress = results[results.length - 1].address;
+    const address = results[results.length - 1].address;
 
-    return difficultySearchAddress;
+    return address;
 }
 
 function getDifficultySearchFallbackAddress() {
@@ -87,7 +94,7 @@ function getDifficultySearchFallbackAddress() {
     // call procedure
     let ins = Instruction.parse(results[0].address);    // call P3R.exe+125C650
 
-    // follow the call
+    // step into the call
     ins = Instruction.parse(ptr(ins.opStr));            // movsxd  rax,ecx
     ins = Instruction.parse(ins.next);                  // lea rcx,[P3R.exe+5686690]
 
@@ -96,9 +103,9 @@ function getDifficultySearchFallbackAddress() {
         return null;
     }
 
-    const difficultySearchFallbackAddress = ins.address;
+    const address = ins.address;
 
-    return difficultySearchFallbackAddress;
+    return address;
 }
 
 
@@ -114,8 +121,8 @@ if (difficultySearchAddress === null) {
 }
 console.log('[DifficultySearchAddress] @ ' + difficultySearchAddress);
 
-let ins = Instruction.parse(difficultySearchAddress);
-let difficultyAddress = ins.next.add(ins.operands[1].value.disp);
+const ins = Instruction.parse(difficultySearchAddress);
+const difficultyAddress = ins.next.add(ins.operands[1].value.disp);
 console.log('[DifficultyAddress] @ ' + difficultyAddress);
 
 
@@ -129,9 +136,9 @@ console.log('[DifficultyAddress] @ ' + difficultyAddress);
     let hookAddress = results[results.length - 1].address
     console.log('[MainTextAddress] @ ' + hookAddress);
 
-    // for (const thing of results) {
-    //     console.warn(thing.address);
-    // }
+    if (IS_DEBUG) {
+        logMatches(results);
+    }
 
     // Breakpoint.add(hookAddress, {
     //     onEnter(args) {
@@ -158,9 +165,9 @@ console.log('[DifficultyAddress] @ ' + difficultyAddress);
     let hookAddress = results[results.length - 1].address
     console.log('[SecondaryTextAddress] @ ' + hookAddress);
 
-    // for (const thing of results) {
-    //     console.warn(thing.address);
-    // }
+    if (IS_DEBUG) {
+        logMatches(results);
+    }
 
     // Breakpoint.add(hookAddress, {
     //     onEnter(args) {
@@ -186,10 +193,10 @@ console.log('[DifficultyAddress] @ ' + difficultyAddress);
     }
     let hookAddress = results[results.length - 1].address
     console.log('[ChoiceTextAddress] @ ' + hookAddress);
-    
-    // for (const thing of results) {
-    //     console.warn(thing.address);
-    // }
+
+    if (IS_DEBUG) {
+        logMatches(results);
+    }
 
     // Breakpoint.add(hookAddress, {
     //     onEnter(args) {
@@ -239,10 +246,10 @@ console.log('[DifficultyAddress] @ ' + difficultyAddress);
         let hookAddress = results[results.length - 1].address
         console.log('[DbgAddress] @ ' + hookAddress);
 
-        // for (const thing of results) {
-        //     console.warn(thing.address);
-        // }
-        
+        if (IS_DEBUG) {
+            logMatches(results);
+        }
+
         // Breakpoint.add(hookAddress, {
         //     onEnter(args) {
         //         const command = this.context.rcx;
