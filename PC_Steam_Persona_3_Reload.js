@@ -27,7 +27,7 @@ let patterns = {
 
     // Secondary text (Title, Names, Headings)
     // secondaryText: "8B 15 ???????? 81 EA ???????? 48 89 ?? 24 ?? b9",
-    secondaryText: "48 89 83 90 00 00 00 48 8B 0E", // moved forward after nop in latest
+    secondaryText: "48 89 83 90 00 00 00 48 8B 0E", // moved forward after call in latest
 
     // Choice text (and variants)
     choiceText: "48 89 43 20 48 89 D9",
