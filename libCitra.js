@@ -1,11 +1,15 @@
 // @name         Citra JIT Hooker
-// @version      r608383e - https://github.com/PabloMK7/citra/releases/tag/r608383e
+// @version      2120.1+ - https://github.com/azahar-emu/azahar/releases/tag/2120.1
 // @author       [DC]
 // @description  windows, linux, macOS (x64)
 
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
+
+console.warn('[Compatibility]');
+console.warn('Azahar 2120.1+');
+console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
 const isFastMem = false;
 const DoJitPtr = getDoJitAddress();
