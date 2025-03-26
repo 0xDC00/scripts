@@ -1,5 +1,5 @@
 // @name         PPSSPP JIT Hooker
-// @version      1.12.3-867 -> v1.16.1-35
+// @version      1.12.3-867 -> 1.18.1-1464
 // @author       [DC]
 // @description  windows, linux, mac (x64, arm64), android (arm64)
 
@@ -7,7 +7,7 @@ if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
 console.warn('[Compatibility]');
-console.warn('PPSSPP 1.12.3-867 -> v1.16.1-35');
+console.warn('PPSSPP v1.12.3-867 -> v1.18.1-1464');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
 const DoJitPtr = getDoJitAddress();
@@ -79,15 +79,18 @@ function getDoJitAddress() {
         // Windows MSVC x64
         // TODO: retroarch, DebugSymbol.fromName?
         const __e = Process.enumerateModules()[0];
-        const DoJitSig1 = 'C7 83 ?? 0? 00 00 11 00 00 00 F6 83 ?? 0? 00 00 01 C7 83 ?? 0? 00 00 E4 00 00 00';
+        // const DoJitSig1 = 'C7 83 ?? 0? 00 00 11 00 00 00 F6 83 ?? 0? 00 00 01 C7 83 ?? 0? 00 00 E4 00 00 00';
+        const DoJitSig1 = 'C7 83 ?? 0? 00 00 11 00 00 00 F6 83 ?? 0? 00 00 01';
         const first = Memory.scanSync(__e.base, __e.size, DoJitSig1)[0];
+
         if (first) {
-            const beginSubSig1 = '55 41 ?? 41 ?? 41';
+            // const beginSubSig1 = '55 41 ?? 41 ?? 41';
+            const beginSubSig1 = "CC 4? 89 ?? 24";
             const lookbackSize = 0x100;
             const address = first.address.sub(lookbackSize);
             const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
             if (subs.length !== 0) {
-                return subs[subs.length - 1].address;
+                return subs[subs.length - 1].address.add(1);
             }
         };
     }
