@@ -30,7 +30,6 @@ function handler(regs, index, hookname) {
     const address = regs[index].value;
     console.log("onEnter:", hookname);
 
-
     /* processString */
     const len = address.add(0x10).readU32() * 2;
     let s = address.add(0x14).readUtf16String(len);
