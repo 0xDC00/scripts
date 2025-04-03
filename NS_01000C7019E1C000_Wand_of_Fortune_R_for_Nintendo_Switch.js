@@ -1,35 +1,35 @@
 // ==UserScript==
-// @name         [01000C7019E1C000] ワンド オブ フォーチュン Ｒ～ for Nintendo Switch
+// @name         [01000C7019E1C000] Wand of Fortune R for Nintendo Switch (ワンド オブ フォーチュン R for Nintendo Switch)
 // @version      1.0.0
-// @author       [zooo]
+// @author       [zooo], Mansive
 // @description  Yuzu
 // * Design Factory Co., Ltd. & Otomate
 // ==/UserScript==
-trans.replace(function (s) {
-    return s
-        .replace(/<param==Name>/g, 'ルル') 
-      ;
-});
+
+// trans.replace(function (s) {
+    // return s
+        // .replace(/<param==Name>/g, 'ルル');
+// });
 //------------------------------------------------
 const gameVer = '1.0.0';
 
 const { setHook } = require('./libYuzu.js');
-const decoder = new TextDecoder('utf-16');
+
 const mainHandler = trans.send(handler, '200+');
 
 setHook({
     '1.0.0': {
-        [0x81ed0580 - 0x80004000]: mainHandler, // dialogue
-        [0x81f96bac - 0x80004000]: mainHandler, // name
-        [0x8250ac28 - 0x80004000]: mainHandler, // choice
-
-
+        // [0x81ed0580 - 0x80004000]: mainHandler
+        [0x81f96bfc - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"),
+        [0x81f96bac - 0x80004000]: mainHandler.bind_(null, 0, "name"),
+        [0x8250ac28 - 0x80004000]: mainHandler.bind_(null, 0, "choice"),
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
-function handler(regs) {
-    const address = regs[0].value;
-    console.log('onEnter');
+function handler(regs, index, hookname) {
+    const address = regs[index].value;
+    console.log("onEnter:", hookname);
+
 
     /* processString */
     const len = address.add(0x10).readU32() * 2;
