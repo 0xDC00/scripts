@@ -61,10 +61,28 @@ Interceptor.attach(DoJitPtr, {
         //const entrypoint_far = args[4];
         //const size = args[5];
 
-        const em_address = descriptor.readU64().and(0xFFFFFFFF).toNumber();
-        const op = operations[em_address];
+        let em_address, op;
+
+        if (Process.arch === "arm64") {
+            em_address = descriptor.readU64().and(0xFFFFFFFF).toNumber();
+            op = operations[em_address];
+        } else {
+            em_address = descriptor.readU64().and(0xFFFFFFFF).toNumber();
+            op = operations[em_address];
+        }
+
+        // x64
+        // descriptor: 0x29181a8f2e8
+        // em_address: 0x81f96bfc  
+        // entrypoint: 0x20f110ec9b0
+        console.warn(`descriptor: ${descriptor.toString()}
+                    \rem_address: ${ptr(em_address).toString()}
+                    \rentrypoint: ${ptr(entrypoint.toString())}
+                    `);
+
         if (op !== undefined && entrypoint.isNull() === false) {
             console.log('Attach:', ptr(em_address), entrypoint);
+
             jitAttach(em_address, entrypoint, op);
             sessionStorage.setItem('Yuzu_' + Date.now(), {
                 guest: em_address,
@@ -111,8 +129,18 @@ function getDoJitAddress() {
             '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm', // linux 64 new
             '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m', // linux x64
             // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
+            '_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte', // android arm64
             'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)' // macOS x64 (demangle)
         ];
+
+        // find functions of interest
+        // for (const thing of DebugSymbol.findFunctionsMatching("*")) {
+        //     const symbol = DebugSymbol.fromAddress(thing);
+        //     if (symbol.name?.startsWith("_")) {
+        //         console.warn(symbol.name);
+        //     }
+        // }
+
         for (const name of names) {
             const addresss = DebugSymbol.findFunctionsNamed(name);
             if (addresss.length !== 0) {
@@ -291,6 +319,9 @@ function setHook(object, dfVer) {
     }
 
     //console.log(JSON.stringify(object, null, 2));
+    
+    // agent attach
+    console.log("first");
     const IS_32 = globalThis.ARM === true;
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
@@ -300,18 +331,27 @@ function setHook(object, dfVer) {
             }
             const element = object[key];
             const address = IS_32 === true ? uint64(key).add(0x204000) : uint64(key).add(0x80004000);
+            
+            console.warn("key=", key);
+            console.warn(ptr(address).toString(), address.toString(10), "\n");
+            
             operations[address.toString(10)] = element;
         }
     }
 
     if (globalThis.gameVer) console.warn('Game version: ' + globalThis.gameVer);
 
+    // reattach
+    console.log("second");
     Object.keys(sessionStorage).map(key => {
         const value = sessionStorage.getItem(key);
         if (key.startsWith('Yuzu_') === true) {
             try {
                 const em_address = value.guest;
                 const entrypoint = ptr(value.host);
+                
+                console.warn(ptr(em_address).toString(), em_address.toString(10));
+
                 const op = operations[em_address.toString(10)];
                 jitAttach(em_address, entrypoint, op);
             }
