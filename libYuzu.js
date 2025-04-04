@@ -15,7 +15,7 @@ console.warn('[Compatibility]');
 console.warn('Yuzu 1616+');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
-const isFastMem = true;
+const isFastMem = false;
 
 const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
 let idxDescriptor = isVirtual === true ? 2 : 1;
@@ -64,21 +64,30 @@ Interceptor.attach(DoJitPtr, {
         let em_address, op;
 
         if (Process.arch === "arm64") {
-            em_address = descriptor.readU64().and(0xFFFFFFFF).toNumber();
+            em_address = descriptor.and(0xFFFFFFFF).toUInt32();
             op = operations[em_address];
         } else {
             em_address = descriptor.readU64().and(0xFFFFFFFF).toNumber();
             op = operations[em_address];
         }
 
-        // x64
-        // descriptor: 0x29181a8f2e8
-        // em_address: 0x81f96bfc  
-        // entrypoint: 0x20f110ec9b0
-        console.warn(`descriptor: ${descriptor.toString()}
-                    \rem_address: ${ptr(em_address).toString()}
-                    \rentrypoint: ${ptr(entrypoint.toString())}
-                    `);
+        // x64 example
+        // descriptor:       0x1c983e9f2e8
+        // em_address:       0x8601a150
+        // em_address (num): 2248253776
+        // entrypoint:       0x1c9342cd440
+
+        // arm64 example
+        // descriptor:       0x86346818 <- already emulation address
+        // em_address:       0x86346818
+        // em_address (num): 2251581464
+        // entrypoint:       0x6ad985bcc8
+
+        // console.warn(`descriptor:       ${descriptor.toString()}
+        //             \rem_address:       ${ptr(em_address).toString()}
+        //             \rem_address (num): ${em_address}
+        //             \rentrypoint:       ${ptr(entrypoint.toString())}
+        //             `);
 
         if (op !== undefined && entrypoint.isNull() === false) {
             console.log('Attach:', ptr(em_address), entrypoint);
@@ -101,8 +110,11 @@ function jitAttach(em_address, entrypoint, op) {
     // Breakpoint.add (slower)
     Breakpoint.add(entrypoint, function () {
         //thiz.context.sp = 0;
+        console.log("breakpoint stuff");
+        console.log(ptr(em_address).toString(), entrypoint.toString());
         const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
         //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
+
         op.call(thiz, regs);
     });
 
@@ -202,16 +214,45 @@ function getDoJitAddress() {
 // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a64_jitstate.h
 // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
 function createFunction_buildRegs() {
+    console.warn("in createFunction_buildRegs()");
     let body = '';
 
-    // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
-    body += 'const regs = context.r15;'; // x28
+    if (Process.arch === "arm64") {
+        body += "console.log('in arm64');";
+        body += 'console.log(context.fp.toString());';
+        body += 'const regs = context.x28;'; // x28
+        body += 'console.log("trying to print...");';
+        body += `const theRegs = ["pc", "sp", "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "fp", "lr"];`;
+        body += `for (const reg of theRegs) {
+                    // console.log(reg + ": " + JSON.stringify(context[reg]))
+                    try {
+                        console.log(reg + ": " + context[reg].add(0x14).readUtf16String());
+                    } catch (err) {
+                    }
+                };`;
+    } else {
+        // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
+        body += 'const regs = context.r15;'; // x28 
+        body += `const theRegs = ["pc", "sp", "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip"];`
+        body += `for (const reg of theRegs) {
+                    try {
+                        console.log(reg + ": " + context[reg].add(0x14).readUtf16String());
+                    } catch (err) {
+                    }
+                }`
+        // body += `console.log(JSON.stringify(context, null, 2));`
+    }
 
     let getValue = '';
     if (isFastMem === true) {
         /* fastmem (host MMU) */
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a64_interface.cpp#L43
-        body += 'const base = context.r13;';
+        
+        if (Process.arch === "arm64") {
+            body += 'const base = context.r13;';
+        } else {
+            body += 'const base = context.r13;';
+        }
 
         getValue = `get value() { return base.add(this._vm); },`; // host address
     }
@@ -253,6 +294,8 @@ function createFunction_buildRegs() {
 
     //body += 'thiz.context.pc = regs.add(256).readU64().toNumber();' // x32 0x100 256 - where you are
     //body += 'thiz.context.sp = regs.add(248).readU64().toNumber();'; // x31 0xF8 248; useless?
+    
+    // commenting out the following block doesn't break the script?
     body += 'thiz.returnAddress = regs.add(240).readU64().toNumber();'; // x30 0xF0 240, lr - where you were
     body += 'thiz.context.lr = args[30];';
     body += 'thiz.context.fp = args[29];'; // x29 (FP): Frame pointer.
@@ -265,6 +308,8 @@ function createFunction_buildRegs() {
 
 // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
 function createFunction_buildRegs32() {
+    console.warn("in createFunction_buildRegs32()");
+
     let body = '';
 
     /* fastmem */
