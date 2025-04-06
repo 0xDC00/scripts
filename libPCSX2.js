@@ -66,8 +66,8 @@ function getPatternAddress({
 }
 
 /**
- * Scans a pattern in memory and returns a NativePointer
- * for the beginning of its function.
+ * Scans a pattern in memory and returns a NativePointer for the beginning
+ * of its function.
  * @param {Object} settings
  * @param {string} settings.name
  * @param {string} settings.pattern
