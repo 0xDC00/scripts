@@ -82,6 +82,7 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
         for (let i = candidates.length - 1; i >= 0; i--) {
             const address = candidates[i].address.add(1);
             const ins = Instruction.parse(address);
+
             if (ins.mnemonic === "push") {
                 return address;
             }
@@ -98,6 +99,7 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
     for (const pattern of patterns) {
         const results = Memory.scanSync(base, size, pattern);
         const startAddress = findFunctionStartAddress(results);
+
         if (startAddress !== null) {
             if (IS_DEBUG) console.log(`[${name}Prologue] @ ${address}`);
 
@@ -215,6 +217,7 @@ if (
     findAddressesThroughDebug();
 } else {
     console.warn("Using pattern scanning");
+
     try {
         findAddressesThroughPattern();
     } catch (err) {
@@ -223,6 +226,7 @@ if (
             \rInstall debug symbols to make PCSX2 hooking work,
             \ror wait for someone to fix the patterns.
         `);
+
         throw err;
     }
 }
