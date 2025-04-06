@@ -131,7 +131,7 @@ function calculateLeaAddress(ins) {
 }
 
 // prettier-ignore
-function setAddressesThroughDebug() {
+function setupAddressesThroughDebug() {
     // ?New@BaseBlocks@@QEAAPEAUBASEBLOCKEX@@I_K@Z
     addresses["baseBlocksNew"] = DebugSymbol.findFunctionsNamed("BaseBlocks::New")[0];
     addresses["recRecompile"] = DebugSymbol.findFunctionsNamed("recRecompile")[0];
@@ -146,27 +146,27 @@ function setAddressesThroughDebug() {
 }
 
 // prettier-ignore
-function setAddressesThroughPattern() {
+function setupAddressesThroughPattern() {
     addresses["baseBlocksNew"] = getFunctionAddress({
         name: "baseBlocksNew",
         pattern: "4C 8B 40 08 41 80 78 19 00 0F84 ????0000",
-        //       "4C 8B 40 08 41 80 78 19 00 0F84 76010000",
+        //       "4C 8B 40 08 41 80 78 19 00 0F84 76010000" v2.2.0
     });
     addresses["recRecompile"] = getFunctionAddress({
         name: "recCompile",
         pattern: "48 8B 05 ???????? 48 3B 05 ???????? 72 07",
-        //       "48 8B 05 DB0B8303 48 3B 05 DC0B8303 72 07 C6 05 F30B8B03 01",
+        //       "48 8B 05 DB0B8303 48 3B 05 DC0B8303 72 07 C6 05 F30B8B03 01" v2.2.0
     });
     addresses["iopRecRecompile"] = getFunctionAddress({
         name: "iopRecRecompile",
         pattern: "81 F9 30160000 0F 84 8A000000 81 FE 90080000",
-        //       "81 F9 30160000 0F 84 8A000000 81 FE 90080000",
+        //       "81 F9 30160000 0F 84 8A000000 81 FE 90080000" v2.2.0
     });
     addresses["recAddBreakpoint"] = getFunctionAddress({
         name: "recAddBreakpoint",
         lookbackSize: 0x500,
         pattern: "48 83 05 ???????? 50 EB 14 48 8D 0D ???????? 4C 8D 44 24 ?? ?? 89 FA E8",
-        //       "48 83 05 4E54460D 50 EB 14 48 8D 0D 3D54460D 4C 8D 44 24 28 48 89 FA E8 98170000"
+        //       "48 83 05 4E54460D 50 EB 14 48 8D 0D 3D54460D 4C 8D 44 24 28 48 89 FA E8 98170000" v2.2.0
     });
 
     {
@@ -175,7 +175,7 @@ function setAddressesThroughPattern() {
         const cpuRegsLoad = getPatternAddress({
             name: "cpuRegsLoad",
             pattern: "48 8D 15 ???????? 89 84 8A F0030000",
-            //       "48 8D 15 4F607A02 89 84 8A F0030000",
+            //       "48 8D 15 4F607A02 89 84 8A F0030000" v2.2.0
         });
         const ins = Instruction.parse(cpuRegsLoad); // lea rdx,[pcsx2-qt._cpuRegistersPack]
 
@@ -186,7 +186,7 @@ function setAddressesThroughPattern() {
         const psxRegsLoad = getPatternAddress({
             name: "psxRegsLoad",
             pattern: "4? ?? ?? 48 8D 15 ???????? 89 04 8A C3",
-            //       "41 8B 01 48 8D 15 3E4C7A02 89 04 8A C3",
+            //       "41 8B 01 48 8D 15 3E4C7A02 89 04 8A C3" v2.2.0
         });
         let ins = Instruction.parse(psxRegsLoad); // movsxd  rcx,r8d
         ins = Instruction.parse(ins.next); // lea rdx,[pcsx2-qt.psxRegs]
@@ -200,12 +200,12 @@ function setAddressesThroughPattern() {
     addresses["dynarecCheckBreakpoint"] = getFunctionAddress({
         name: "dynarecCheckBreakpoint",
         pattern: "8B 35 ???????? 8B 05 ???????? 48 39 05 ???????? 75 0D",
-        //       "8B 35 0BA18602 8B 05 1DA28602 48 39 05 8E5B530D 75 0D",
+        //       "8B 35 0BA18602 8B 05 1DA28602 48 39 05 8E5B530D 75 0D" v2.2.0
     });
     addresses["psxDynarecCheckBreakpoint"] = getFunctionAddress({
         name: "psxDynarecCheckBreakpoint",
         pattern: "8B 35 ???????? 8B 0D ???????? 31 FF B8 00000000",
-        //       "8B 35 6B178802 8B 0D 6D178802 31 FF B8 00000000",
+        //       "8B 35 6B178802 8B 0D 6D178802 31 FF B8 00000000" v2.2.0
     });
 }
 
@@ -214,12 +214,12 @@ if (
     FORCE_PATTERN_FALLBACK === false
 ) {
     console.warn("Using debug symbols");
-    setAddressesThroughDebug();
+    setupAddressesThroughDebug();
 } else {
     console.warn("Using pattern scanning");
 
     try {
-        setAddressesThroughPattern();
+        setupAddressesThroughPattern();
     } catch (err) {
         console.error(`
             \rFailed pattern scanning!
