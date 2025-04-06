@@ -1,6 +1,6 @@
 // @name         PCSX2 JIT Hooker
 // @version      2.2.0 -> 2.3.257
-// @author       logantgt, based on work from [DC] and koukdw
+// @author       logantgt, Mansive, based on work from [DC] and koukdw
 // @description  windows, linux, mac (x64)
 
 if (module.parent === null) {
@@ -8,7 +8,7 @@ if (module.parent === null) {
 }
 
 const IS_DEBUG = false;
-const FORCE_PATTERN_FALLBACK = true;
+const FORCE_PATTERN_FALLBACK = false;
 
 const __e = Process.mainModule;
 __e.size /= 2;
@@ -73,10 +73,6 @@ function getPatternAddress({
  * @returns {NativePointer}
  */
 function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
-    const patternAddress = getPatternAddress({ name, pattern });
-    const base = patternAddress.sub(lookbackSize);
-    const size = lookbackSize;
-
     /** @param {MemoryScanMatch[]} candidates */
     function findFunctionStartAddress(candidates) {
         if (candidates === 0) {
@@ -94,6 +90,10 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
         return null;
     }
 
+    const patternAddress = getPatternAddress({ name, pattern });
+    const base = patternAddress.sub(lookbackSize);
+    const size = lookbackSize;
+
     {
         const results = Memory.scanSync(base, size, "CC 4?");
         const address = findFunctionStartAddress(results);
@@ -101,6 +101,7 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
             return address;
         }
     }
+
     {
         const results = Memory.scanSync(base, size, "CC 5?");
         const address = findFunctionStartAddress(results);
@@ -115,17 +116,20 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
 /** @param {string} symbolName */
 function findSymbol(symbolName) {
     const symbol = symbols.find((x) => x.name === symbolName);
+
     if (IS_DEBUG) console.log(`Symbol:[${symbol.name}] @ ${symbol.address}`);
 
     return symbol;
 }
 
 /** @param {Instruction} ins */
-function getLeaEffectiveAddress(ins) {
+function calculateLeaAddress(ins) {
     if (ins.mnemonic !== "lea") {
         throw new Error("Not lea");
     }
+
     const memOffset = ins.operands[1].value.disp;
+
     return ins.next.add(memOffset);
 }
 
@@ -170,7 +174,7 @@ function findAddressesThroughPattern() {
 
     {
         // R5900DebugInterface::setRegister
-        // could get from DynarecChekBreakpoint instead
+        // could get from DynarecCheckBreakpoint instead
         const cpuRegsLoad = getPatternAddress({
             name: "cpuRegsLoad",
             pattern: "48 8D 15 ???????? 89 84 8A F0030000",
@@ -178,7 +182,7 @@ function findAddressesThroughPattern() {
         });
         const ins = Instruction.parse(cpuRegsLoad); // lea rdx,[pcsx2-qt._cpuRegistersPack]
 
-        addresses["cpuRegsPtr"] = getLeaEffectiveAddress(ins);
+        addresses["cpuRegsPtr"] = calculateLeaAddress(ins);
     }
     {
         // R3000DebugInterface::setRegister
@@ -190,7 +194,7 @@ function findAddressesThroughPattern() {
         let ins = Instruction.parse(psxRegsLoad); // movsxd  rcx,r8d
         ins = Instruction.parse(ins.next); // lea rdx,[pcsx2-qt.psxRegs]
 
-        addresses["psxRegsPtr"] = getLeaEffectiveAddress(ins);
+        addresses["psxRegsPtr"] = calculateLeaAddress(ins);
     }
 
     addresses["eeMem"] = findSymbol("EEmem").address.readPointer();
@@ -535,17 +539,13 @@ const iopContext = {
     Interceptor.replace(psxDynarecCheckBreakpoint, new NativeCallback(() => { return; }, "void", []));
 }
 
+//prettier-ignore
 async function setHookEE(object) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
-            var addBp = new NativeFunction(recAddBreakpoint, "void", [
-                "uint8",
-                "uint32",
-                "bool",
-                "bool",
-            ]);
+            var addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool",]);
             addBp(0x01, parseInt(key), 0x00, 0x01);
         }
     }
@@ -565,17 +565,13 @@ async function setHookEE(object) {
     });
 }
 
+//prettier-ignore
 async function setHookIOP(object) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
-            var addBp = new NativeFunction(recAddBreakpoint, "void", [
-                "uint8",
-                "uint32",
-                "bool",
-                "bool",
-            ]);
+            var addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
             addBp(0x02, parseInt(key), 0x00, 0x01);
         }
     }
