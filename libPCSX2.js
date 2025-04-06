@@ -99,6 +99,8 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
         const results = Memory.scanSync(base, size, pattern);
         const startAddress = findFunctionStartAddress(results);
         if (startAddress !== null) {
+            if (IS_DEBUG) console.log(`[${name}Prologue] @ ${address}`);
+
             return startAddress;
         }
     }
@@ -161,8 +163,8 @@ function findAddressesThroughPattern() {
     addresses["recAddBreakpoint"] = getFunctionAddress({
         name: "recAddBreakpoint",
         lookbackSize: 0x500,
-        pattern: "48 83 05 ?? ?? ?? 0D 50 EB 14 48 8D 0D ?? ?? ?? 0D 4C 8D 44 24 ?? ?? 89 FA E8",
-        //       "48 83 05 4E 54 46 0D 50 EB 14 48 8D 0D 3D 54 46 0D 4C 8D 44 24 28 48 89 FA E8 98 17 00 00"
+        pattern: "48 83 05 ???????? 50 EB 14 48 8D 0D ???????? 4C 8D 44 24 ?? ?? 89 FA E8",
+        //       "48 83 05 4E54460D 50 EB 14 48 8D 0D 3D54460D 4C 8D 44 24 28 48 89 FA E8 98170000"
     });
 
     {
