@@ -7,14 +7,14 @@ if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
 
+const IS_DEBUG = false;
+const FORCE_PATTERN_FALLBACK = true;
+
 const __e = Process.mainModule;
 __e.size /= 2;
 
 const symbols = __e.enumerateSymbols();
 // console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
-
-const IS_DEBUG = false;
-const FORCE_PATTERN_FALLBACK = false;
 
 //#region Find Addresses
 
