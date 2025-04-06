@@ -3,10 +3,20 @@
 // @author       logantgt, based on work from [DC] and koukdw
 // @description  windows, linux, mac (x64)
 
+if (module.parent === null) {
+    throw "I'm not a text hooker!";
+}
+
 const __e = Process.mainModule;
 __e.size /= 2;
 
 const symbols = __e.enumerateSymbols();
+// console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
+
+const IS_DEBUG = false;
+const FORCE_PATTERN_FALLBACK = false;
+
+//#region Find Addresses
 
 /** @type {Object.<string, NativePointer>} */
 const addresses = Object.create(null);
@@ -18,6 +28,7 @@ const addresses = Object.create(null);
  * @param {string} settings.pattern
  * @param {NativePointer} [settings.base]
  * @param {number} [settings.size]
+ * @param {boolean} [settings.debug]
  * @returns {NativePointer}
  */
 function getPatternAddress({
@@ -25,9 +36,13 @@ function getPatternAddress({
     pattern,
     base = __e.base,
     size = __e.size,
+    debug = false,
 }) {
     /** @type {MemoryScanMatch[]} */
     let results = null;
+
+    // override
+    if (IS_DEBUG === true) debug = true;
 
     try {
         results = Memory.scanSync(base, size, pattern);
@@ -38,14 +53,14 @@ function getPatternAddress({
     }
 
     if (results.length === 0) {
-        throw new Error(`[${name}] not found!`);
+        throw new RangeError(`[${name}] not found!`);
     } else if (results.length > 1) {
-        console.warn(`${name} has ${results.length} results`);
+        if (debug) console.warn(`${name} has ${results.length} results`);
     }
 
     const address = results.at(-1).address;
 
-    console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
+    if (debug) console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
 
     return address;
 }
@@ -73,161 +88,151 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
         settings.pattern = "CC CC 4?";
         functionAddress = getPatternAddress(settings);
     } catch (err) {
-        settings.pattern = "CC CC 5?";
-        functionAddress = getPatternAddress(settings);
+        if (err instanceof RangeError) {
+            settings.pattern = "CC CC 5?";
+            functionAddress = getPatternAddress(settings);
+        } else {
+            throw err;
+        }
     }
 
-    return functionAddress.add(2);
+    functionAddress = functionAddress.add(2);
+
+    if (Instruction.parse(functionAddress).mnemonic !== "push") {
+        throw new Error("Couldn't find function prologue");
+    }
+
+    return functionAddress;
 }
 
+/** @param {string} symbolName */
+function findSymbol(symbolName) {
+    return symbols.find((x) => x.name === symbolName);
+}
+
+/** @param {Instruction} ins */
+function getLeaEffectiveAddress(ins) {
+    if (ins.mnemonic !== "lea") {
+        throw new Error("Not lea");
+    }
+    const memOffset = ins.operands[1].value.disp;
+    return ins.next.add(memOffset);
+}
+
+// prettier-ignore
 function findAddressesThroughDebug() {
     // ?New@BaseBlocks@@QEAAPEAUBASEBLOCKEX@@I_K@Z
-    addresses["BaseBlocksNew"] =
-        DebugSymbol.findFunctionsNamed("BaseBlocks::New")[0];
-    addresses["recRecompile"] =
-        DebugSymbol.findFunctionsNamed("recRecompile")[0];
-    addresses["iopRecRecompile"] =
-        DebugSymbol.findFunctionsNamed("iopRecRecompile")[0];
-    addresses["recAddBreakpoint"] = DebugSymbol.findFunctionsNamed(
-        "CBreakPoints::AddBreakPoint"
-    )[0];
-
-    addresses["cpuRegsPtr"] = symbols.find(
-        (x) => x.name === "_cpuRegistersPack"
-    ).address;
-    addresses["psxRegsPtr"] = symbols.find((x) => x.name === "psxRegs").address;
-
-    addresses["eeMem"] = symbols
-        .find((x) => x.name === "eeMem")
-        .address.readPointer();
-    addresses["iopMem"] = symbols
-        .find((x) => x.name === "iopMem")
-        .address.readPointer();
-
-    addresses["dynarecCheckBreakpoint"] = symbols.find(
-        (x) => x.name === "dynarecCheckBreakpoint"
-    ).address;
-    addresses["psxDynarecCheckBreakpoint"] = symbols.find(
-        (x) => x.name === "psxDynarecCheckBreakpoint"
-    ).address;
+    addresses["baseBlocksNew"] = DebugSymbol.findFunctionsNamed("BaseBlocks::New")[0];
+    addresses["recRecompile"] = DebugSymbol.findFunctionsNamed("recRecompile")[0];
+    addresses["iopRecRecompile"] = DebugSymbol.findFunctionsNamed("iopRecRecompile")[0];
+    addresses["recAddBreakpoint"] = DebugSymbol.findFunctionsNamed("CBreakPoints::AddBreakPoint")[0];
+    addresses["cpuRegsPtr"] = findSymbol("_cpuRegistersPack").address;
+    addresses["eeMem"] = findSymbol("eeMem").address.readPointer();
+    addresses["psxRegsPtr"] = findSymbol("psxRegs").address;
+    addresses["iopMem"] = findSymbol("iopMem").address.readPointer();
+    addresses["dynarecCheckBreakpoint"] = findSymbol("dynarecCheckBreakpoint").address;
+    addresses["psxDynarecCheckBreakpoint"] = findSymbol("psxDynarecCheckBreakpoint").address;
 }
 
 function findAddressesThroughPattern() {
-    addresses["BaseBlocksNew"] = getFunctionAddress({
-        name: "BaseBlocksNew",
-        // "4C 8B 40 08 41 80 78 19 00 0F84 76010000",
+    addresses["baseBlocksNew"] = getFunctionAddress({
+        name: "baseBlocksNew",
         pattern: "4C 8B 40 08 41 80 78 19 00 0F84 ????0000",
+        //       "4C 8B 40 08 41 80 78 19 00 0F84 76010000",
     });
     addresses["recRecompile"] = getFunctionAddress({
         name: "recCompile",
-        // "48 8B 05 DB0B8303 48 3B 05 DC0B8303 72 07 C6 05 F30B8B03 01",
         pattern: "48 8B 05 ???????? 48 3B 05 ???????? 72 07",
+        //       "48 8B 05 DB0B8303 48 3B 05 DC0B8303 72 07 C6 05 F30B8B03 01",
     });
     addresses["iopRecRecompile"] = getFunctionAddress({
         name: "iopRecRecompile",
-        // "81 F9 30160000 0F 84 8A000000 81 FE 90080000",
         pattern: "81 F9 30160000 0F 84 8A000000 81 FE 90080000",
+        //       "81 F9 30160000 0F 84 8A000000 81 FE 90080000",
     });
     addresses["recAddBreakpoint"] = getFunctionAddress({
         name: "recAddBreakpoint",
-        pattern:
-            // "48 8B 3D 8055460D 4C 8B 1D 7155460D 48 89 F8 4C 29 D8 0F84 A5000000",
-            "48 8B 3D ???????? 4? 8B ?? ???????? 4? 89 F8 4? 29 ?? 0F84",
+        pattern: "48 8B 3D ???????? 4? 8B ?? ???????? 4? 89 F8 4? 29 ?? 0F84",
+        //       "48 8B 3D 8055460D 4C 8B 1D 7155460D 48 89 F8 4C 29 D8 0F84 A5000000",
     });
 
-    // R5900DebugInterface::setRegister
-    // could get from DynarecChekBreakpoint instead
-    const cpuRegsLoad = getPatternAddress({
-        name: "cpuRegsLoad",
-        // pattern: "48 8D 15 4F607A02 89 84 8A F0030000",
-        pattern: "48 8D 15 ???????? 89 84 8A F0030000",
-    });
-    let ins = Instruction.parse(cpuRegsLoad); // lea rdx,[pcsx2-qt._cpuRegistersPack]
-    if (ins.mnemonic !== "lea") {
-        throw "Not lea";
-    }
-    let memOffset = ins.operands[1].value.disp;
-    addresses["cpuRegsPtr"] = ins.next.add(memOffset);
+    {
+        // R5900DebugInterface::setRegister
+        // could get from DynarecChekBreakpoint instead
+        const cpuRegsLoad = getPatternAddress({
+            name: "cpuRegsLoad",
+            pattern: "48 8D 15 ???????? 89 84 8A F0030000",
+            //       "48 8D 15 4F607A02 89 84 8A F0030000",
+        });
+        const ins = Instruction.parse(cpuRegsLoad); // lea rdx,[pcsx2-qt._cpuRegistersPack]
 
-    // R3000DebugInterface::setRegister
-    const psxRegsLoad = getPatternAddress({
-        name: "psxRegsLoad",
-        // pattern: "48 8D 15 3E4C7A02 89 04 8A C3",
-        pattern: "4? ?? ?? 48 8D 15 ???????? 89 04 8A C3",
-    });
-    ins = Instruction.parse(psxRegsLoad); // movsxd  rcx,r8d
-    ins = Instruction.parse(ins.next); // lea rdx,[pcsx2-qt.psxRegs]
-    if (ins.mnemonic !== "lea") {
-        throw "Not lea";
+        addresses["cpuRegsPtr"] = getLeaEffectiveAddress(ins);
     }
-    memOffset = ins.operands[1].value.disp;
-    addresses["psxRegsPtr"] = ins.next.add(memOffset);
+    {
+        // R3000DebugInterface::setRegister
+        const psxRegsLoad = getPatternAddress({
+            name: "psxRegsLoad",
+            pattern: "4? ?? ?? 48 8D 15 ???????? 89 04 8A C3",
+            //       "41 8B 01 48 8D 15 3E4C7A02 89 04 8A C3",
+        });
+        let ins = Instruction.parse(psxRegsLoad); // movsxd  rcx,r8d
+        ins = Instruction.parse(ins.next); // lea rdx,[pcsx2-qt.psxRegs]
+
+        addresses["psxRegsPtr"] = getLeaEffectiveAddress(ins);
+    }
+
+    addresses["eeMem"] = findSymbol("EEmem").address.readPointer();
+    addresses["iopMem"] = findSymbol("IOPmem").address.readPointer();
 
     addresses["dynarecCheckBreakpoint"] = getFunctionAddress({
         name: "dynarecCheckBreakpoint",
-        // pattern: "8B 35 0BA18602 8B 05 1DA28602 48 39 05 8E5B530D 75 0D",
         pattern: "8B 35 ???????? 8B 05 ???????? 48 39 05 ???????? 75 0D",
+        //       "8B 35 0BA18602 8B 05 1DA28602 48 39 05 8E5B530D 75 0D",
     });
-
     addresses["psxDynarecCheckBreakpoint"] = getFunctionAddress({
         name: "psxDynarecCheckBreakpoint",
-        // pattern: "8B 35 6B178802 8B 0D 6D178802 31 FF B8 00000000",
         pattern: "8B 35 ???????? 8B 0D ???????? 31 FF B8 00000000",
+        //       "8B 35 6B178802 8B 0D 6D178802 31 FF B8 00000000",
     });
-
-    addresses["eeMem"] = symbols
-        .find((x) => x.name === "EEmem")
-        .address.readPointer();
-    addresses["iopMem"] = symbols
-        .find((x) => x.name === "IOPmem")
-        .address.readPointer();
 }
 
-// console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
-
-if (DebugSymbol.findFunctionsNamed("BaseBlocks::New").length >= 1) {
+if (
+    DebugSymbol.findFunctionsNamed("BaseBlocks::New").length >= 1 &&
+    FORCE_PATTERN_FALLBACK === false
+) {
     console.warn("Using debug symbols");
     findAddressesThroughDebug();
 } else {
     console.warn("Using pattern scanning");
-    findAddressesThroughPattern();
+    try {
+        findAddressesThroughPattern();
+    } catch (err) {
+        console.error(`
+            \rFailed pattern scanning!
+            \rInstall debug symbols to make PCSX2 hooking work,
+            \ror wait for someone to fix the patterns.
+        `);
+        throw err;
+    }
 }
 
-const BaseBlocksNew = addresses["BaseBlocksNew"];
-const recRecompile = addresses["recRecompile"];
-const iopRecRecompile = addresses["iopRecRecompile"];
-const recAddBreakpoint = addresses["recAddBreakpoint"];
-const cpuRegsPtr = addresses["cpuRegsPtr"];
-const eeMem = addresses["eeMem"];
-const psxRegsPtr = addresses["psxRegsPtr"];
-const iopMem = addresses["iopMem"];
-const dynarecCheckBreakpoint = addresses["dynarecCheckBreakpoint"];
-const psxDynarecCheckBreakpoint = addresses["psxDynarecCheckBreakpoint"];
+//#endregion
 
-// const special = {
-//   BaseBlocksNew: BaseBlocksNew,
-//   recRecompile: recRecompile,
-//   iopRecRecompile: iopRecRecompile,
-//   recAddBreakpoint: recAddBreakpoint,
-//   cpuRegsPtr: cpuRegsPtr,
-//   eeMem: eeMem,
-//   psxRegsPtr: psxRegsPtr,
-//   iopMem: iopMem,
-// };
-// for (const [key, value] of Object.entries(special)) {
-//   console.warn(key, value.toString());
-// }
-
-// if (!BaseBlocksNew || !recRecompile || !iopRecRecompile || !recAddBreakpoint) {
-//     throw new Error("Missing debug symbols");
-// }
-
-// #region Everything Else
+const baseBlocksNew = addresses.baseBlocksNew;
+const recRecompile = addresses.recRecompile;
+const iopRecRecompile = addresses.iopRecRecompile;
+const recAddBreakpoint = addresses.recAddBreakpoint;
+const cpuRegsPtr = addresses.cpuRegsPtr;
+const eeMem = addresses.eeMem;
+const psxRegsPtr = addresses.psxRegsPtr;
+const iopMem = addresses.iopMem;
+const dynarecCheckBreakpoint = addresses.dynarecCheckBreakpoint;
+const psxDynarecCheckBreakpoint = addresses.psxDynarecCheckBreakpoint;
 
 const operations = Object.create(null);
 
 const cache = new Map();
-Interceptor.attach(BaseBlocksNew, function (args) {
+Interceptor.attach(baseBlocksNew, function (args) {
     const startpc = args[1].toUInt32();
     const recPtr = args[2];
     cache.set(startpc, recPtr);
@@ -294,6 +299,8 @@ function jitAttachIOP(startpc, recPtr, op) {
         });
     });
 }
+
+//#region Contexts
 
 // regs functions take a Typed Array View and run the constructor
 // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Typed_arrays)
@@ -497,30 +504,17 @@ const iopContext = {
     },
 };
 
-// replace dynarecCheckBreakpoint (for EE)
-// This results in the same outcome as creating a breakpoint with an unsatisfiable condition in the UI (like 1 < 0)
-Interceptor.replace(
-    dynarecCheckBreakpoint,
-    new NativeCallback(
-        () => {
-            return;
-        },
-        "void",
-        []
-    )
-);
+//#endregion
 
-// replace psxDynarecCheckBreakpoint (for IOP)
-Interceptor.replace(
-    psxDynarecCheckBreakpoint,
-    new NativeCallback(
-        () => {
-            return;
-        },
-        "void",
-        []
-    )
-);
+//prettier-ignore
+{
+    // replace dynarecCheckBreakpoint (for EE)
+    // This results in the same outcome as creating a breakpoint with an unsatisfiable condition in the UI (like 1 < 0)
+    Interceptor.replace(dynarecCheckBreakpoint, new NativeCallback(() => { return; }, "void", []));
+
+    // replace psxDynarecCheckBreakpoint (for IOP)
+    Interceptor.replace(psxDynarecCheckBreakpoint, new NativeCallback(() => { return; }, "void", []));
+}
 
 async function setHookEE(object) {
     for (const key in object) {
