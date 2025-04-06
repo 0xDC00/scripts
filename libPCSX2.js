@@ -1,5 +1,5 @@
 // @name         PCSX2 JIT Hooker
-// @version      2.2.0
+// @version      2.2.0 -> 2.3.257
 // @author       logantgt, based on work from [DC] and koukdw
 // @description  windows, linux, mac (x64)
 
@@ -22,13 +22,13 @@ const FORCE_PATTERN_FALLBACK = false;
 const addresses = Object.create(null);
 
 /**
- * Scans a pattern in memory and returns a NativePointer for the last match.
+ * Scans a pattern in memory and returns a NativePointer.
  * @param {Object} settings
  * @param {string} settings.name
  * @param {string} settings.pattern
  * @param {NativePointer} [settings.base]
  * @param {number} [settings.size]
- * @param {boolean} [settings.debug]
+ * @param {boolean} [settings.getFirst]
  * @returns {NativePointer}
  */
 function getPatternAddress({
@@ -36,13 +36,10 @@ function getPatternAddress({
     pattern,
     base = __e.base,
     size = __e.size,
-    debug = false,
+    getFirst = true,
 }) {
     /** @type {MemoryScanMatch[]} */
     let results = null;
-
-    // override
-    if (IS_DEBUG === true) debug = true;
 
     try {
         results = Memory.scanSync(base, size, pattern);
@@ -55,19 +52,20 @@ function getPatternAddress({
     if (results.length === 0) {
         throw new RangeError(`[${name}] not found!`);
     } else if (results.length > 1) {
-        if (debug) console.warn(`${name} has ${results.length} results`);
+        if (IS_DEBUG) console.warn(`${name} has ${results.length} results`);
     }
 
-    const address = results.at(-1).address;
+    const index = getFirst ? 0 : -1;
+    const address = results.at(index).address;
 
-    if (debug) console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
+    if (IS_DEBUG) console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
 
     return address;
 }
 
 /**
  * Scans a pattern in memory and returns a NativePointer for the beginning
- * of its function.
+ * of the function it's in.
  * @param {Object} settings
  * @param {string} settings.name
  * @param {string} settings.pattern
@@ -76,38 +74,50 @@ function getPatternAddress({
  */
 function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
     const patternAddress = getPatternAddress({ name, pattern });
-    const settings = {
-        name: `${name}Prologue`,
-        pattern: "",
-        base: patternAddress.sub(lookbackSize),
-        size: lookbackSize,
-    };
-    let functionAddress = null;
+    const base = patternAddress.sub(lookbackSize);
+    const size = lookbackSize;
 
-    try {
-        settings.pattern = "CC CC 4?";
-        functionAddress = getPatternAddress(settings);
-    } catch (err) {
-        if (err instanceof RangeError) {
-            settings.pattern = "CC CC 5?";
-            functionAddress = getPatternAddress(settings);
-        } else {
-            throw err;
+    /** @param {MemoryScanMatch[]} results */
+    function findFunctionStartAddress(results) {
+        if (results === 0) {
+            return null;
+        }
+
+        for (let i = results.length - 1; i >= 0; i--) {
+            const address = results[i].address.add(1);
+            const ins = Instruction.parse(address);
+            if (ins.mnemonic === "push") {
+                return address;
+            }
+        }
+
+        return null;
+    }
+
+    {
+        const candidates = Memory.scanSync(base, size, "CC 4?");
+        const address = findFunctionStartAddress(candidates);
+        if (address !== null) {
+            return address;
+        }
+    }
+    {
+        const candidates = Memory.scanSync(base, size, "CC 5?");
+        const address = findFunctionStartAddress(candidates);
+        if (address !== null) {
+            return address;
         }
     }
 
-    functionAddress = functionAddress.add(2);
-
-    if (Instruction.parse(functionAddress).mnemonic !== "push") {
-        throw new Error("Couldn't find function prologue");
-    }
-
-    return functionAddress;
+    throw new Error(`Couldn't find start of function for ${name}!`);
 }
 
 /** @param {string} symbolName */
 function findSymbol(symbolName) {
-    return symbols.find((x) => x.name === symbolName);
+    const symbol = symbols.find((x) => x.name === symbolName);
+    if (IS_DEBUG) console.log(`Symbol:[${symbol.name}] @ ${symbol.address}`);
+
+    return symbol;
 }
 
 /** @param {Instruction} ins */
@@ -134,6 +144,7 @@ function findAddressesThroughDebug() {
     addresses["psxDynarecCheckBreakpoint"] = findSymbol("psxDynarecCheckBreakpoint").address;
 }
 
+//prettier-ignore
 function findAddressesThroughPattern() {
     addresses["baseBlocksNew"] = getFunctionAddress({
         name: "baseBlocksNew",
@@ -152,8 +163,9 @@ function findAddressesThroughPattern() {
     });
     addresses["recAddBreakpoint"] = getFunctionAddress({
         name: "recAddBreakpoint",
-        pattern: "48 8B 3D ???????? 4? 8B ?? ???????? 4? 89 F8 4? 29 ?? 0F84",
-        //       "48 8B 3D 8055460D 4C 8B 1D 7155460D 48 89 F8 4C 29 D8 0F84 A5000000",
+        lookbackSize: 0x500,
+        pattern: "48 83 05 ?? ?? ?? 0D 50 EB 14 48 8D 0D ?? ?? ?? 0D 4C 8D 44 24 ?? ?? 89 FA E8",
+        //       "48 83 05 4E 54 46 0D 50 EB 14 48 8D 0D 3D 54 46 0D 4C 8D 44 24 28 48 89 FA E8 98 17 00 00"
     });
 
     {
@@ -217,6 +229,13 @@ if (
 }
 
 //#endregion
+
+if (IS_DEBUG === true) {
+    console.log("\nAddresses:");
+    for (const [name, address] of Object.entries(addresses)) {
+        console.log(`[${name}] @ ${address}`);
+    }
+}
 
 const baseBlocksNew = addresses.baseBlocksNew;
 const recRecompile = addresses.recRecompile;
