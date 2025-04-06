@@ -90,23 +90,16 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
         return null;
     }
 
-    const patternAddress = getPatternAddress({ name, pattern });
-    const base = patternAddress.sub(lookbackSize);
+    const address = getPatternAddress({ name, pattern });
+    const base = address.sub(lookbackSize);
     const size = lookbackSize;
+    const patterns = ["CC 4?", "CC 5?"];
 
-    {
-        const results = Memory.scanSync(base, size, "CC 4?");
-        const address = findFunctionStartAddress(results);
-        if (address !== null) {
-            return address;
-        }
-    }
-
-    {
-        const results = Memory.scanSync(base, size, "CC 5?");
-        const address = findFunctionStartAddress(results);
-        if (address !== null) {
-            return address;
+    for (const pattern of patterns) {
+        const results = Memory.scanSync(base, size, pattern);
+        const startAddress = findFunctionStartAddress(results);
+        if (startAddress !== null) {
+            return startAddress;
         }
     }
 
