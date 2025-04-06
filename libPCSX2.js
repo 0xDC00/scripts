@@ -77,14 +77,14 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
     const base = patternAddress.sub(lookbackSize);
     const size = lookbackSize;
 
-    /** @param {MemoryScanMatch[]} results */
-    function findFunctionStartAddress(results) {
-        if (results === 0) {
+    /** @param {MemoryScanMatch[]} candidates */
+    function findFunctionStartAddress(candidates) {
+        if (candidates === 0) {
             return null;
         }
 
-        for (let i = results.length - 1; i >= 0; i--) {
-            const address = results[i].address.add(1);
+        for (let i = candidates.length - 1; i >= 0; i--) {
+            const address = candidates[i].address.add(1);
             const ins = Instruction.parse(address);
             if (ins.mnemonic === "push") {
                 return address;
@@ -95,15 +95,15 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
     }
 
     {
-        const candidates = Memory.scanSync(base, size, "CC 4?");
-        const address = findFunctionStartAddress(candidates);
+        const results = Memory.scanSync(base, size, "CC 4?");
+        const address = findFunctionStartAddress(results);
         if (address !== null) {
             return address;
         }
     }
     {
-        const candidates = Memory.scanSync(base, size, "CC 5?");
-        const address = findFunctionStartAddress(candidates);
+        const results = Memory.scanSync(base, size, "CC 5?");
+        const address = findFunctionStartAddress(results);
         if (address !== null) {
             return address;
         }
