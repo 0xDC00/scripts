@@ -16,7 +16,7 @@ __e.size /= 2;
 const symbols = __e.enumerateSymbols();
 // console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
 
-//#region Find Addresses
+// #region Find Addresses
 
 /** @type {Object.<string, NativePointer>} */
 const addresses = Object.create(null);
@@ -131,7 +131,7 @@ function calculateLeaAddress(ins) {
 }
 
 // prettier-ignore
-function findAddressesThroughDebug() {
+function setAddressesThroughDebug() {
     // ?New@BaseBlocks@@QEAAPEAUBASEBLOCKEX@@I_K@Z
     addresses["baseBlocksNew"] = DebugSymbol.findFunctionsNamed("BaseBlocks::New")[0];
     addresses["recRecompile"] = DebugSymbol.findFunctionsNamed("recRecompile")[0];
@@ -145,8 +145,8 @@ function findAddressesThroughDebug() {
     addresses["psxDynarecCheckBreakpoint"] = findSymbol("psxDynarecCheckBreakpoint").address;
 }
 
-//prettier-ignore
-function findAddressesThroughPattern() {
+// prettier-ignore
+function setAddressesThroughPattern() {
     addresses["baseBlocksNew"] = getFunctionAddress({
         name: "baseBlocksNew",
         pattern: "4C 8B 40 08 41 80 78 19 00 0F84 ????0000",
@@ -214,12 +214,12 @@ if (
     FORCE_PATTERN_FALLBACK === false
 ) {
     console.warn("Using debug symbols");
-    findAddressesThroughDebug();
+    setAddressesThroughDebug();
 } else {
     console.warn("Using pattern scanning");
 
     try {
-        findAddressesThroughPattern();
+        setAddressesThroughPattern();
     } catch (err) {
         console.error(`
             \rFailed pattern scanning!
@@ -231,7 +231,7 @@ if (
     }
 }
 
-//#endregion
+// #endregion
 
 if (IS_DEBUG === true) {
     console.log("\nAddresses:");
@@ -322,7 +322,7 @@ function jitAttachIOP(startpc, recPtr, op) {
     });
 }
 
-//#region Contexts
+// #region Contexts
 
 // regs functions take a Typed Array View and run the constructor
 // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Typed_arrays)
@@ -526,9 +526,9 @@ const iopContext = {
     },
 };
 
-//#endregion
+// #endregion
 
-//prettier-ignore
+// prettier-ignore
 {
     // replace dynarecCheckBreakpoint (for EE)
     // This results in the same outcome as creating a breakpoint with an unsatisfiable condition in the UI (like 1 < 0)
@@ -538,7 +538,7 @@ const iopContext = {
     Interceptor.replace(psxDynarecCheckBreakpoint, new NativeCallback(() => { return; }, "void", []));
 }
 
-//prettier-ignore
+// prettier-ignore
 async function setHookEE(object) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
@@ -564,7 +564,7 @@ async function setHookEE(object) {
     });
 }
 
-//prettier-ignore
+// prettier-ignore
 async function setHookIOP(object) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
