@@ -11,8 +11,12 @@ const IS_DEBUG = false;
 const FORCE_PATTERN_FALLBACK = false;
 
 const __e = Process.mainModule;
-__e.size /= 2;
 
+console.warn("[Compatibility]");
+console.warn("PCSX2 v2.2.0+");
+console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
+
+__e.size /= 2;
 const symbols = __e.enumerateSymbols();
 // console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
 
