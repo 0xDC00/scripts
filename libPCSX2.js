@@ -1,5 +1,5 @@
 // @name         PCSX2 JIT Hooker
-// @version      2.2.0 -> 2.3.260
+// @version      2.2.0 -> 2.3.261
 // @author       logantgt, Mansive, based on work from [DC] and koukdw
 // @description  windows, linux, mac (x64)
 
@@ -10,20 +10,20 @@ if (module.parent === null) {
 const IS_DEBUG = false;
 const FORCE_PATTERN_FALLBACK = false;
 
-const __e = Process.mainModule;
+const __e = Process.mainModule ?? Process.enumerateModules()[0];
+__e.size /= 2;
 
 console.warn("[Compatibility]");
 console.warn("PCSX2 v2.2.0+");
 console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
-__e.size /= 2;
-const symbols = __e.enumerateSymbols();
 // console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
 
 // #region Find Addresses
 
 /** @type {Object.<string, NativePointer>} */
 const addresses = Object.create(null);
+const symbols = __e.enumerateSymbols();
 
 /**
  * Scans a pattern in memory and returns a NativePointer.
@@ -56,7 +56,7 @@ function getPatternAddress({
     if (results.length === 0) {
         throw new RangeError(`[${name}] not found!`);
     } else if (results.length > 1) {
-        if (IS_DEBUG) console.warn(`${name} has ${results.length} results`);
+        if (IS_DEBUG) console.warn(`[${name}] has ${results.length} results`);
     }
 
     const index = getFirst ? 0 : -1;
@@ -111,22 +111,24 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
         }
     }
 
-    throw new Error(`Couldn't find start of function for ${name}!`);
+    throw new Error(`Couldn't find start of function for [${name}]`);
 }
 
 /** @param {string} symbolName */
 function findSymbol(symbolName) {
     const symbol = symbols.find((x) => x.name === symbolName);
 
-    if (IS_DEBUG) console.log(`Symbol:[${symbol.name}] @ ${symbol.address}`);
+    if (IS_DEBUG) console.log(`[${symbol.name}Symbol] @ ${symbol.address}`);
 
     return symbol;
 }
 
 /** @param {Instruction} ins */
 function calculateLeaAddress(ins) {
-    if (ins.mnemonic !== "lea") {
-        throw new Error("Not lea");
+    const mnemonic = ins.mnemonic;
+
+    if (mnemonic !== "lea") {
+        throw new Error(`Not lea, got ${mnemonic} instead`);
     }
 
     const memOffset = ins.operands[1].value.disp;
@@ -137,36 +139,36 @@ function calculateLeaAddress(ins) {
 // prettier-ignore
 function setupAddressesThroughDebug() {
     // ?New@BaseBlocks@@QEAAPEAUBASEBLOCKEX@@I_K@Z
-    addresses["baseBlocksNew"] = DebugSymbol.findFunctionsNamed("BaseBlocks::New")[0];
-    addresses["recRecompile"] = DebugSymbol.findFunctionsNamed("recRecompile")[0];
-    addresses["iopRecRecompile"] = DebugSymbol.findFunctionsNamed("iopRecRecompile")[0];
-    addresses["recAddBreakpoint"] = DebugSymbol.findFunctionsNamed("CBreakPoints::AddBreakPoint")[0];
-    addresses["cpuRegsPtr"] = findSymbol("_cpuRegistersPack").address;
-    addresses["eeMem"] = findSymbol("eeMem").address.readPointer();
-    addresses["psxRegsPtr"] = findSymbol("psxRegs").address;
-    addresses["iopMem"] = findSymbol("iopMem").address.readPointer();
-    addresses["dynarecCheckBreakpoint"] = findSymbol("dynarecCheckBreakpoint").address;
-    addresses["psxDynarecCheckBreakpoint"] = findSymbol("psxDynarecCheckBreakpoint").address;
+    addresses.baseBlocksNew = DebugSymbol.findFunctionsNamed("BaseBlocks::New")[0];
+    addresses.recRecompile = DebugSymbol.findFunctionsNamed("recRecompile")[0];
+    addresses.iopRecRecompile = DebugSymbol.findFunctionsNamed("iopRecRecompile")[0];
+    addresses.recAddBreakpoint = DebugSymbol.findFunctionsNamed("CBreakPoints::AddBreakPoint")[0];
+    addresses.cpuRegsPtr = findSymbol("_cpuRegistersPack").address;
+    addresses.eeMem = findSymbol("eeMem").address.readPointer();
+    addresses.psxRegsPtr = findSymbol("psxRegs").address;
+    addresses.iopMem = findSymbol("iopMem").address.readPointer();
+    addresses.dynarecCheckBreakpoint = findSymbol("dynarecCheckBreakpoint").address;
+    addresses.psxDynarecCheckBreakpoint = findSymbol("psxDynarecCheckBreakpoint").address;
 }
 
 // prettier-ignore
 function setupAddressesThroughPattern() {
-    addresses["baseBlocksNew"] = getFunctionAddress({
+    addresses.baseBlocksNew = getFunctionAddress({
         name: "baseBlocksNew",
         pattern: "4C 8B 40 08 41 80 78 19 00 0F84 ????0000",
         //       "4C 8B 40 08 41 80 78 19 00 0F84 76010000" v2.2.0
     });
-    addresses["recRecompile"] = getFunctionAddress({
+    addresses.recRecompile = getFunctionAddress({
         name: "recCompile",
         pattern: "48 8B 05 ???????? 48 3B 05 ???????? 72 07",
         //       "48 8B 05 DB0B8303 48 3B 05 DC0B8303 72 07 C6 05 F30B8B03 01" v2.2.0
     });
-    addresses["iopRecRecompile"] = getFunctionAddress({
+    addresses.iopRecRecompile = getFunctionAddress({
         name: "iopRecRecompile",
         pattern: "81 F9 30160000 0F 84 8A000000 81 FE 90080000",
         //       "81 F9 30160000 0F 84 8A000000 81 FE 90080000" v2.2.0
     });
-    addresses["recAddBreakpoint"] = getFunctionAddress({
+    addresses.recAddBreakpoint = getFunctionAddress({
         name: "recAddBreakpoint",
         lookbackSize: 0x500,
         pattern: "48 83 05 ???????? 50 EB 14 48 8D 0D ???????? 4C 8D 44 24 ?? ?? 89 FA E8",
@@ -183,8 +185,9 @@ function setupAddressesThroughPattern() {
         });
         const ins = Instruction.parse(cpuRegsLoad); // lea rdx,[pcsx2-qt._cpuRegistersPack]
 
-        addresses["cpuRegsPtr"] = calculateLeaAddress(ins);
+        addresses.cpuRegsPtr = calculateLeaAddress(ins);
     }
+
     {
         // R3000DebugInterface::setRegister
         const psxRegsLoad = getPatternAddress({
@@ -195,18 +198,18 @@ function setupAddressesThroughPattern() {
         let ins = Instruction.parse(psxRegsLoad); // movsxd  rcx,r8d
         ins = Instruction.parse(ins.next); // lea rdx,[pcsx2-qt.psxRegs]
 
-        addresses["psxRegsPtr"] = calculateLeaAddress(ins);
+        addresses.psxRegsPtr = calculateLeaAddress(ins);
     }
 
-    addresses["eeMem"] = findSymbol("EEmem").address.readPointer();
-    addresses["iopMem"] = findSymbol("IOPmem").address.readPointer();
+    addresses.eeMem = findSymbol("EEmem").address.readPointer();
+    addresses.iopMem = findSymbol("IOPmem").address.readPointer();
 
-    addresses["dynarecCheckBreakpoint"] = getFunctionAddress({
+    addresses.dynarecCheckBreakpoint = getFunctionAddress({
         name: "dynarecCheckBreakpoint",
         pattern: "8B 35 ???????? 8B 05 ???????? 48 39 05 ???????? 75 0D",
         //       "8B 35 0BA18602 8B 05 1DA28602 48 39 05 8E5B530D 75 0D" v2.2.0
     });
-    addresses["psxDynarecCheckBreakpoint"] = getFunctionAddress({
+    addresses.psxDynarecCheckBreakpoint = getFunctionAddress({
         name: "psxDynarecCheckBreakpoint",
         pattern: "8B 35 ???????? 8B 0D ???????? 31 FF B8 00000000",
         //       "8B 35 6B178802 8B 0D 6D178802 31 FF B8 00000000" v2.2.0
@@ -256,8 +259,8 @@ const dynarecCheckBreakpoint = addresses.dynarecCheckBreakpoint;
 const psxDynarecCheckBreakpoint = addresses.psxDynarecCheckBreakpoint;
 
 const operations = Object.create(null);
-
 const cache = new Map();
+
 Interceptor.attach(baseBlocksNew, function (args) {
     const startpc = args[1].toUInt32();
     const recPtr = args[2];
@@ -284,7 +287,7 @@ Interceptor.attach(recRecompile, {
 });
 
 function jitAttachEE(startpc, recPtr, op) {
-    const thiz = Object.create(null, {});
+    const thiz = Object.create(null);
     thiz.context = eeContext;
 
     Breakpoint.add(recPtr, () => {
@@ -314,7 +317,7 @@ Interceptor.attach(iopRecRecompile, {
 });
 
 function jitAttachIOP(startpc, recPtr, op) {
-    const thiz = Object.create(null, {});
+    const thiz = Object.create(null);
     thiz.context = iopContext;
 
     Breakpoint.add(recPtr, () => {
@@ -332,201 +335,201 @@ function jitAttachIOP(startpc, recPtr, op) {
 // (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Typed_arrays)
 const eeContext = {
     mem: eeMem,
-    r0: function (view) {
-        return new view(cpuRegsPtr.readByteArray(16));
+    r0(view) {
+        return view(cpuRegsPtr.readByteArray(16));
     },
-    at: function (view) {
-        return new view(cpuRegsPtr.add(16).readByteArray(16));
+    at(view) {
+        return view(cpuRegsPtr.add(16).readByteArray(16));
     },
-    v0: function (view) {
-        return new view(cpuRegsPtr.add(32).readByteArray(16));
+    v0(view) {
+        return view(cpuRegsPtr.add(32).readByteArray(16));
     },
-    v1: function (view) {
-        return new view(cpuRegsPtr.add(48).readByteArray(16));
+    v1(view) {
+        return view(cpuRegsPtr.add(48).readByteArray(16));
     },
-    a0: function (view) {
-        return new view(cpuRegsPtr.add(64).readByteArray(16));
+    a0(view) {
+        return view(cpuRegsPtr.add(64).readByteArray(16));
     },
-    a1: function (view) {
-        return new view(cpuRegsPtr.add(80).readByteArray(16));
+    a1(view) {
+        return view(cpuRegsPtr.add(80).readByteArray(16));
     },
-    a2: function (view) {
-        return new view(cpuRegsPtr.add(96).readByteArray(16));
+    a2(view) {
+        return view(cpuRegsPtr.add(96).readByteArray(16));
     },
-    a3: function (view) {
-        return new view(cpuRegsPtr.add(112).readByteArray(16));
+    a3(view) {
+        return view(cpuRegsPtr.add(112).readByteArray(16));
     },
-    t0: function (view) {
-        return new view(cpuRegsPtr.add(128).readByteArray(16));
+    t0(view) {
+        return view(cpuRegsPtr.add(128).readByteArray(16));
     },
-    t1: function (view) {
-        return new view(cpuRegsPtr.add(144).readByteArray(16));
+    t1(view) {
+        return view(cpuRegsPtr.add(144).readByteArray(16));
     },
-    t2: function (view) {
-        return new view(cpuRegsPtr.add(160).readByteArray(16));
+    t2(view) {
+        return view(cpuRegsPtr.add(160).readByteArray(16));
     },
-    t3: function (view) {
-        return new view(cpuRegsPtr.add(176).readByteArray(16));
+    t3(view) {
+        return view(cpuRegsPtr.add(176).readByteArray(16));
     },
-    t4: function (view) {
-        return new view(cpuRegsPtr.add(192).readByteArray(16));
+    t4(view) {
+        return view(cpuRegsPtr.add(192).readByteArray(16));
     },
-    t5: function (view) {
-        return new view(cpuRegsPtr.add(208).readByteArray(16));
+    t5(view) {
+        return view(cpuRegsPtr.add(208).readByteArray(16));
     },
-    t6: function (view) {
-        return new view(cpuRegsPtr.add(224).readByteArray(16));
+    t6(view) {
+        return view(cpuRegsPtr.add(224).readByteArray(16));
     },
-    t7: function (view) {
-        return new view(cpuRegsPtr.add(240).readByteArray(16));
+    t7(view) {
+        return view(cpuRegsPtr.add(240).readByteArray(16));
     },
-    s0: function (view) {
-        return new view(cpuRegsPtr.add(256).readByteArray(16));
+    s0(view) {
+        return view(cpuRegsPtr.add(256).readByteArray(16));
     },
-    s1: function (view) {
-        return new view(cpuRegsPtr.add(272).readByteArray(16));
+    s1(view) {
+        return view(cpuRegsPtr.add(272).readByteArray(16));
     },
-    s2: function (view) {
-        return new view(cpuRegsPtr.add(288).readByteArray(16));
+    s2(view) {
+        return view(cpuRegsPtr.add(288).readByteArray(16));
     },
-    s3: function (view) {
-        return new view(cpuRegsPtr.add(304).readByteArray(16));
+    s3(view) {
+        return view(cpuRegsPtr.add(304).readByteArray(16));
     },
-    s4: function (view) {
-        return new view(cpuRegsPtr.add(320).readByteArray(16));
+    s4(view) {
+        return view(cpuRegsPtr.add(320).readByteArray(16));
     },
-    s5: function (view) {
-        return new view(cpuRegsPtr.add(336).readByteArray(16));
+    s5(view) {
+        return view(cpuRegsPtr.add(336).readByteArray(16));
     },
-    s6: function (view) {
-        return new view(cpuRegsPtr.add(352).readByteArray(16));
+    s6(view) {
+        return view(cpuRegsPtr.add(352).readByteArray(16));
     },
-    s7: function (view) {
-        return new view(cpuRegsPtr.add(368).readByteArray(16));
+    s7(view) {
+        return view(cpuRegsPtr.add(368).readByteArray(16));
     },
-    t8: function (view) {
-        return new view(cpuRegsPtr.add(384).readByteArray(16));
+    t8(view) {
+        return view(cpuRegsPtr.add(384).readByteArray(16));
     },
-    t9: function (view) {
-        return new view(cpuRegsPtr.add(400).readByteArray(16));
+    t9(view) {
+        return view(cpuRegsPtr.add(400).readByteArray(16));
     },
-    k0: function (view) {
-        return new view(cpuRegsPtr.add(416).readByteArray(16));
+    k0(view) {
+        return view(cpuRegsPtr.add(416).readByteArray(16));
     },
-    k1: function (view) {
-        return new view(cpuRegsPtr.add(432).readByteArray(16));
+    k1(view) {
+        return view(cpuRegsPtr.add(432).readByteArray(16));
     },
-    gp: function (view) {
-        return new view(cpuRegsPtr.add(448).readByteArray(16));
+    gp(view) {
+        return view(cpuRegsPtr.add(448).readByteArray(16));
     },
-    sp: function (view) {
-        return new view(cpuRegsPtr.add(464).readByteArray(16));
+    sp(view) {
+        return view(cpuRegsPtr.add(464).readByteArray(16));
     },
-    s8: function (view) {
-        return new view(cpuRegsPtr.add(480).readByteArray(16));
+    s8(view) {
+        return view(cpuRegsPtr.add(480).readByteArray(16));
     },
-    ra: function (view) {
-        return new view(cpuRegsPtr.add(496).readByteArray(16));
+    ra(view) {
+        return view(cpuRegsPtr.add(496).readByteArray(16));
     },
 };
 
 const iopContext = {
     mem: iopMem,
-    r0: function (view) {
-        return new view(psxRegsPtr.readByteArray(4));
+    r0(view) {
+        return view(psxRegsPtr.readByteArray(4));
     },
-    at: function (view) {
-        return new view(psxRegsPtr.add(4).readByteArray(4));
+    at(view) {
+        return view(psxRegsPtr.add(4).readByteArray(4));
     },
-    v0: function (view) {
-        return new view(psxRegsPtr.add(8).readByteArray(4));
+    v0(view) {
+        return view(psxRegsPtr.add(8).readByteArray(4));
     },
-    v1: function (view) {
-        return new view(psxRegsPtr.add(12).readByteArray(4));
+    v1(view) {
+        return view(psxRegsPtr.add(12).readByteArray(4));
     },
-    a0: function (view) {
-        return new view(psxRegsPtr.add(16).readByteArray(4));
+    a0(view) {
+        return view(psxRegsPtr.add(16).readByteArray(4));
     },
-    a1: function (view) {
-        return new view(psxRegsPtr.add(20).readByteArray(4));
+    a1(view) {
+        return view(psxRegsPtr.add(20).readByteArray(4));
     },
-    a2: function (view) {
-        return new view(psxRegsPtr.add(24).readByteArray(4));
+    a2(view) {
+        return view(psxRegsPtr.add(24).readByteArray(4));
     },
-    a3: function (view) {
-        return new view(psxRegsPtr.add(28).readByteArray(4));
+    a3(view) {
+        return view(psxRegsPtr.add(28).readByteArray(4));
     },
-    t0: function (view) {
-        return new view(psxRegsPtr.add(32).readByteArray(4));
+    t0(view) {
+        return view(psxRegsPtr.add(32).readByteArray(4));
     },
-    t1: function (view) {
-        return new view(psxRegsPtr.add(36).readByteArray(4));
+    t1(view) {
+        return view(psxRegsPtr.add(36).readByteArray(4));
     },
-    t2: function (view) {
-        return new view(psxRegsPtr.add(40).readByteArray(4));
+    t2(view) {
+        return view(psxRegsPtr.add(40).readByteArray(4));
     },
-    t3: function (view) {
-        return new view(psxRegsPtr.add(44).readByteArray(4));
+    t3(view) {
+        return view(psxRegsPtr.add(44).readByteArray(4));
     },
-    t4: function (view) {
-        return new view(psxRegsPtr.add(48).readByteArray(4));
+    t4(view) {
+        return view(psxRegsPtr.add(48).readByteArray(4));
     },
-    t5: function (view) {
-        return new view(psxRegsPtr.add(52).readByteArray(4));
+    t5(view) {
+        return view(psxRegsPtr.add(52).readByteArray(4));
     },
-    t6: function (view) {
-        return new view(psxRegsPtr.add(56).readByteArray(4));
+    t6(view) {
+        return view(psxRegsPtr.add(56).readByteArray(4));
     },
-    t7: function (view) {
-        return new view(psxRegsPtr.add(60).readByteArray(4));
+    t7(view) {
+        return view(psxRegsPtr.add(60).readByteArray(4));
     },
-    s0: function (view) {
-        return new view(psxRegsPtr.add(64).readByteArray(4));
+    s0(view) {
+        return view(psxRegsPtr.add(64).readByteArray(4));
     },
-    s1: function (view) {
-        return new view(psxRegsPtr.add(68).readByteArray(4));
+    s1(view) {
+        return view(psxRegsPtr.add(68).readByteArray(4));
     },
-    s2: function (view) {
-        return new view(psxRegsPtr.add(72).readByteArray(4));
+    s2(view) {
+        return view(psxRegsPtr.add(72).readByteArray(4));
     },
-    s3: function (view) {
-        return new view(psxRegsPtr.add(76).readByteArray(4));
+    s3(view) {
+        return view(psxRegsPtr.add(76).readByteArray(4));
     },
-    s4: function (view) {
-        return new view(psxRegsPtr.add(80).readByteArray(4));
+    s4(view) {
+        return view(psxRegsPtr.add(80).readByteArray(4));
     },
-    s5: function (view) {
-        return new view(psxRegsPtr.add(84).readByteArray(4));
+    s5(view) {
+        return view(psxRegsPtr.add(84).readByteArray(4));
     },
-    s6: function (view) {
-        return new view(psxRegsPtr.add(88).readByteArray(4));
+    s6(view) {
+        return view(psxRegsPtr.add(88).readByteArray(4));
     },
-    s7: function (view) {
-        return new view(psxRegsPtr.add(92).readByteArray(4));
+    s7(view) {
+        return view(psxRegsPtr.add(92).readByteArray(4));
     },
-    t8: function (view) {
-        return new view(psxRegsPtr.add(96).readByteArray(4));
+    t8(view) {
+        return view(psxRegsPtr.add(96).readByteArray(4));
     },
-    t9: function (view) {
-        return new view(psxRegsPtr.add(100).readByteArray(4));
+    t9(view) {
+        return view(psxRegsPtr.add(100).readByteArray(4));
     },
-    k0: function (view) {
-        return new view(psxRegsPtr.add(104).readByteArray(4));
+    k0(view) {
+        return view(psxRegsPtr.add(104).readByteArray(4));
     },
-    k1: function (view) {
-        return new view(psxRegsPtr.add(108).readByteArray(4));
+    k1(view) {
+        return view(psxRegsPtr.add(108).readByteArray(4));
     },
-    gp: function (view) {
-        return new view(psxRegsPtr.add(112).readByteArray(4));
+    gp(view) {
+        return view(psxRegsPtr.add(112).readByteArray(4));
     },
-    sp: function (view) {
-        return new view(psxRegsPtr.add(116).readByteArray(4));
+    sp(view) {
+        return view(psxRegsPtr.add(116).readByteArray(4));
     },
-    s8: function (view) {
-        return new view(psxRegsPtr.add(120).readByteArray(4));
+    s8(view) {
+        return view(psxRegsPtr.add(120).readByteArray(4));
     },
-    ra: function (view) {
-        return new view(psxRegsPtr.add(124).readByteArray(4));
+    ra(view) {
+        return view(psxRegsPtr.add(124).readByteArray(4));
     },
 };
 
@@ -548,7 +551,7 @@ async function setHookEE(object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
-            var addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool",]);
+            const addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
             addBp(0x01, parseInt(key), 0x00, 0x01);
         }
     }
@@ -574,7 +577,7 @@ async function setHookIOP(object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
-            var addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
+            const addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
             addBp(0x02, parseInt(key), 0x00, 0x01);
         }
     }
