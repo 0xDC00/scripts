@@ -9,6 +9,7 @@ if (module.parent === null) {
 
 const IS_DEBUG = false;
 const FORCE_PATTERN_FALLBACK = false;
+const IGNORE_SETUP_CACHE = false;
 
 const __e = Process.mainModule ?? Process.enumerateModules()[0];
 // console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
@@ -21,8 +22,14 @@ console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
 /** @type {Object.<string, NativePointer>} */
 const addresses = Object.create(null);
-const symbols = __e.enumerateSymbols();
+
+// enumerateSymbols() is a slow operation,
+// postpone it until we're sure there are no cached addresses in sessionStorage
+/** @type {ModuleSymbolDetails[]} */
+let symbols = null;
+
 const __ranges = Process.enumerateRanges("r-x");
+
 // console.log(JSON.stringify(ranges, null, 2));
 
 /**
@@ -154,6 +161,19 @@ function calculateLeaAddress(ins) {
     return ins.next.add(memOffset);
 }
 
+function setupAddressesThroughCache() {
+    /** @type {Object.<string, NativePointer>} */
+    const cachedAddresses = sessionStorage.getItem("PCSX2_ADDRESSES");
+
+    if (cachedAddresses === null) {
+        throw new Error("PCSX2_ADDRESSES is missing from SessionStorage");
+    }
+
+    for (const [name, address] of Object.entries(cachedAddresses)) {
+        addresses[name] = ptr(address);
+    }
+}
+
 // prettier-ignore
 function setupAddressesThroughDebug() {
     // ?New@BaseBlocks@@QEAAPEAUBASEBLOCKEX@@I_K@Z
@@ -234,29 +254,53 @@ function setupAddressesThroughPattern() {
     });
 }
 
-if (
-    DebugSymbol.findFunctionsNamed("BaseBlocks::New").length >= 1 &&
-    FORCE_PATTERN_FALLBACK === false
-) {
-    console.warn("Using debug symbols");
-    setupAddressesThroughDebug();
+// Setup priority:
+// 1. Cache
+// 2. Debug Symbols
+// 3. Pattern Scanning
+if (sessionStorage.getItem("PCSX2_ADDRESSES") && IGNORE_SETUP_CACHE === false) {
+    console.warn("Using cached addresses");
+
+    setupAddressesThroughCache();
 } else {
-    console.warn("Using pattern scanning");
+    symbols = __e.enumerateSymbols();
 
-    try {
-        setupAddressesThroughPattern();
-    } catch (err) {
-        console.error(`
-            \rFailed pattern scanning!
-            \rInstall debug symbols to make PCSX2 hooking work,
-            \ror wait for someone to fix the patterns.
-        `);
+    if (
+        DebugSymbol.findFunctionsNamed("BaseBlocks::New").length >= 1 &&
+        FORCE_PATTERN_FALLBACK === false
+    ) {
+        console.warn("Using debug symbols");
 
-        throw err;
+        setupAddressesThroughDebug();
+    } else {
+        console.warn("Using pattern scanning");
+
+        try {
+            setupAddressesThroughPattern();
+        } catch (err) {
+            console.error(`
+                \rFailed pattern scanning!
+                \rInstall debug symbols to make PCSX2 hooking work,
+                \ror wait for someone to fix the patterns.
+            `);
+
+            throw err;
+        }
     }
 }
 
 // #endregion
+
+// validate addresses before caching them
+for (const [name, address] of Object.entries(addresses)) {
+    if (
+        address instanceof NativePointer === false ||
+        address.isNull() === true
+    ) {
+        throw new Error(`Invalid address for [${name}]`);
+    }
+}
+sessionStorage.setItem("PCSX2_ADDRESSES", addresses);
 
 if (IS_DEBUG === true) {
     console.log("\nAddresses:");
