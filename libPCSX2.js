@@ -11,42 +11,60 @@ const IS_DEBUG = false;
 const FORCE_PATTERN_FALLBACK = false;
 
 const __e = Process.mainModule ?? Process.enumerateModules()[0];
-__e.size /= 2;
+// console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
 
 console.warn("[Compatibility]");
 console.warn("PCSX2 v2.2.0+");
 console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
-
-// console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
 
 // #region Find Addresses
 
 /** @type {Object.<string, NativePointer>} */
 const addresses = Object.create(null);
 const symbols = __e.enumerateSymbols();
+const __ranges = Process.enumerateRanges("r-x");
+// console.log(JSON.stringify(ranges, null, 2));
+
+/**
+ * @param {Object} settings
+ * @param {RangeDetails[]} settings.ranges
+ * @param {string} settings.pattern
+ * @returns {MemoryScanMatch[]}
+ */
+function scanRanges({ ranges, pattern }) {
+    const allMatches = [];
+
+    for (const range of ranges) {
+        const rangeMatches = Memory.scanSync(range.base, range.size, pattern);
+
+        if (rangeMatches.length !== 0) {
+            allMatches.push(...rangeMatches);
+        }
+    }
+
+    return allMatches;
+}
 
 /**
  * Scans a pattern in memory and returns a NativePointer.
  * @param {Object} settings
  * @param {string} settings.name
  * @param {string} settings.pattern
- * @param {NativePointer} [settings.base]
- * @param {number} [settings.size]
+ * @param {RangeDetails[]} [settings.ranges]
  * @param {boolean} [settings.getFirst]
  * @returns {NativePointer}
  */
 function getPatternAddress({
     name,
     pattern,
-    base = __e.base,
-    size = __e.size,
+    ranges = __ranges,
     getFirst = true,
 }) {
     /** @type {MemoryScanMatch[]} */
     let results = null;
 
     try {
-        results = Memory.scanSync(base, size, pattern);
+        results = scanRanges({ ranges: ranges, pattern: pattern });
     } catch (err) {
         throw new Error(`Error ocurred with [${name}]: ${err.message}`, {
             cause: err,
