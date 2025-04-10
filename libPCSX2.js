@@ -162,7 +162,7 @@ function calculateLeaAddress(ins) {
 }
 
 function setupAddressesThroughCache() {
-    /** @type {Object.<string, NativePointer>} */
+    /** @type {Object.<string, NativePointer>|null} */
     const cachedAddresses = sessionStorage.getItem("PCSX2_ADDRESSES");
 
     if (cachedAddresses === null) {
