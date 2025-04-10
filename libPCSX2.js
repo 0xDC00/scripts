@@ -25,7 +25,7 @@ const addresses = Object.create(null);
 
 // enumerateSymbols() is a slow operation,
 // postpone it until we're sure there are no cached addresses in sessionStorage
-/** @type {ModuleSymbolDetails[]} */
+/** @type {ModuleSymbolDetails[]|null} */
 let symbols = null;
 
 const __ranges = Process.enumerateRanges("r-x");
