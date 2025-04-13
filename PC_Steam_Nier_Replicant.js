@@ -36,13 +36,6 @@ function findJapaneseStart(addr) {
     return null;
 }
 
-function readString(addr) {
-    let len = 0;
-    while (len < CONFIG.MAX_SCAN && Memory.readU8(addr.add(len)) !== 0) len++;
-    if (len === 0) return null;
-    return decoder.decode(Memory.readByteArray(addr, len)).trim();
-}
-
 function sendText(text) {
     if (text === lastSent || text.length < CONFIG.MIN_LENGTH || lastSent.includes(text)) return;
     clearTimeout(debounceTimer);
@@ -70,9 +63,13 @@ function sendText(text) {
             }
 
             const jpStart = findJapaneseStart(baseAddr);
-            if (!jpStart) return;
+            if (!jpStart){
+                baseAddr = ptr(0);
+                clearTimeout(debounceTimer);
+                return;
+            };
 
-            const text = readString(jpStart);
+            const text = jpStart.readUtf8String();
             if (text && text !== lastText) {
                 lastText = text;
                 sendText(text);
