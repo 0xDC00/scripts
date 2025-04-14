@@ -1,5 +1,4 @@
 // ==UserScript==
-// ==UserScript==
 // @name         NieR Replicant Dialogue Hook
 // @version      1.0
 // @author       Pringles
