@@ -7,17 +7,17 @@ if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
 const __e = Process.mainModule ?? Process.enumerateModules()[0];
-if (null !== (Process.platform === 'linux' ? Module.findExportByName(null, 'DotNetRuntimeInfo') : __e.findExportByName('DotNetRuntimeInfo'))) {
-    return module.exports = exports = require('./libRyujinx.js');
+if (null !== (Process.platform === "linux" ? Module.findExportByName(null, "DotNetRuntimeInfo") : __e.findExportByName("DotNetRuntimeInfo"))) {
+    return (module.exports = exports = require("./libRyujinx.js"));
 }
 
-console.warn('[Compatibility]');
-console.warn('Yuzu 1616+');
-console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
+console.warn("[Compatibility]");
+console.warn("Yuzu 1616+");
+console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
 const isFastMem = false;
 
-const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
+const isVirtual = Process.arch === "x64" && Process.platform === "windows";
 let idxDescriptor = isVirtual === true ? 2 : 1;
 let idxEntrypoint = idxDescriptor + 1;
 const DoJitPtr = getDoJitAddress();
@@ -64,10 +64,10 @@ Interceptor.attach(DoJitPtr, {
         let em_address, op;
 
         if (Process.arch === "arm64") {
-            em_address = descriptor.and(0xFFFFFFFF).toUInt32();
+            em_address = descriptor.and(0xffffffff).toUInt32();
             op = operations[em_address];
         } else {
-            em_address = descriptor.readU64().and(0xFFFFFFFF).toNumber();
+            em_address = descriptor.readU64().and(0xffffffff).toNumber();
             op = operations[em_address];
         }
 
@@ -90,15 +90,15 @@ Interceptor.attach(DoJitPtr, {
         //             `);
 
         if (op !== undefined && entrypoint.isNull() === false) {
-            console.log('Attach:', ptr(em_address), entrypoint);
+            console.log("Attach:", ptr(em_address), entrypoint);
 
             jitAttach(em_address, entrypoint, op);
-            sessionStorage.setItem('Yuzu_' + Date.now(), {
+            sessionStorage.setItem("Yuzu_" + Date.now(), {
                 guest: em_address,
-                host: entrypoint
+                host: entrypoint,
             });
         }
-    }
+    },
 });
 
 function jitAttach(em_address, entrypoint, op) {
@@ -134,15 +134,15 @@ function jitAttach(em_address, entrypoint, op) {
 }
 
 function getDoJitAddress() {
-    if (Process.platform !== 'windows') {
+    if (Process.platform !== "windows") {
         // Unix
         // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m.cold
         const names = [
-            '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm', // linux 64 new
-            '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m', // linux x64
+            "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm", // linux 64 new
+            "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m", // linux x64
             // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
-            '_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte', // android arm64
-            'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)' // macOS x64 (demangle)
+            "_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte", // android arm64
+            "Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)", // macOS x64 (demangle)
         ];
 
         // find functions of interest
@@ -159,13 +159,12 @@ function getDoJitAddress() {
                 return addresss[0];
             }
         }
-    }
-    else {
+    } else {
         // Windows MSVC x64 2019 (v996-) + 2022 (v997+)
-        const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
+        const RegisterBlockSig1 = "E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89";
         const RegisterBlock = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
         if (RegisterBlock) {
-            const beginSubSig1 = 'CC 40 5? 5? 5?';
+            const beginSubSig1 = "CC 40 5? 5? 5?";
             const lookbackSize = 0x400;
             const address = RegisterBlock.address.sub(lookbackSize);
             const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
@@ -175,10 +174,10 @@ function getDoJitAddress() {
         }
 
         // fallback to Patch when RegisterBlock not found (wrong signature or target inlined)
-        const PatchSig1 = '4????? 4????? 4????? FF?? ?? 4????? ?? 4????? 75 ?? 4????? ?? 4????? ?? 4?';
+        const PatchSig1 = "4????? 4????? 4????? FF?? ?? 4????? ?? 4????? 75 ?? 4????? ?? 4????? ?? 4?";
         const Patch = Memory.scanSync(__e.base, __e.size, PatchSig1)[0];
         if (Patch) {
-            const beginSubSig1 = '4883EC ?? 48';
+            const beginSubSig1 = "4883EC ?? 48";
             const lookbackSize = 0x80;
             const address = Patch.address.sub(lookbackSize);
             const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
@@ -192,14 +191,14 @@ function getDoJitAddress() {
         // DebugSymbol: RegisterBlock
         // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX_K@Z <- new
         // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
-        const symbols = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::RegisterBlock');
+        const symbols = DebugSymbol.findFunctionsMatching("Dynarmic::Backend::X64::EmitX64::RegisterBlock");
         if (symbols.length !== 0) {
             return symbols[0];
         }
 
         // DebugSymbol: Patch
         // ?Patch@EmitX64@X64@Backend@Dynarmic@@IEAAXAEBVLocationDescriptor@IR@4@PEBX@Z
-        const patchs = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::Patch');
+        const patchs = DebugSymbol.findFunctionsMatching("Dynarmic::Backend::X64::EmitX64::Patch");
         if (patchs.length !== 0) {
             idxDescriptor = 1;
             idxEntrypoint = 2;
@@ -207,7 +206,7 @@ function getDoJitAddress() {
         }
     }
 
-    throw new Error('RegisterBlock not found!');
+    throw new Error("RegisterBlock not found!");
 }
 
 // https://en.wikipedia.org/wiki/Calling_convention#ARM_(A64)
@@ -215,12 +214,12 @@ function getDoJitAddress() {
 // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
 function createFunction_buildRegs() {
     console.warn("in createFunction_buildRegs()");
-    let body = '';
+    let body = "";
 
     if (Process.arch === "arm64") {
         body += "console.log('in arm64');";
-        body += 'console.log(context.fp.toString());';
-        body += 'const regs = context.x28;'; // x28
+        body += "console.log(context.fp.toString());";
+        body += "const regs = context.x28;"; // x28
         body += 'console.log("trying to print...");';
         body += `const theRegs = ["pc", "sp", "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "fp", "lr"];`;
         body += `for (const reg of theRegs) {
@@ -232,36 +231,35 @@ function createFunction_buildRegs() {
                 };`;
     } else {
         // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
-        body += 'const regs = context.r15;'; // x28 
-        body += `const theRegs = ["pc", "sp", "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip"];`
+        body += "const regs = context.r15;"; // x28
+        body += `const theRegs = ["pc", "sp", "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip"];`;
         body += `for (const reg of theRegs) {
                     try {
                         console.log(reg + ": " + context[reg].add(0x14).readUtf16String());
                     } catch (err) {
                     }
-                }`
+                }`;
         // body += `console.log(JSON.stringify(context, null, 2));`
     }
 
-    let getValue = '';
+    let getValue = "";
     if (isFastMem === true) {
         /* fastmem (host MMU) */
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a64_interface.cpp#L43
-        
+
         if (Process.arch === "arm64") {
-            body += 'const base = context.r13;';
+            body += "const base = context.r13;";
         } else {
-            body += 'const base = context.r13;';
+            body += "const base = context.r13;";
         }
 
         getValue = `get value() { return base.add(this._vm); },`; // host address
-    }
-    else {
+    } else {
         /* pagetable */
         // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L831
-        body += 'const table = context.r14;';
+        body += "const table = context.r14;";
 
-        const page_bits = 12 // 0xC
+        const page_bits = 12; // 0xC
         // const page_mask = (1 << page_bits) - 1; // 0xFFF
         // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L869
         const page_table_pointer_mask_bits = 2;
@@ -279,128 +277,126 @@ function createFunction_buildRegs() {
 
     // arm32: 0->15 (r0->r15)
     // arm64: 0->30 (x0->lr) + sp (x31) + pc (x32)
-    body += 'const args = [';
+    body += "const args = [";
     for (let i = 0; i < 33; i++) {
         let offset = i * 8;
-        body += '{';
+        body += "{";
         body += `_vm: regs.add(${offset}).readU64().toNumber(),`;
         body += getValue;
         body += `set vm(val) { this._vm = val; },`;
         body += `get vm() { return this._vm },`;
         body += `save() {regs.add(${offset}).writeU64(this._vm); return this; }`;
-        body += '},';
+        body += "},";
     }
-    body += '];';
+    body += "];";
 
     //body += 'thiz.context.pc = regs.add(256).readU64().toNumber();' // x32 0x100 256 - where you are
     //body += 'thiz.context.sp = regs.add(248).readU64().toNumber();'; // x31 0xF8 248; useless?
-    
+
     // commenting out the following block doesn't break the script?
-    body += 'thiz.returnAddress = regs.add(240).readU64().toNumber();'; // x30 0xF0 240, lr - where you were
-    body += 'thiz.context.lr = args[30];';
-    body += 'thiz.context.fp = args[29];'; // x29 (FP): Frame pointer.
-    body += 'thiz.context.sp = args[31];'; // x31
+    body += "thiz.returnAddress = regs.add(240).readU64().toNumber();"; // x30 0xF0 240, lr - where you were
+    body += "thiz.context.lr = args[30];";
+    body += "thiz.context.fp = args[29];"; // x29 (FP): Frame pointer.
+    body += "thiz.context.sp = args[31];"; // x31
 
-    body += 'return args;';
+    body += "return args;";
 
-    return new Function('context', 'thiz', body);
-};
+    return new Function("context", "thiz", body);
+}
 
 // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
 function createFunction_buildRegs32() {
     console.warn("in createFunction_buildRegs32()");
 
-    let body = '';
+    let body = "";
 
     /* fastmem */
     // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
-    body += 'const base = context.r13;';
+    body += "const base = context.r13;";
 
     // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
-    body += 'const regs = context.r15;';
+    body += "const regs = context.r15;";
 
     /* pagetable */
     // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L831
 
     // arm32: 0->15 (r0->r15)
     // arm64: 0->30 (x0->lr) + sp (x31) + pc (x32)
-    body += 'const args = [';
+    body += "const args = [";
     for (let i = 0; i < 16; i++) {
         let offset = i * 4;
-        body += '{';
+        body += "{";
         body += `_vm: regs.add(${offset}).readU32(),`;
         body += `get value() { return base.add(this._vm); },`; // host address
         body += `set vm(val) { this._vm = val; },`;
         body += `get vm() { return this._vm },`;
         body += `save() {regs.add(${offset}).writeU32(this._vm); return this; }`;
-        body += '},';
+        body += "},";
     }
-    body += '];';
+    body += "];";
 
     //body += 'thiz.context.pc = regs.add(60).readU32();'; // r15 0x3c 60
     //body += 'thiz.context.sp = regs.add(52).readU32();'; // r13 0x34 52; useless?
-    body += 'thiz.returnAddress = regs.add(56).readU32();'; // r14 0x38 56; lr
-    body += 'thiz.context.lr = args[14];';
-    body += 'thiz.context.fp = args[11];'; // r11 (FP): Frame pointer.
-    body += 'thiz.context.sp = args[13];'; // r13
+    body += "thiz.returnAddress = regs.add(56).readU32();"; // r14 0x38 56; lr
+    body += "thiz.context.lr = args[14];";
+    body += "thiz.context.fp = args[11];"; // r11 (FP): Frame pointer.
+    body += "thiz.context.sp = args[13];"; // r13
 
-    body += 'return args;';
-    return new Function('context', 'thiz', body);
+    body += "return args;";
+    return new Function("context", "thiz", body);
 }
 
 /**
- * 
+ *
  * @param {EmulatorHook} object
  */
 function setHook(object, dfVer) {
     if (dfVer !== undefined) {
         _operations = object;
         object = object[dfVer];
-    }
-    else {
+    } else {
         _operations = {
-            [globalThis.gameVer]: object
+            [globalThis.gameVer]: object,
         };
     }
 
     //console.log(JSON.stringify(object, null, 2));
-    
+
     // agent attach
     console.log("first");
     const IS_32 = globalThis.ARM === true;
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
-            if (key.startsWith('H')) {
-                console.error("Skip: " + key + ', this hashCode is not implementd, try Ryujinx.');
+            if (key.startsWith("H")) {
+                console.error("Skip: " + key + ", this hashCode is not implementd, try Ryujinx.");
                 continue;
             }
             const element = object[key];
             const address = IS_32 === true ? uint64(key).add(0x204000) : uint64(key).add(0x80004000);
-            
+
             console.warn("key=", key);
             console.warn(ptr(address).toString(), address.toString(10), "\n");
-            
+
             operations[address.toString(10)] = element;
         }
     }
 
-    if (globalThis.gameVer) console.warn('Game version: ' + globalThis.gameVer);
+    if (globalThis.gameVer) console.warn("Game version: " + globalThis.gameVer);
 
     // reattach
     console.log("second");
-    Object.keys(sessionStorage).map(key => {
+    Object.keys(sessionStorage).map((key) => {
         const value = sessionStorage.getItem(key);
-        if (key.startsWith('Yuzu_') === true) {
+        if (key.startsWith("Yuzu_") === true) {
             try {
                 const em_address = value.guest;
                 const entrypoint = ptr(value.host);
-                
+
                 console.warn(ptr(em_address).toString(), em_address.toString(10));
 
                 const op = operations[em_address.toString(10)];
                 jitAttach(em_address, entrypoint, op);
-            }
-            catch (e) {
+            } catch (e) {
                 console.error(e);
             }
         }
@@ -408,5 +404,5 @@ function setHook(object, dfVer) {
 }
 
 module.exports = exports = {
-    setHook
-}
+    setHook,
+};
