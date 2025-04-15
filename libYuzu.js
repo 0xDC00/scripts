@@ -15,6 +15,18 @@ console.warn('[Compatibility]');
 console.warn('Yuzu 1616+');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
+if (Process.arch === 'arm64') {
+    console.warn(`
+This script requires you to use Dyarnmic in the emulator!
+To use Dynarmic:
+    1. Go to Settings
+    2. Click on "Advanced settings"
+    3. Click on "Debug"
+    4. Click on "CPU backend"
+    5. Switch from "Native code execution (NCE)" to "Dynarmic (Slow)"
+`);
+}
+
 const isFastMem = true;
 
 const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
