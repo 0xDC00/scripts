@@ -15,7 +15,7 @@ console.warn("[Compatibility]");
 console.warn("Yuzu 1616+");
 console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
-const isFastMem = false;
+const isFastMem = true;
 
 const isVirtual = Process.arch === "x64" && Process.platform === "windows";
 let idxDescriptor = isVirtual === true ? 2 : 1;
@@ -111,7 +111,7 @@ function jitAttach(em_address, entrypoint, op) {
     Breakpoint.add(entrypoint, function () {
         //thiz.context.sp = 0;
         console.log("breakpoint stuff");
-        console.log(ptr(em_address).toString(), entrypoint.toString());
+        console.log(ptr(em_address).toString(), entrypoint.toString(), "\n");
         const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
         //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
 
@@ -219,27 +219,49 @@ function createFunction_buildRegs() {
     if (Process.arch === "arm64") {
         body += "console.log('in arm64');";
         body += "console.log(context.fp.toString());";
+
         body += "const regs = context.x28;"; // x28
+
         body += 'console.log("trying to print...");';
         body += `const theRegs = ["pc", "sp", "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "fp", "lr"];`;
-        body += `for (const reg of theRegs) {
-                    // console.log(reg + ": " + JSON.stringify(context[reg]))
-                    try {
-                        console.log(reg + ": " + context[reg].add(0x14).readUtf16String());
-                    } catch (err) {
+        body += `for (const regs of theRegs) {
+                    for (const base of theRegs) {
+                        if (regs === base) {
+                            continue;
+                        }
+
+                        try {
+                            const vm = context[regs].readU64().toNumber();
+                            const address = context[base].add(vm);
+                            const text = address.add(0x14).readUtf16String(100);
+                            if (text === null || text === "") {
+                                continue;
+                            }
+                            console.warn("regs: " + regs + " | base: " + base + " | " + text);
+                        } catch (err) {}
                     }
                 };`;
+        body += `console.log(JSON.stringify(context, null, 2));`;
     } else {
         // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
         body += "const regs = context.r15;"; // x28
-        body += `const theRegs = ["pc", "sp", "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip"];`;
-        body += `for (const reg of theRegs) {
-                    try {
-                        console.log(reg + ": " + context[reg].add(0x14).readUtf16String());
-                    } catch (err) {
+
+        // body += `const theRegs = ["pc", "sp", "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip"];`;
+        body += `const theRegs = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"];`;
+        body += `for (const regs of theRegs) {
+                    for (const base of theRegs) {
+                        if (regs === base) {
+                            continue;
+                        }
+
+                        try {
+                            const vm = context[regs].readU64().toNumber();
+                            const address = context[base].add(vm);
+                            const text = address.add(0x14).readUtf16String();
+                            console.warn("regs: " + regs + " | base: " + base + " | " + text);
+                        } catch (err) {}
                     }
                 }`;
-        // body += `console.log(JSON.stringify(context, null, 2));`
     }
 
     let getValue = "";
@@ -248,7 +270,7 @@ function createFunction_buildRegs() {
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a64_interface.cpp#L43
 
         if (Process.arch === "arm64") {
-            body += "const base = context.r13;";
+            body += "const base = context.x25;";
         } else {
             body += "const base = context.r13;";
         }
@@ -274,6 +296,10 @@ function createFunction_buildRegs() {
             return page.isNull() === true ? page : page.add(this._vm).and(mask_bits);
         },`; // host address, 0xFFFFFFFFF8000000 <=> invalid
     }
+
+    body += `console.log(JSON.stringify(context, null, 2));`;
+
+    body += `console.warn(JSON.stringify(regs + " " + base, null, 2));`;
 
     // arm32: 0->15 (r0->r15)
     // arm64: 0->30 (x0->lr) + sp (x31) + pc (x32)
@@ -343,6 +369,7 @@ function createFunction_buildRegs32() {
     body += "thiz.context.sp = args[13];"; // r13
 
     body += "return args;";
+
     return new Function("context", "thiz", body);
 }
 
@@ -368,7 +395,7 @@ function setHook(object, dfVer) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             if (key.startsWith("H")) {
-                console.error("Skip: " + key + ", this hashCode is not implementd, try Ryujinx.");
+                console.error("Skip: " + key + ", this hashCode is not implemented, try Ryujinx.");
                 continue;
             }
             const element = object[key];
