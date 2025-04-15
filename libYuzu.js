@@ -110,11 +110,8 @@ function jitAttach(em_address, entrypoint, op) {
     // Breakpoint.add (slower)
     Breakpoint.add(entrypoint, function () {
         //thiz.context.sp = 0;
-        console.log("breakpoint stuff");
-        console.log(ptr(em_address).toString(), entrypoint.toString(), "\n");
         const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
         //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
-
         op.call(thiz, regs);
     });
 
@@ -253,6 +250,7 @@ function createFunctionBody_findBaseAndRegs() {
                         } catch (err) {}
                     }
                 };`;
+    // body += `console.log(JSON.stringify(context, null, 2));`;
     body += `console.warn(JSON.stringify(regs + " " + base, null, 2));`;
 
     return body;
@@ -262,7 +260,6 @@ function createFunctionBody_findBaseAndRegs() {
 // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a64_jitstate.h
 // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
 function createFunction_buildRegs() {
-    console.warn("in createFunction_buildRegs()");
     let body = "";
 
     // body += createFunctionBody_findBaseAndRegs();
@@ -307,9 +304,6 @@ function createFunction_buildRegs() {
         },`; // host address, 0xFFFFFFFFF8000000 <=> invalid
     }
 
-    // body += `console.log(JSON.stringify(context, null, 2));`;
-    body += `console.warn(JSON.stringify(regs + " " + base, null, 2));`;
-
     // arm32: 0->15 (r0->r15)
     // arm64: 0->30 (x0->lr) + sp (x31) + pc (x32)
     body += "const args = [";
@@ -341,8 +335,6 @@ function createFunction_buildRegs() {
 
 // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
 function createFunction_buildRegs32() {
-    console.warn("in createFunction_buildRegs32()");
-
     let body = "";
 
     // body += createFunctionBody_findBaseAndRegs();
@@ -406,9 +398,6 @@ function setHook(object, dfVer) {
     }
 
     //console.log(JSON.stringify(object, null, 2));
-
-    // agent attach
-    console.log("first");
     const IS_32 = globalThis.ARM === true;
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
@@ -418,27 +407,18 @@ function setHook(object, dfVer) {
             }
             const element = object[key];
             const address = IS_32 === true ? uint64(key).add(0x204000) : uint64(key).add(0x80004000);
-
-            console.warn("key=", key);
-            console.warn(ptr(address).toString(), address.toString(10), "\n");
-
             operations[address.toString(10)] = element;
         }
     }
 
     if (globalThis.gameVer) console.warn("Game version: " + globalThis.gameVer);
 
-    // reattach
-    console.log("second");
     Object.keys(sessionStorage).map((key) => {
         const value = sessionStorage.getItem(key);
         if (key.startsWith("Yuzu_") === true) {
             try {
                 const em_address = value.guest;
                 const entrypoint = ptr(value.host);
-
-                console.warn(ptr(em_address).toString(), em_address.toString(10));
-
                 const op = operations[em_address.toString(10)];
                 jitAttach(em_address, entrypoint, op);
             } catch (e) {
