@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [01002BB00A662000] Nil Adminari no Tenbin Irodori Nadeshiko
+// @name         [01002BB00A662000] Nil Admirari no Tenbin Irodori Nadeshiko (ニル・アドミラリの天秤 色ドリ撫子)
 // @version      1.0.0
 // @author       Koukdw
 // @description  
