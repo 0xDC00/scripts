@@ -61,7 +61,8 @@ Interceptor.attach(DoJitPtr, {
         //const entrypoint_far = args[4];
         //const size = args[5];
 
-        let em_address, op;
+        let em_address;
+        let op;
 
         if (Process.arch === 'arm64') {
             em_address = descriptor.and(0xffffffff).toUInt32();
@@ -321,8 +322,6 @@ function createFunction_buildRegs() {
 
     //body += 'thiz.context.pc = regs.add(256).readU64().toNumber();' // x32 0x100 256 - where you are
     //body += 'thiz.context.sp = regs.add(248).readU64().toNumber();'; // x31 0xF8 248; useless?
-
-    // commenting out the following block doesn't break the script?
     body += 'thiz.returnAddress = regs.add(240).readU64().toNumber();'; // x30 0xF0 240, lr - where you were
     body += 'thiz.context.lr = args[30];';
     body += 'thiz.context.fp = args[29];'; // x29 (FP): Frame pointer.
