@@ -136,27 +136,34 @@ function jitAttach(em_address, entrypoint, op) {
 function getDoJitAddress() {
     if (Process.platform !== "windows") {
         // Unix
-        // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m.cold
-        const names = [
-            "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm", // linux 64 new
-            "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m", // linux x64
-            // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
-            "_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte", // android arm64
-            "Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)", // macOS x64 (demangle)
-        ];
+        if (Process.arch === "x64") {
+            // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m.cold
+            const names = [
+                "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm", // linux 64 new
+                "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m", // linux x64
+                // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
+                "Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)", // macOS x64 (demangle)
+            ];
 
-        // find functions of interest
-        // for (const thing of DebugSymbol.findFunctionsMatching("*")) {
-        //     const symbol = DebugSymbol.fromAddress(thing);
-        //     if (symbol.name?.startsWith("_")) {
-        //         console.warn(symbol.name);
-        //     }
-        // }
+            for (const name of names) {
+                const addresses = DebugSymbol.findFunctionsNamed(name);
+                if (addresses.length !== 0) {
+                    return addresses[0];
+                }
+            }
+        } else if (Process.arch === "arm64") {
+            // find functions of interest
+            // for (const thing of DebugSymbol.findFunctionsMatching("*")) {
+            //     const symbol = DebugSymbol.fromAddress(thing);
+            //     if (symbol.name?.startsWith("_")) {
+            //         console.warn(symbol.name);
+            //     }
+            // }
 
-        for (const name of names) {
-            const addresss = DebugSymbol.findFunctionsNamed(name);
-            if (addresss.length !== 0) {
-                return addresss[0];
+            const name = "_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte"; // android arm64
+            const addresses = DebugSymbol.findFunctionsNamed(name);
+            if (addresses.length !== 0) {
+                return addresses[0];
             }
         }
     } else {
@@ -209,31 +216,36 @@ function getDoJitAddress() {
     throw new Error("RegisterBlock not found!");
 }
 
-// https://en.wikipedia.org/wiki/Calling_convention#ARM_(A64)
-// https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a64_jitstate.h
-// https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
-function createFunction_buildRegs() {
-    console.warn("in createFunction_buildRegs()");
+function createFunctionBody_findBaseAndRegs() {
     let body = "";
 
     if (Process.arch === "arm64") {
-        body += "console.log('in arm64');";
-        body += "console.log(context.fp.toString());";
-
-        body += "const regs = context.x28;"; // x28
-
-        body += 'console.log("trying to print...");';
         body += `const theRegs = ["pc", "sp", "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "fp", "lr"];`;
-        body += `for (const regs of theRegs) {
+    } else {
+        body += `const theRegs = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"];`;
+    }
+
+    let vm = "";
+    if (globalThis.ARM === true) {
+        vm = `context[regs].readU32();`;
+    } else {
+        vm = `context[regs].readU64();`;
+    }
+
+    // change this according to the game
+    const text = "address.readShiftJisString();";
+    // const text = "address.add(0x14).readUtf16String();"
+
+    body += `for (const regs of theRegs) {
                     for (const base of theRegs) {
                         if (regs === base) {
                             continue;
                         }
 
                         try {
-                            const vm = context[regs].readU64().toNumber();
+                            const vm = ${vm}
                             const address = context[base].add(vm);
-                            const text = address.add(0x14).readUtf16String(100);
+                            const text = ${text}
                             if (text === null || text === "") {
                                 continue;
                             }
@@ -241,27 +253,25 @@ function createFunction_buildRegs() {
                         } catch (err) {}
                     }
                 };`;
-        body += `console.log(JSON.stringify(context, null, 2));`;
+    body += `console.warn(JSON.stringify(regs + " " + base, null, 2));`;
+
+    return body;
+}
+
+// https://en.wikipedia.org/wiki/Calling_convention#ARM_(A64)
+// https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a64_jitstate.h
+// https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
+function createFunction_buildRegs() {
+    console.warn("in createFunction_buildRegs()");
+    let body = "";
+
+    // body += createFunctionBody_findBaseAndRegs();
+
+    if (Process.arch === "arm64") {
+        body += "const regs = context.x28;";
     } else {
         // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
         body += "const regs = context.r15;"; // x28
-
-        // body += `const theRegs = ["pc", "sp", "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rip"];`;
-        body += `const theRegs = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"];`;
-        body += `for (const regs of theRegs) {
-                    for (const base of theRegs) {
-                        if (regs === base) {
-                            continue;
-                        }
-
-                        try {
-                            const vm = context[regs].readU64().toNumber();
-                            const address = context[base].add(vm);
-                            const text = address.add(0x14).readUtf16String();
-                            console.warn("regs: " + regs + " | base: " + base + " | " + text);
-                        } catch (err) {}
-                    }
-                }`;
     }
 
     let getValue = "";
@@ -297,8 +307,7 @@ function createFunction_buildRegs() {
         },`; // host address, 0xFFFFFFFFF8000000 <=> invalid
     }
 
-    body += `console.log(JSON.stringify(context, null, 2));`;
-
+    // body += `console.log(JSON.stringify(context, null, 2));`;
     body += `console.warn(JSON.stringify(regs + " " + base, null, 2));`;
 
     // arm32: 0->15 (r0->r15)
@@ -336,12 +345,21 @@ function createFunction_buildRegs32() {
 
     let body = "";
 
-    /* fastmem */
-    // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
-    body += "const base = context.r13;";
+    // body += createFunctionBody_findBaseAndRegs();
 
-    // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
-    body += "const regs = context.r15;";
+    /* fastmem */
+    if (Process.arch === "arm64") {
+        // doesn't work
+        throw new Error("32-bit games aren't supported yet");
+        body += "const base = context.x25;";
+        body += "const regs = context.x28;";
+    } else {
+        // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
+        body += "const base = context.r13;";
+
+        // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
+        body += "const regs = context.r15;";
+    }
 
     /* pagetable */
     // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L831
