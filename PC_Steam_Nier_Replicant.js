@@ -1,8 +1,9 @@
 // ==UserScript==
-// @name         NieR Replicant Dialogue Hook
+// @name         NieR Replicant
 // @version      1.0
 // @author       Pringles
-// @description  Steam, might not work with LN section
+// @description  Steam, currently does not support diary loading pages, ln sections should work.
+// Only works when game is set to Japanese text.
 //
 // https://store.steampowered.com/app/1113560/NieR_Replicant_ver122474487139/
 // ==/UserScript==
@@ -11,17 +12,19 @@ const handler = trans.send(s => s, '200+');
 const CONFIG = {
     MAX_SCAN: 1024,
     MIN_LENGTH: 2,
-    JAPANESE_THRESHOLD: 0xE3,
     PATTERN: '88 02 41 0FB7 C2',
     DEBOUNCE_MS: 200
 };
 
 let lastText = "", lastSent = "", debounceTimer = null;
 
+console.log("Does not support diary loading pages.")
+console.warn("Only works when game is in Japanese.")
+
 function findJapaneseStart(addr) {
     for (let i = 0; i < CONFIG.MAX_SCAN; i++) {
         const byte = Memory.readU8(addr.add(i));
-        if ((byte >= CONFIG.JAPANESE_THRESHOLD) || (byte >= 0x20 && byte <= 0x7E)) {
+        if ((byte >= 0xE2) || (byte >= 0x20 && byte <= 0x7E)) {
             return addr.add(i);
         }
     }
@@ -30,7 +33,9 @@ function findJapaneseStart(addr) {
 
 function sendText(text) {
     if (text === lastSent || text.length < CONFIG.MIN_LENGTH || lastSent.includes(text)) return;
+    
     clearTimeout(debounceTimer);
+    
     debounceTimer = setTimeout(() => {
         lastSent = text;
         handler(text);
@@ -53,16 +58,23 @@ function sendText(text) {
         if (baseAddr.equals(ptr(0))) return;
 
         const jpStart = findJapaneseStart(baseAddr);
+
+        baseAddr = ptr(0);
+
         if (!jpStart) return;
 
         try {
-            const text = jpStart.readUtf8String();
+            const text = jpStart.readUtf8String()?.trimEnd();
             if (text && text !== lastText) {
                 lastText = text;
                 sendText(text);
             }
-        
-            baseAddr = ptr(0);
+
+            let finalCharPointer = jpStart.add(Buffer.byteLength(text, "utf8") -1);
+            const value = Memory.readU8(finalCharPointer);
+            if (value === 0x0a) { // currently does not do anything yet.
+                console.debug("Finished reading sentence")
+            }
         } catch (e) {
             if (!e.message.includes('decode byte')) console.error('[NieR Hook] Error reading string:', e);
         }
