@@ -18,12 +18,12 @@ const CONFIG = {
 
 let lastText = "", lastSent = "", debounceTimer = null;
 
-console.log("Does not support diary loading pages.")
-console.warn("Only works when game is in Japanese.")
+console.log("Does not support diary loading pages.");
+console.warn("Only works when game is in Japanese.");
 
 function findJapaneseStart(addr) {
     for (let i = 0; i < CONFIG.MAX_SCAN; i++) {
-        const byte = Memory.readU8(addr.add(i));
+        const byte = addr.add(i).readU8();
         if ((byte >= 0xE2) || (byte >= 0x20 && byte <= 0x7E)) {
             return addr.add(i);
         }
@@ -70,10 +70,10 @@ function sendText(text) {
                 sendText(text);
             }
 
-            let finalCharPointer = jpStart.add(Buffer.byteLength(text, "utf8") -1);
-            const value = Memory.readU8(finalCharPointer);
+            let finalCharPointer = jpStart.add(Buffer.byteLength(text, "utf8") - 1);
+            const value = finalCharPointer.readU8();
             if (value === 0x0a) { // currently does not do anything yet.
-                console.debug("Finished reading sentence")
+                console.debug("Finished reading sentence");
             }
         } catch (e) {
             if (!e.message.includes('decode byte')) console.error('[NieR Hook] Error reading string:', e);
