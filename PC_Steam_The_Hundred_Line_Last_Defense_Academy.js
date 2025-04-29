@@ -8,7 +8,6 @@
 //
 // https://store.steampowered.com/app/3014080/The_Hundred_Line_Last_Defense_Academy/
 // ==/UserScript==
-
 const __e = Process.enumerateModules()[0];
 
 // Need to implement
@@ -17,29 +16,15 @@ const YEEHAW_MODE = false;
 const IS_DEBUG = false;
 const BACKTRACE = false;
 const INSPECT_ARGS = false;
+const STOP_ON_MISSING_HOOK = false;
 
-let convertToSingleLine = true;
 let hooksCount = 0;
 
+const texts = new Set();
 let timer = null;
-
 let previous = "";
 
-const texts1 = new Set();
-const texts2 = new Set();
-
-const specialTexts = new Set();
-let topText = "";
-let middleText = "";
-const bottomTexts = new Set();
-
-const returnAddresses = new Set();
-
 //#region Hooks
-
-const hooksStatus = {
-  // exampleHookName: { enabled: true, characters: 0 },
-};
 
 const hotHooks = {
   // CUTSCENEDIALOGUE1: {
@@ -78,7 +63,7 @@ const hooks = {
   //   register: "rdx",
   //   handler: mainUtf16Handler,
   // },
-  CutsceneDialogue3: {
+  CutsceneDialogue: {
     // pattern: "E8 E5 57 24 00",
     // pattern: "48 8B D8 48 89 7C 24 28 48 89 7C 24 38 BF 0F 00 00 00 48 89 7C 24 40 C6 44 24 28 00 48 85 C0 74 23",
     // pattern: "4? 8b d8 4? 89 7c ?4 28 4? 89 7c ?4 38 bf ?? ?? ?? ?? 4? 89 7c ?4 40 c6 44 ?4 28 ?? 4? 85 c0 74 ??",
@@ -97,7 +82,7 @@ const hooks = {
   //   register: "rax",
   //   handler: mainHandler,
   // }, // E8 96EE0300 after, possibly redundant, only one text box
-  DialogueHook2: {
+  DialogueHook: {
     // pattern: "E8 5D 4D 48 00",
     // pattern: "e8 ?? ?? ?? ?? 4? 89 64 ?? ?? 4? 89 64 ?? ?? 4? c7 44 ?? ?? ?? ?? ?? ?? 4? 88 64 ?? ?? 4? 8d 5c ?4 ff 4? 85 f6",
     pattern:
@@ -147,7 +132,8 @@ const hooks = {
  * @returns {NativePointer}
  */
 function getPatternAddress(name, pattern) {
-  let results = "";
+  /** @type {MemoryScanMatch[]|null} */
+  let results = null;
 
   try {
     results = Memory.scanSync(__e.base, __e.size, pattern);
@@ -158,15 +144,17 @@ function getPatternAddress(name, pattern) {
   }
 
   if (results.length === 0) {
-    throw new Error(`[${name}] Hook not found!`);
-  }
-
-  let address = results[0].address;
-
-  console.log(`\x1b[32m[${name}] Found hook ${address}\x1b[0m`);
-  if (results.length > 1) {
+    if (STOP_ON_MISSING_HOOK) {
+      throw new RangeError(`[${name}] not found!`);
+    }
+    return null;
+  } else if (results.length > 1) {
     console.warn(`${name} has ${results.length} results`);
   }
+
+  const address = results[0].address;
+
+  console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
 
   return address;
 }
@@ -183,33 +171,12 @@ function attachHooks() {
     const result = attach({ name: name, ...hooks[hook] });
 
     if (result === true) {
-      hooksStatus[name] = { enabled: true, characters: 0 };
       hooksCount += 1;
     } else {
       console.log("FAIL");
     }
   }
   console.log(`${hooksCount}/${Object.keys(hooks).length} hooks attached`);
-}
-
-/**
- * Wrapper around "Interceptor.attach". Quickly detach after attaching.
- * @param {NativePointer} address
- * @param {HookHandler} callback
- */
-function hotAttach(address, callback) {
-  const hook = Interceptor.attach(address, function (args) {
-    hook.detach();
-
-    if (INSPECT_ARGS === true) {
-      inspectArgs(args);
-      // return null;
-    }
-
-    this.args = args;
-
-    callback.call(this, args);
-  });
 }
 
 /**
@@ -222,19 +189,15 @@ function hotAttach(address, callback) {
  * @param {Function} options.handler
  * @returns {boolean}
  */
-function attach({ name, pattern, register, argIndex, target, handler }) {
-  if (!register && !argIndex && !target) {
-    throw new Error("Both register/arg and target are missing?");
-  }
-
+function attach({ name, pattern, register, argIndex, handler }) {
   const address = getPatternAddress(name, pattern);
 
-  Interceptor.attach(address, function (args) {
-    if (hooksStatus[name].enabled === false) {
-      // console.log("skipped: " + name);
-      return false;
-    }
+  if (address === null) {
+    console.warn(`[${name}] not found!`);
+    return false;
+  }
 
+  Interceptor.attach(address, function (args) {
     console.log("onEnter: " + name);
 
     this.args = args;
@@ -265,12 +228,12 @@ function attach({ name, pattern, register, argIndex, target, handler }) {
 //#region Handlers
 
 function genericHandler(text) {
-  texts1.add(text);
+  texts.add(text);
 
   clearTimeout(timer);
   timer = setTimeout(() => {
-    trans.send([...texts1].join("\r\n"));
-    texts1.clear();
+    trans.send([...texts].join("\r\n"));
+    texts.clear();
   }, 200);
 }
 
@@ -315,7 +278,8 @@ trans.replace((s) => {
   return s
     .replace(/{fc[^)]+\)([^}]+)}/g, "$1") // color
     .replace(/{keyhelp[^}]+}/g, "▢") // key buttons
-    .replace(/{is\d{1,2}}{image[^}]+}/g, "▢");
+    .replace(/{is\d{1,2}}{image[^}]+}/g, "▢") // image icons
+    .replace(/{[^}]+/g, ""); // remove everything else
 });
 
 //#endregion
@@ -376,6 +340,7 @@ function startTrace() {
   Interceptor.attach(traceAddress, {
     onEnter(args) {
       let text = "";
+
       try {
         text = traceTarget.readString(args);
       } catch (err) {
@@ -400,35 +365,26 @@ function startTrace() {
         inspectArgs(args);
       }
     },
-    onLeave(retval) {
-      const text = retval.readUtf16String();
+    // onLeave(retval) {
+    //   const text = retval.readUtf8String();
 
-      if (previousTexts.has(text)) {
-        return null;
-      }
-      previousTexts.add(text);
+    //   if (previousTexts.has(text)) {
+    //     return null;
+    //   }
+    //   previousTexts.add(text);
 
-      console.log("Leaving!");
-
-      console.warn("onleave returnaddress:", this.returnAddress);
-      console.warn("retval:", text);
-    },
+    //   console.log("Leaving!");
+    //   console.warn("onleave returnaddress:", this.returnAddress);
+    //   console.warn("retval:", text);
+    // },
   });
 }
 
-function setHookCharacterCount(name, text) {
-  if (text === null) {
-    return null;
-  }
-
-  const cleanedText = text.replace(
-    /[。…、？！「」―ー・]|<[^>]+>|\r|\n|\u3000/gu,
-    ""
-  );
-  hooksStatus[name].characters += cleanedText.length;
-}
-
 // in case im being a dumbass
+/**
+ * A normal hook consists of a pattern and handler.
+ * It may have either or both register and argIndex, but never neither.
+ */
 function validateHooks() {
   function expose(name, property) {
     throw new TypeError(`[${name}] ${property} is of type ${typeof property}`);
@@ -436,28 +392,19 @@ function validateHooks() {
 
   for (const hookName in hooks) {
     const hook = hooks[hookName];
-    let { pattern, register, target, argIndex, origins, handler } = hook;
-
-    if (!register && argIndex) {
-      register = toString(argIndex);
-    }
+    let { pattern, register, argIndex, handler } = hook;
 
     if (typeof pattern !== "string") {
       expose(hookName, pattern);
     }
+    if (register && typeof register !== "string") {
+      expose(hookName, register);
+    }
+    if (argIndex && typeof argIndex !== "number") {
+      expose(hookName, argIndex);
+    }
     if (typeof handler !== "function") {
       expose(hookName, handler);
-    }
-    if (register && !target && typeof register !== "string") {
-      expose(hookName, register);
-    } else if (!register && target && typeof target !== "object") {
-      expose(hookName, target);
-    } else if (
-      (!register && target && origins) ||
-      (register && !target && origins) ||
-      (register && target && origins)
-    ) {
-      expose(hookName, origins);
     }
   }
 }
