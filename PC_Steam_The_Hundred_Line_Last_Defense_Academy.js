@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         The Hundred Line -Last Defense Academy-
+// @name         The Hundred Line -Last Defense Academy- (HUNDRED LINE -最終防衛学園-)
 // @version      1.00
 // @author       Mansive
 // @description  Steam
@@ -175,8 +175,10 @@ function getPatternAddress(name, pattern) {
   if (results.length === 0) {
     if (STOP_ON_MISSING_HOOK) {
       throw new RangeError(`[${name}] not found!`);
+    } else {
+      console.warn(`[${name}] not found!`);
+      return null;
     }
-    return null;
   } else if (results.length > 1) {
     console.warn(`${name} has ${results.length} results`);
   }
@@ -186,26 +188,6 @@ function getPatternAddress(name, pattern) {
   console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
 
   return address;
-}
-
-function attachHooks() {
-  for (const hook in hotHooks) {
-    const name = hook;
-    const pattern = hotHooks[name].pattern;
-    hotHooks[hook].address = getPatternAddress(name, pattern);
-  }
-
-  for (const hook in hooks) {
-    const name = hook;
-    const result = attach({ name: name, ...hooks[hook] });
-
-    if (result === true) {
-      hooksCount += 1;
-    } else {
-      // console.log("FAIL");
-    }
-  }
-  console.log(`${hooksCount}/${Object.keys(hooks).length} hooks attached`);
 }
 
 /**
@@ -221,7 +203,6 @@ function attach({ name, pattern, register, argIndex, handler }) {
   const address = getPatternAddress(name, pattern);
 
   if (address === null) {
-    console.warn(`[${name}] not found!`);
     return false;
   }
 
@@ -251,10 +232,31 @@ function attach({ name, pattern, register, argIndex, handler }) {
   return true;
 }
 
+function attachHooks() {
+  for (const hook in hotHooks) {
+    const name = hook;
+    const pattern = hotHooks[name].pattern;
+    hotHooks[hook].address = getPatternAddress(name, pattern);
+  }
+
+  for (const hook in hooks) {
+    const name = hook;
+    const result = attach({ name: name, ...hooks[hook] });
+
+    if (result === true) {
+      hooksCount += 1;
+    } else {
+      // console.log("FAIL");
+    }
+  }
+  console.log(`${hooksCount}/${Object.keys(hooks).length} hooks attached`);
+}
+
 //#endregion
 
 //#region Handlers
 
+/** @param {string} text */
 function genericHandler(text) {
   texts.add(text);
 
@@ -265,14 +267,15 @@ function genericHandler(text) {
   }, 200);
 }
 
+/** @param {string} text */
 function scrollHandler(text) {
   clearTimeout(timer);
   timer = setTimeout(() => {
     trans.send(text);
-    texts.clear();
   }, 500);
 }
 
+/** @param {NativePointer} address */
 function mainHandler(address) {
   const text = address.readUtf8String();
 
@@ -280,6 +283,7 @@ function mainHandler(address) {
   return text;
 }
 
+/** @param {NativePointer} address */
 function battleSkillInfoHandler(address) {
   const text = address.readUtf8String();
 
@@ -291,6 +295,7 @@ function battleSkillInfoHandler(address) {
   return text;
 }
 
+/** @param {NativePointer} address */
 function mainUtf16Handler(address) {
   const text = address.readUtf16String();
 
@@ -298,6 +303,7 @@ function mainUtf16Handler(address) {
   return text;
 }
 
+/** @param {NativePointer} address */
 function dialoguePreviousHandler(address) {
   const id = address.add(8).readUtf8String(); // textMsg or textName
 
@@ -326,6 +332,7 @@ trans.replace((s) => {
     .replace(/{fc[^)]+\)([^}]+)}/g, "$1") // color
     .replace(/{keyhelp[^}]+}/g, "▢") // key buttons
     .replace(/{is\d{1,2}}{image[^}]+}/g, "▢") // image icons
+    .replace(/%d/g, "") // forgot what this was supposed to be
     .replace(/{[^}]+/g, ""); // remove everything else
 });
 
