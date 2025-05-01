@@ -10,6 +10,13 @@
 // ==/UserScript==
 const __e = Process.enumerateModules()[0];
 
+console.log(`
+Known Issues:
+Does not work on demo version.
+Cutscene hook can output before characters start talking.
+For unknown reasons, there's a chance this script will extract garbage text.
+`);
+
 // Need to implement
 const YEEHAW_MODE = false;
 
@@ -50,6 +57,7 @@ const hotHooks = {
   // },
 };
 
+//prettier-ignore
 const hooks = {
   // CutsceneDialogue1: {
   //   pattern: "E8 68 BE 15 00",
@@ -82,40 +90,61 @@ const hooks = {
   //   register: "rax",
   //   handler: mainHandler,
   // }, // E8 96EE0300 after, possibly redundant, only one text box
-  DialogueHook: {
+  Dialogue: {
     // pattern: "E8 5D 4D 48 00",
+    // pattern: "E8 5D 4D 48 00 4C 89 64 24 38 4C 89 64 24 48 48 C7 44 24 50 0F 00 00 00 44 88 64 24 38 49 8D 5C 24 FF 48 85 F6"
     // pattern: "e8 ?? ?? ?? ?? 4? 89 64 ?? ?? 4? 89 64 ?? ?? 4? c7 44 ?? ?? ?? ?? ?? ?? 4? 88 64 ?? ?? 4? 8d 5c ?4 ff 4? 85 f6",
-    pattern:
-      "e8 ?? ?? ?? ?? 4? 89 64 ?? ?? 4? 89 64 ?? ?? 4? c7 44 ?? ?? ?? ?? ?? ?? 4? 88 64",
+    pattern: "e8 ?? ?? ?? ?? 4? 89 64 ?? ?? 4? 89 64 ?? ?? 4? c7 44 ?? ?? ?? ?? ?? ?? 4? 88 64",
     argIndex: 2, // name
     register: "rsi",
     handler: mainHandler,
   }, // both text boxes
-  TipsHook: {
+  TipsInfo: {
     // pattern: "E8 20 E9 31 00",
+    // pattern: "E8 20 E9 31 00 48 8D 05 41 B5 6A 00 48 89 45 E7 48 89 7D EF 48 8D 45 E7 48 89 45 1F 48 63 97 98 01 00 00 48 39 97 88 00 00 00 0F 86 50 02 00 00"
     // pattern: "e8 ?? ?? ?? ?? 4? 8d 05 ?? ?? ?? ?? 4? 89 ?? ?? 4? 89 7? ?? 4? 8d ?? e7 4? 89 4? ?? 4? 63 97 98 01 00 00 4? 39 97 88 00 00 00 0f 86 ?? ?? ?? ??",
-    pattern:
-      "e8 ?? ?? ?? ?? 4? 8d 05 ?? ?? ?? ?? 4? 89 ?? ?? 4? 89 7? ?? 4? 8d ?? e7",
+    pattern: "e8 ?? ?? ?? ?? 4? 8d 05 ?? ?? ?? ?? 4? 89 ?? ?? 4? 89 7? ?? 4? 8d ?? e7",
     register: "rax",
     handler: mainHandler,
   },
-  SkillInfo: {
+  CenterPopup: {
+    // pattern: "4C 89 7D CF 4C 89 7D DF 48 C7 45 E7 0F 00 00 00 44 88 7D CF 48 85 C0 0F 84 52 01 00 00",
+    pattern: "4? 89 7? ?? 4? 89 7? ?? 4? c7 4? ?? ?? ?? ?? ?? 4? 88 7? ?? 4? 85 c0 0f 84 ?? ?? ?? ?? 4? 85",
+    register: "rax",
+    handler: mainHandler,
+  },
+  Prompt: {
+    // pattern: "E8 F8 47 32 00",
+    // pattern: "E8 F8 47 32 00 80 7F 33 00 4C 8D 05 9D 73 6A 00 48 8B 15 0E 31 9B 00 48 0F 45 15 FE 30 9B 00 48 8B 4F 38 48 8B 5C 24 30 48 83 C4 20 5F E9 CB 47 32 00 CC"
+    pattern: "e8 ?? ?? ?? ?? 80 7f 33 ?? 4? 8d 05",
+    register: "rax",
+    handler: mainHandler,
+  },
+  BattleSkillInfo: {
     // pattern: "E8 5F C3 34 00",
-    // pattern: "e8 ?? ?? ?? ?? 90 4? 8b 5? ?? 4? 83 fa ?? 72 ?? 4? ff c2 4? 8b 4? ?? 4? 8b c1 4? 81 fa ?? ?? ?? ??"
+    // pattern: "48 8B 15 F0 A5 9D 00 48 8B 4F 40 E8 5F C3 34 00 90 48 8B 55 FF 48 83 FA 10 72 31"
     pattern: "4? 8b ?? ?? ?? ?? ?? 4? 8b 4f 40 e8 ?? ?? ?? ?? 90 4? 8b",
     register: "r8",
-    handler: mainHandler,
+    handler: battleSkillInfoHandler,
   },
-  BattleCenterPopup: {
-    // pattern: "4C 89 7D CF 4C 89 7D DF 48 C7 45 E7 0F 00 00 00 44 88 7D CF 48 85 C0 0F 84 52 01 00 00",
-    pattern:
-      "4? 89 7? ?? 4? 89 7? ?? 4? c7 4? ?? ?? ?? ?? ?? 4? 88 7? ?? 4? 85 c0 0f 84 ?? ?? ?? ?? 4? 85",
+  ExplorationPromptInfo: {
+    // pattern: "E8 80 D4 29 00",
+    // pattern: "E8 80 D4 29 00 8B B7 80 00 00 00 48 8D 0D 5B 0F 62 00 E8 4E BF 1C 00 48 85 C0 75 04 8B CB EB 65 4C 8B 50 20 4C 8B 40 18 49 8B CA 49 2B C8 48 C1 F9 03 48 85 C9 7E 3B",
+    pattern: "e8 ?? ?? ?? ?? 8b b7 80 00 00 00 4? 8d 0d",
+    register: "r8",
+    handler: mainHandler,
+  }, // SugorokuEffectSelect?
+  ExplorationPromptChoice: {
+    // pattern: "E8 3B 13 0D 00",
+    // pattern: "45 33 E4 4C 89 65 80 4C 89 65 90 48 C7 45 98 0F 00 00 00 44 88 65 80 4C 8B C3 90 49 FF C0 46 38 24 00 75 F7 48 8B D0 48 8D 4D 80 E8 CB AC DA FF",
+    pattern: "4? 33 e4 4? 89 6? ?? 4? 89 6? ?? 4? c7 4? ?? ?? ?? ?? ?? 4? 88 6? ?? 4? 8b c3",
     register: "rax",
     handler: mainHandler,
   },
-  BattlePrompt: {
-    // pattern: "E8 F8 47 32 00",
-    pattern: "e8 ?? ?? ?? ?? 80 7f 33 ?? 4? 8d 05",
+  ExplorationPromptResult: {
+    // pattern: "E8 E4 16 1C 00",
+    // pattern: "4C 89 65 38 4C 89 65 48 48 C7 45 50 0F 00 00 00 C6 45 38 00 4D 8B C7 49 FF C0 42 80 3C 00 00 75 F6 48 8B D0 48 8D 4D 38 E8 77 B0 E9 FF",
+    pattern: "4? 89 6? ?? 4? 89 6? ?? 4? c7 4? ?? ?? ?? ?? ?? c6 4? ?? ?? 4? 8b c7",
     register: "rax",
     handler: mainHandler,
   },
@@ -173,7 +202,7 @@ function attachHooks() {
     if (result === true) {
       hooksCount += 1;
     } else {
-      console.log("FAIL");
+      // console.log("FAIL");
     }
   }
   console.log(`${hooksCount}/${Object.keys(hooks).length} hooks attached`);
@@ -185,7 +214,6 @@ function attachHooks() {
  * @param {string} options.pattern
  * @param {string} options.register
  * @param {number} options.argIndex
- * @param {Object} options.target
  * @param {Function} options.handler
  * @returns {boolean}
  */
@@ -237,10 +265,29 @@ function genericHandler(text) {
   }, 200);
 }
 
+function scrollHandler(text) {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    trans.send(text);
+    texts.clear();
+  }, 500);
+}
+
 function mainHandler(address) {
   const text = address.readUtf8String();
 
   genericHandler(text);
+  return text;
+}
+
+function battleSkillInfoHandler(address) {
+  const text = address.readUtf8String();
+
+  if (text === "－") {
+    return null;
+  }
+
+  scrollHandler(text);
   return text;
 }
 
