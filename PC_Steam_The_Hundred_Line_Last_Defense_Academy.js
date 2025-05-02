@@ -12,9 +12,10 @@ const __e = Process.enumerateModules()[0];
 
 console.log(`
 Known Issues:
-Does not work on demo version.
-Cutscene hook can output before characters start talking.
-For unknown reasons, there's a chance this script will extract garbage text.
+- Does not work on demo version.
+- CutsceneDialogue hook can output before characters start talking.
+- For unknown reasons, 
+  there's a chance that garbage text will be outputted on certain systems.
 `);
 
 // Need to implement
@@ -33,28 +34,28 @@ let previous = "";
 
 //#region Hooks
 
+//prettier-ignore
 const hotHooks = {
-  // CUTSCENEDIALOGUE1: {
-  //   name: "CUTSCENEDIALOGUE1",
-  //   pattern: "E8 68 BE 15 00",
-  //   address: null,
-  //   register: "rdx",
-  //   argIndex: 1,
-  //   readString(args) {
-  //     return args[this.argIndex].readUtf16String();
-  //   },
-  // },
-  // CUTSCENEDIALOGUE1INSIDE: {
-  //   name: "CUTSCENEDIALOGUE1INSIDE",
-  //   pattern:
-  //     "48 8B C1 4C 8D 15 16 64 82 FF 49 83 F8 0F 0F 87 0C 01 00 00 66 66 66 66 0F 1F 84 00 00 00 00 00 47 8B 8C 82 30 E0 0B 01 4D 03 CA 41 FF E1",
-  //   address: null,
-  //   register: "rdx",
-  //   argIndex: 1,
-  //   readString(args) {
-  //     return args[this.argIndex].readUtf16String();
-  //   },
-  // },
+  CUTSCENEDIALOGUE1: {
+    name: "CUTSCENEDIALOGUE1",
+    pattern: "E8 68 BE 15 00",
+    address: null,
+    register: "rdx",
+    argIndex: 1,
+    readString(args) {
+      return args[this.argIndex].readUtf16String();
+    },
+  },
+  CUTSCENEDIALOGUE1INSIDE: {
+    name: "CUTSCENEDIALOGUE1INSIDE",
+    pattern: "48 8B C1 4C 8D 15 16 64 82 FF 49 83 F8 0F 0F 87 0C 01 00 00 66 66",
+    address: null,
+    register: "rdx",
+    argIndex: 1,
+    readString(args) {
+      return args[this.argIndex].readUtf16String();
+    },
+  },
 };
 
 //prettier-ignore
@@ -80,9 +81,9 @@ const hooks = {
     handler: mainHandler,
   },
   // DialoguePreviousHook: {
-  // pattern: "E8 C5130000",
-  // register: "rcx",
-  // handler: dialoguePreviousHandler,
+  //   pattern: "E8 C5130000",
+  //   register: "rcx",
+  //   handler: dialoguePreviousHandler,
   // },
   // DialogueHook1: {
   //   pattern:
@@ -233,11 +234,11 @@ function attach({ name, pattern, register, argIndex, handler }) {
 }
 
 function attachHooks() {
-  for (const hook in hotHooks) {
-    const name = hook;
-    const pattern = hotHooks[name].pattern;
-    hotHooks[hook].address = getPatternAddress(name, pattern);
-  }
+  // for (const hook in hotHooks) {
+  //   const name = hook;
+  //   const pattern = hotHooks[name].pattern;
+  //   hotHooks[hook].address = getPatternAddress(name, pattern);
+  // }
 
   for (const hook in hooks) {
     const name = hook;
@@ -332,8 +333,9 @@ trans.replace((s) => {
     .replace(/{fc[^)]+\)([^}]+)}/g, "$1") // color
     .replace(/{keyhelp[^}]+}/g, "▢") // key buttons
     .replace(/{is\d{1,2}}{image[^}]+}/g, "▢") // image icons
+    .replace(/{chr}/g, "▢") // character name substitute
     .replace(/%d/g, "") // forgot what this was supposed to be
-    .replace(/{[^}]+/g, ""); // remove everything else
+    .replace(/{[^}]+}/g, ""); // remove everything else
 });
 
 //#endregion
