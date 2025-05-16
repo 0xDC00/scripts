@@ -15,7 +15,13 @@ console.warn('[Compatibility]');
 console.warn('Yuzu 1616+');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
-if (Process.arch === 'arm64') {
+const arch = Process.arch;
+
+if (arch !== 'x64' || arch !== 'arm64') {
+    throw new Error(`Unsupported architecture: ${arch}`);
+}
+
+if (arch === 'arm64') {
     console.warn(`
 This script requires you to use Dyarnmic in the emulator!
 To use Dynarmic:
@@ -76,13 +82,13 @@ Interceptor.attach(DoJitPtr, {
         let em_address;
         let op;
 
-        if (Process.arch === 'arm64') {
-            em_address = descriptor.and(0xffffffff).toUInt32();
-            op = operations[em_address];
-        } else {
+        if (arch === 'x64') {
             em_address = descriptor.readU64().and(0xffffffff).toNumber();
             op = operations[em_address];
-        }
+        } else if (arch === 'arm64') {
+            em_address = descriptor.and(0xffffffff).toUInt32();
+            op = operations[em_address];
+        } 
 
         // x64 example
         // descriptor:       0x1c983e9f2e8
@@ -146,7 +152,7 @@ function jitAttach(em_address, entrypoint, op) {
 function getDoJitAddress() {
     if (Process.platform !== 'windows') {
         // Unix
-        if (Process.arch === 'x64') {
+        if (arch === 'x64') {
             // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m.cold
             const names = [
                 '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm', // linux 64 new
@@ -161,7 +167,7 @@ function getDoJitAddress() {
                     return addresses[0];
                 }
             }
-        } else if (Process.arch === 'arm64') {
+        } else if (arch === 'arm64') {
             // find functions of interest
             // for (const thing of DebugSymbol.findFunctionsMatching("*")) {
             //     const symbol = DebugSymbol.fromAddress(thing);
@@ -229,11 +235,11 @@ function getDoJitAddress() {
 function createFunctionBody_findBaseAndRegs() {
     let body = '';
 
-    if (Process.arch === 'arm64') {
-        body += `const theRegs = ["pc", "sp", "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "fp", "lr"];`;
-    } else {
+    if (arch === 'x64') {
         body += `const theRegs = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"];`;
-    }
+    } else if (arch === 'arm64') {
+        body += `const theRegs = ["pc", "sp", "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "fp", "lr"];`;
+    } 
 
     let vm = '';
     if (globalThis.ARM === true) {
@@ -277,23 +283,23 @@ function createFunction_buildRegs() {
 
     // body += createFunctionBody_findBaseAndRegs();
 
-    if (Process.arch === 'arm64') {
-        body += 'const regs = context.x28;';
-    } else {
+    if (arch === 'x64') {
         // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
         body += 'const regs = context.r15;'; // x28
-    }
+    } else if (arch === 'arm64') {
+        body += 'const regs = context.x28;';
+    } 
 
     let getValue = '';
     if (isFastMem === true) {
         /* fastmem (host MMU) */
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a64_interface.cpp#L43
 
-        if (Process.arch === 'arm64') {
-            body += 'const base = context.x25;';
-        } else {
+        if (arch === 'x64') {
             body += 'const base = context.r13;';
-        }
+        } else if (arch === 'arm64') {
+            body += 'const base = context.x25;';
+        } 
 
         getValue = `get value() { return base.add(this._vm); },`; // host address
     } else {
@@ -351,17 +357,17 @@ function createFunction_buildRegs32() {
     // body += createFunctionBody_findBaseAndRegs();
 
     /* fastmem */
-    if (Process.arch === 'arm64') {
-        // doesn't work
-        throw new Error("32-bit games aren't supported yet");
-        body += 'const base = context.x25;';
-        body += 'const regs = context.x28;';
-    } else {
+    const arch = Process.arch;
+    if (arch === 'x64') {
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
         body += 'const base = context.r13;';
 
         // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
         body += 'const regs = context.r15;';
+    } else if (arch === 'arm64') {
+        throw new Error(`32-bit games aren't supported yet`);
+        body += 'const base = context.x25;';
+        body += 'const regs = context.x28;';
     }
 
     /* pagetable */
