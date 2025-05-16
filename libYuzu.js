@@ -357,7 +357,6 @@ function createFunction_buildRegs32() {
     // body += createFunctionBody_findBaseAndRegs();
 
     /* fastmem */
-    const arch = Process.arch;
     if (arch === 'x64') {
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
         body += 'const base = context.r13;';
