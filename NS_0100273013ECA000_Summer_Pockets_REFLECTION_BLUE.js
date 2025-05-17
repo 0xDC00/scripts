@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         [0100273013ECA000] Summer Pockets REFLECTION BLUE
-// @version      1.0.1
+// @version      1.0.0
 // @author       Mansive
-// @description  Yuzu/Sudachi, Ryujinx
+// @description  Yuzu, Ryujinx
 // * Key
 // * PROTOTYPE
 // ==/UserScript==
-const gameVer = "1.0.1";
+const gameVer = "1.0.0";
 
 const { setHook } = require("./libYuzu.js");
 
@@ -22,10 +22,11 @@ let previousImmediate = "";
 
 setHook(
   {
-    "1.0.1": {
+    "1.0.0": {
       [0x8007a878 - 0x80004000]: omniHandler.bind_(null, 1, 0x1b, "text"), // reminiscent of the tragedy of Taishou x Alice
       [0x80173dd4 - 0x80004000]: menuHandler.bind_(null, 0, 0x1b, "save/load file title"),
-      [0x8000b0a4 - 0x80004000]: menuHandler.bind_(null, 0, 0x1b, "save/load file text"),
+      // [0x8000b0a4 - 0x80004000]: menuHandler.bind_(null, 0, 0x1b, "save/load file text"), // blows up android
+      [0x8000b0b0 - 0x80004000]: menuHandler.bind_(null, 0, 0x1b, "save/load file text"),
     },
   }[(globalThis.gameVer = globalThis.gameVer ?? gameVer)]
 );
