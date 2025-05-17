@@ -17,7 +17,7 @@ console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
 const arch = Process.arch;
 
-if (arch !== 'x64' || arch !== 'arm64') {
+if (arch !== 'x64' && arch !== 'arm64') {
     throw new Error(`Unsupported architecture: ${arch}`);
 }
 
