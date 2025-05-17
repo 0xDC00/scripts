@@ -5,6 +5,7 @@
 // @description  Yuzu, Ryujinx
 // * Key
 // * PROTOTYPE
+// * SiglusEngine
 // ==/UserScript==
 const gameVer = "1.0.0";
 
