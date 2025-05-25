@@ -14,7 +14,7 @@ const mainHandler = trans.send(handler, "200+");
 setHook(
   {
     "1.0.0": {
-[0x81a48614 - 0x80004000]: mainHandler.bind_(null, 1, "text"),
+   [0x81a48614 - 0x80004000]: mainHandler.bind_(null, 1, "text"),
    [0x81a5d890 - 0x80004000]: mainHandler.bind_(null, 1, "choices"),
   
     
