@@ -59,16 +59,11 @@ const menuHandler = trans.send(s => s, 200);
     const address = results[0].address;
     console.log('[dialoguePattern] Found hook', address);
 
-    // const matchAddr = results[0].address;
-    // const movzxOffset = 0x14;
-    // const hookAddr = matchAddr.add(movzxOffset); // To start the logic from this point as I had to hook from an earlier place
-
     Interceptor.attach(address, function (args) {
         // console.warn("in: dialogue");
 
         const dialogueAddress = this.context.r8;
         let dialogue = dialogueAddress.readShiftJisString();
-        // mainHandler(dialogue);
         readString(dialogueAddress, "dialogue");
     });
 })();
@@ -168,14 +163,10 @@ let previousArtsDescription = '';
         return;
     }
 
-    const address = results[0].address;
+    const address = results[0].address.add(0x4);
     console.log('[artsDescriptionPattern] Found hook', address);
 
-    const matchAddr = results[0].address;
-    const movzxOffset = 0x4;
-    const hookAddr = matchAddr.add(movzxOffset); // To start the logic from this point as I had to hook from an earlier place
-
-    Interceptor.attach(hookAddr, function (args) {
+    Interceptor.attach(address, function (args) {
         // console.warn("in: artsDescription");
 
         const artsDescriptionAddress = this.context.r8;
@@ -202,14 +193,10 @@ let previousQuartzDescription = '';
         return;
     }
 
-    const address = results[0].address;
+    const address = results[0].address.add(0xb);
     console.log('[quartzDescriptionPattern] Found hook', address);
 
-    const matchAddr = results[0].address;
-    const movzxOffset = 0xb;
-    const hookAddr = matchAddr.add(movzxOffset); // To start the logic from this point as I had to hook from an earlier place
-
-    Interceptor.attach(hookAddr, function (args) {
+    Interceptor.attach(address, function (args) {
         // console.warn("in: quartzDescription");
 
         const quartzDescriptionAddress = this.context.rax;
@@ -291,7 +278,7 @@ function readString(address, hookName) {
         if (!previous.includes(text) && hookName === "dialogue") {
             previous = text;
             text = cleanText(text) + "\n";
-            // mainHandler(name + "\n" + text);
+
             mainHandler(text);
         }
 

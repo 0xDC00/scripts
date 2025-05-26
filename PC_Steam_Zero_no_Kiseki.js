@@ -24,7 +24,6 @@ const mainHandler = trans.send(s => s, '200+');
 const menuHandler = trans.send(s => s, 200);
 
 
-let name = '';
 (function () {
     const nameSig = '89 54 ?? 60 ?? 8b 8f a8 00 00 00 ?? 8d 81 40 08 00 00 ?? 38 38 74 15';
     var results = Memory.scanSync(__e.base, __e.size, nameSig);
@@ -35,18 +34,15 @@ let name = '';
         return;
     }
 
-    const address = results[0].address;
+    const address = results[0].address.add(0x12);
     console.log('[namePattern] Found hook', address);
 
-    const matchAddr = results[0].address;
-    const leaOffset = 0x12;
-    const hookAddr = matchAddr.add(leaOffset); // To start the logic from this point as I had to hook from an earlier place
-
-    Interceptor.attach(hookAddr, function (args) {
+    Interceptor.attach(address, function (args) {
         // console.warn("in: name");
 
         const nameAddress = this.context.rax;
-        name = nameAddress.readShiftJisString();
+        let name = nameAddress.readShiftJisString();
+        mainHandler(name);
     });
 })();
 
@@ -167,14 +163,10 @@ let previousArtsDescription = '';
         return;
     }
 
-    const address = results[0].address;
+    const address = results[0].address.add(0x1);
     console.log('[artsDescriptionPattern] Found hook', address);
 
-    const matchAddr = results[0].address;
-    const movzxOffset = 0x1;
-    const hookAddr = matchAddr.add(movzxOffset); // To start the logic from this point as I had to hook from an earlier place
-
-    Interceptor.attach(hookAddr, function (args) {
+    Interceptor.attach(address, function (args) {
         // console.warn("in: artsDescription");
 
         const artsDescriptionAddress = this.context.r8;
@@ -201,14 +193,10 @@ let previousQuartzDescription = '';
         return;
     }
 
-    const address = results[0].address;
+    const address = results[0].address.add(0x3);
     console.log('[quartzDescriptionPattern] Found hook', address);
 
-    const matchAddr = results[0].address;
-    const movzxOffset = 0x3;
-    const hookAddr = matchAddr.add(movzxOffset); // To start the logic from this point as I had to hook from an earlier place
-
-    Interceptor.attach(hookAddr, function (args) {
+    Interceptor.attach(address, function (args) {
         // console.warn("in: quartzDescription");
 
         const quartzDescriptionAddress = this.context.r10;
@@ -253,7 +241,7 @@ function readString(address, hookName) {
         if (!previous.includes(text) && hookName === "dialogue") {
             previous = text;
             text = cleanText(text);
-            mainHandler(name + "\n" + text);
+            mainHandler(text);
         }
 
         else if (hookName === "choices")
