@@ -17,13 +17,12 @@
 
 console.warn("Known issues:\n- Furigana, larger fonts and colored text make Agent freak out, so expect some junk sometimes, especially in the tutorial and when buying something.");
 console.warn("The same happens if you open the conversation log. Dettach the script beforhand if you want to consult the log, and attach it again when the log is closed.");
-console.warn("\nTo do: finding a hook for the quests' descriptions.");
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send(s => s, '200+');
 const menuHandler = trans.send(s => s, 200);
 
-
+let name = '';
 (function () {
     const nameSig = '89 54 ?? 60 ?? 8b 8f a8 00 00 00 ?? 8d 81 40 08 00 00 ?? 38 38 74 15';
     var results = Memory.scanSync(__e.base, __e.size, nameSig);
@@ -41,8 +40,7 @@ const menuHandler = trans.send(s => s, 200);
         // console.warn("in: name");
 
         const nameAddress = this.context.rax;
-        let name = nameAddress.readShiftJisString();
-        mainHandler(name);
+        name = nameAddress.readShiftJisString();
     });
 })();
 
@@ -215,45 +213,67 @@ let previousQuartzDescription = '';
 const decoder = new TextDecoder('shift_jis');
 let previous = '';
 function readString(address, hookName) {
-    var text = '';
-    var byte = address.readU8();
+    let text = '';
+    let i = 0;
+    let byte = address.readU8();
 
-    if (byte > 0x80) {
-        var i = 0;
+    if (byte <= 0x80) return; // Not Shift_JIS, ignore
 
-        while (address.add(i).readU8() != 0x2) { // 0x2 ends current dialogue
+    while (address.add(i).readU8() != 0x2) { // 0x2 ends dialogue
+        const current = address.add(i);
 
-            if (address.add(i).readU8() == 0x1 && address.add(i + 1).readU8() == 0x0)
-                break;
+        // Break on control sequence
+        if (current.readU8() == 0x1 && current.add(1).readU8() == 0x0 || current.readU8() == 0x0)// && current.add(1).readU8() == 0x0)
+            break;
 
-            if (address.add(i).readU8() == 0x1) { // New line
-                text = text + '\n';
-                i++;
-            }
+        // New line
+        if (current.readU8() == 0x1 || current.readU8() == 0xa || current.readU8() == 0x20) {
+            text += '\n';
+            i++;
+        }
 
-            else {
-                var buffer = new Uint8Array(address.add(i).readByteArray(2));
-                text = text + decoder.decode(buffer);
-                i += 2;
+        // Furigana detection: starts with '#' followed by alphanumeric (e.g. '#8R')
+        if (current.readU8() === 0x23 /* '#' */) {
+            const next1 = current.add(1).readU8();
+            const next2 = current.add(2).readU8();
+
+            // Check for ASCII alphanumeric: 0-9, A-Z, a-z
+            if (
+                (next1 >= 0x30 && next1 <= 0x39 || next1 >= 0x41 && next1 <= 0x5A || next1 >= 0x61 && next1 <= 0x7A) &&
+                (next2 >= 0x30 && next2 <= 0x39 || next2 >= 0x41 && next2 <= 0x5A || next2 >= 0x61 && next2 <= 0x7A)
+            ) {
+                // Skip furigana section until we find 0x02 (end of segment) or 0x00 (null terminator)
+                while (address.add(i).readU8() > 0x1F && address.add(i).readU8() !== 0x2) {
+                    i++;
+                }
+                continue;
             }
         }
 
-        if (!previous.includes(text) && hookName === "dialogue") {
-            previous = text;
-            text = cleanText(text);
-            mainHandler(text);
-        }
-
-        else if (hookName === "choices")
-            mainHandler(text);
+        // Otherwise decode 2 bytes
+        const buffer = new Uint8Array(address.add(i).readByteArray(2));
+        text += decoder.decode(buffer);
+        i += 2;
     }
+
+    if (hookName === "dialogue" && !previous.includes(text)) {
+        previous = text;
+        // text = cleanText(text);
+        // console.warn(hexdump(address, { header: false, ansi: false, length: 0x100 }));
+
+        mainHandler(name + "\n" + text);
+    }
+
+    else if (hookName === "choices")
+        mainHandler(text);
+
 }
 
 
 
 function cleanText(text) {
-    return text
-        .replace(/#.*?[A-Za-z]/g, '')
+    return text;
+    .replace(/#.*?[A-Za-z]/g, '')
         .replace(/~.*?#/gs, '')
         .replace(/[A-Za-z0-9][^#]*#/g, '')
         .replace(/[\uFF61-\uFF9F][\s\S]*?#/g, '')
