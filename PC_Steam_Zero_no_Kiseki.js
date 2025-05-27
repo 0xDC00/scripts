@@ -11,12 +11,13 @@
 
 
 /**
- * To do: finding a better hook for the dialogue and finding a hook for the quests' descriptions.
+ * To do: 
+ * - Finding a quest description hook.
+ * - Filter out the photo descriptions in newspapers.
  */
 
 
-console.warn("Known issues:\n- Furigana, larger fonts and colored text make Agent freak out, so expect some junk sometimes, especially in the tutorial and when buying something.");
-console.warn("The same happens if you open the conversation log. Dettach the script beforhand if you want to consult the log, and attach it again when the log is closed.");
+console.warn("Known issue:\n- Photos in newspapers often have a very short description. That gets extracted and might be in the middle of a sentence of the main text.");
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send(s => s, '200+');
@@ -215,70 +216,117 @@ let previous = '';
 function readString(address, hookName) {
     let text = '';
     let i = 0;
-    let byte = address.readU8();
+    let sideText = '';
 
-    if (byte <= 0x80) return; // Not Shift_JIS, ignore
+    if (address.readU8() <= 0x80) return; // Not Shift_JIS, ignore
 
-    while (address.add(i).readU8() != 0x2) { // 0x2 ends dialogue
+    while (address.add(i).readU8() !== 0x2) { // 0x2 ends dialogue
         const current = address.add(i);
+        const byte1 = current.readU8();
+        const byte2 = current.add(1).readU8();
+        const byte3 = current.add(2).readU8();
+        const byte4 = current.add(3).readU8();
 
         // Break on control sequence
-        if (current.readU8() == 0x1 && current.add(1).readU8() == 0x0 || current.readU8() == 0x0)// && current.add(1).readU8() == 0x0)
-            break;
+        if ((byte1 === 0x01 && byte2 === 0x00) || byte1 === 0x00) break;
 
         // New line
-        if (current.readU8() == 0x1 || current.readU8() == 0xa || current.readU8() == 0x20) {
-            text += '\n';
+        if (byte1 === 0x01 || byte1 === 0x0A) {
             i++;
+            text += '\n';
+            continue;
         }
 
-        // Furigana detection: starts with '#' followed by alphanumeric (e.g. '#8R')
-        if (current.readU8() === 0x23 /* '#' */) {
-            const next1 = current.add(1).readU8();
-            const next2 = current.add(2).readU8();
+        if (byte1 === 0x20) {
+            i++;
+            continue;
+        }
 
-            // Check for ASCII alphanumeric: 0-9, A-Z, a-z
-            if (
-                (next1 >= 0x30 && next1 <= 0x39 || next1 >= 0x41 && next1 <= 0x5A || next1 >= 0x61 && next1 <= 0x7A) &&
-                (next2 >= 0x30 && next2 <= 0x39 || next2 >= 0x41 && next2 <= 0x5A || next2 >= 0x61 && next2 <= 0x7A)
-            ) {
-                // Skip furigana section until we find 0x02 (end of segment) or 0x00 (null terminator)
-                while (address.add(i).readU8() > 0x1F && address.add(i).readU8() !== 0x2) {
+        // Skip weird spacing in books, typicially in the newspaper
+        if (byte1 === 0x81 && byte2 === 0x40) {
+            i += 2;
+            continue;
+        }
+
+        // Skip furigana that starts with #nR and ends with next #
+        if (
+            byte1 === 0x23 &&                  // '#'
+            byte2 >= 0x30 && byte2 <= 0x39     // '0'-'9'
+        ) {
+            //There can be a second digit
+            if (byte3 >= 0x30 && byte3 <= 0x39 && byte4 === 0x52) {
+                i += 4;
+
+                // Skip until the next '#' (0x23) or end of dialogue
+                while (address.add(i).readU8() !== 0x23 && address.add(i).readU8() !== 0x02) {
                     i++;
                 }
+
+                // Skip the ending '#' itself
+                if (address.add(i).readU8() === 0x23)
+                    i++;
+            }
+
+            else if (byte3 === 0x52) {
+                i += 3;
+
+                // Skip until the next '#' (0x23) or end of dialogue
+                while (address.add(i).readU8() !== 0x23 && address.add(i).readU8() !== 0x02) {
+                    i++;
+                }
+
+                // Skip the ending '#' itself
+                if (address.add(i).readU8() === 0x23)
+                    i++;
+
                 continue;
             }
         }
 
-        // Otherwise decode 2 bytes
-        const buffer = new Uint8Array(address.add(i).readByteArray(2));
-        text += decoder.decode(buffer);
-        i += 2;
+        // Skip color change tag
+        if (
+            byte1 === 0x23 &&                  // '#'
+            byte2 >= 0x30 && byte2 <= 0x39 &&     // '0'-'9'
+            byte3 === 0x43                     // 'C'
+        ) {
+            i += 3;
+            continue;
+        }
+
+        // If it's ASCII (tipically digits)
+        if (address.add(i).readU8() < 0x80) {
+            const buffer = new Uint8Array([byte1]);
+            text += decoder.decode(buffer);
+            i += 1;
+        }
+        else {
+            // Assume 2-byte Shift_JIS
+            const buffer = new Uint8Array(address.add(i).readByteArray(2));
+            text += decoder.decode(buffer);
+            i += 2;
+        }
     }
 
     if (hookName === "dialogue" && !previous.includes(text)) {
         previous = text;
-        // text = cleanText(text);
-        // console.warn(hexdump(address, { header: false, ansi: false, length: 0x100 }));
+        text = cleanText(text);
+        // console.warn(hexdump(address, { header: false, ansi: false, length: 0x200 }));
 
-        mainHandler(name + "\n" + text);
+        if (text.length <= 100)
+            mainHandler(name + "\n" + text);
+        else
+            mainHandler(text); // To not display the name of the last character talked to when reading a book/newspaper
     }
-
-    else if (hookName === "choices")
+    else if (hookName === "choices") {
         mainHandler(text);
-
+    }
 }
 
 
 
 function cleanText(text) {
-    return text;
-    .replace(/#.*?[A-Za-z]/g, '')
-        .replace(/~.*?#/gs, '')
-        .replace(/[A-Za-z0-9][^#]*#/g, '')
-        .replace(/[\uFF61-\uFF9F][\s\S]*?#/g, '')
-        .replace(/[\uFF61-\uFF9F]+/g, '')
-        .replace(/([ァ-ンー])　+/g, '')
-        .replace(/[A-Za-z0-9]/g, '')
-        .replace(/�/g, '');
+    return text
+        .replace(/#[0-9]+I/g, ' ')
+        .replace(/#\d+[a-zA-Z]/g, '')
+        .replace(/#.*?[0-9A-Za-z]/g, '');
 }
