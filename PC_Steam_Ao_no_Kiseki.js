@@ -2,26 +2,30 @@
 // @name         Ao no Kiseki / Trails to Azure
 // @version      1.1.19
 // @author       Tom (tomrock645)
-// @description  Steam
+// @description  Steam, GOG
 // * developer   Nihon Falcom
 // * publisher   NIS America
 //
 // https://store.steampowered.com/app/1668520/The_Legend_of_Heroes_Trails_to_Azure/
+// https://www.gog.com/en/game/the_legend_of_heroes_trails_to_azure
 // ==/UserScript==
 
 /**
  * To do: 
- * - Finding a better dialogue hook.
- * - Finding a quest description hook.
+ * - Finding a better quest description hook.
+ * - Filter out the photo descriptions in newspapers.
+ * - Finding a hook for the あらすじ.
  */
 
 
-console.warn("Known issues:\n- If a textbox has multiple dialogues they will all get extracted at the same time.");
-console.warn("- The name of the previous character will be extractedd with text from textboxes without one (e.g. during the tutorial).");
+console.warn("Known issues:\n- The name of the last character's whose name was displayed will be extracted in places where it shouldn't (e.g. during the tutorial).");
+console.warn("- Photos in newspapers sometimes have a very short description. That gets extracted and might be in the middle of a sentence of the main text.");
+console.warn("- Quest description extraction is weird; it might end too early, right on spot or even extract the text of more (could be a lot more) than just the currently desplayed quest.");
+console.warn("Also, they will only be extracted from your investigation handbook, so nothing from the terminal.");
 
 
 const __e = Process.enumerateModules()[0];
-const mainHandler = trans.send(s => s, '200+\n+');
+const mainHandler = trans.send(s => s, '200+');
 const menuHandler = trans.send(s => s, 200);
 
 
@@ -42,16 +46,16 @@ let name = '';
     Interceptor.attach(address, function (args) {
         // console.warn("in: name");
 
-        const nameAddress = this.context.rbx;
+        const nameAddress = this.context.rdx;
         name = nameAddress.readShiftJisString();
-
-        // mainHandler(name);
     });
 })();
 
 
-(function () {
-    const dialogueSig = 'eb ?? ?? 88 09 ?? 0f b6 40 01 ?? 83 c0 02 ?? 88 41 01 ?? 83 c1 02 eb';
+let lastCallTime = 0;
+const debounceDelayMs = 10;
+(function () { // Also tutorial and book/newspaper text
+    const dialogueSig = '0f b6 0e 80 f9 20 74 ?? 80 f9 81 75';
     var results = Memory.scanSync(__e.base, __e.size, dialogueSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -64,11 +68,20 @@ let name = '';
     console.log('[dialoguePattern] Found hook', address);
 
     Interceptor.attach(address, function (args) {
+
+        // To properly extract book and newspaper text. 
+        const now = Date.now();
+        if (now - lastCallTime < debounceDelayMs) {
+            return;
+        }
+
+        lastCallTime = now;
         // console.warn("in: dialogue");
 
-        const dialogueAddress = this.context.r8;
+        const dialogueAddress = this.context.rsi;
         let dialogue = dialogueAddress.readShiftJisString();
         readString(dialogueAddress, "dialogue");
+        // mainHandler(dialogue);
     });
 })();
 
@@ -115,7 +128,7 @@ let previousMenusDescription1 = '';
 
         if (menuDescription1 !== previousMenusDescription1) { // Sometimes it would print out twice
             previousMenusDescription1 = menuDescription1;
-            menuDescription1 = menuDescription1.replace(/\\n/g, '\n');
+            menuDescription1 = cleanText(menuDescription1);
 
             menuHandler(menuDescription1);
         }
@@ -146,7 +159,7 @@ let previousCraftDescription = '';
 
             if (craftDescription !== previousCraftDescription) { // Hook is called every frame
                 previousCraftDescription = craftDescription;
-                craftDescription = craftDescription.replace(/\\n/g, '\n');
+                craftDescription = cleanText(craftDescription);
 
                 menuHandler(craftDescription);
             }
@@ -178,7 +191,7 @@ let previousArtsDescription = '';
 
         if (artsDescription !== previousArtsDescription) { // Hook is called every frame
             previousArtsDescription = artsDescription;
-            artsDescription = artsDescription.replace(/\\n/g, '\n');
+            artsDescription = cleanText(artsDescription);
 
             menuHandler(artsDescription);
         }
@@ -210,7 +223,7 @@ let previousQuartzDescription = '';
 
             if (quartzDescription !== previousQuartzDescription) { // Hook is called every frame
                 previousQuartzDescription = quartzDescription;
-                quartzDescription = quartzDescription.replace(/\\n/g, '\n');
+                quartzDescription = cleanText(quartzDescription);
 
                 menuHandler(quartzDescription);
             }
@@ -243,12 +256,74 @@ let previousItemDescription = '';
 
             if (itemDescription !== previousItemDescription) { // Hook is called every frame
                 previousItemDescription = itemDescription;
-                itemDescription = itemDescription.replace(/\\n/g, '\n');
+                itemDescription = cleanText(itemDescription);
 
                 menuHandler(itemDescription);
             }
         }
         catch (e) { /* Somehow the function tries to read something else and keeps failing. */ }
+    });
+})();
+
+
+let previousQuestDescription = '';
+(function () {
+    const questDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8d 47 b0 c6 44 ?? ?? 00 66 0f 6e f0';
+    var results = Memory.scanSync(__e.base, __e.size, questDescriptionSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[questDescriptionPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[questDescriptionPattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: questDescription");
+
+        // To disregard unecessary continuous calls
+        const now = Date.now();
+        if (now - lastCallTime < debounceDelayMs) {
+            return;
+        }
+
+        lastCallTime = now;
+
+        const questDescriptionAddress = this.context.rbx;
+        let questDescription = questDescriptionAddress.readShiftJisString();
+
+        // mainHandler(questDescription);
+
+        if (questDescription !== previousQuestDescription) {
+            previousQuestDescription = questDescription;
+
+            readString(questDescriptionAddress, "quest");
+        }
+    });
+})();
+
+
+(function () {
+    const prestorySig = 'e8 ?? ?? ?? ?? ?? 8b f8 ?? 8b 4b 40';
+    var results = Memory.scanSync(__e.base, __e.size, prestorySig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[prestoryPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[prestoryPattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: prestory");
+
+        const prestoryAddress = this.context.rdx;
+        let prestory = prestoryAddress.readShiftJisString();
+        mainHandler(prestory);
     });
 })();
 
@@ -260,7 +335,8 @@ function readString(address, hookName) {
     let i = 0;
     let sideText = '';
 
-    if (address.readU8() <= 0x80) return; // Not Shift_JIS, ignore
+    if (address.readU8() <= 0x80)
+        return; // Not Shift_JIS
 
     while (address.add(i).readU8() !== 0x2) { // 0x2 ends dialogue
         const current = address.add(i);
@@ -269,8 +345,12 @@ function readString(address, hookName) {
         const byte3 = current.add(2).readU8();
         const byte4 = current.add(3).readU8();
 
-        // Break on control sequence
-        if ((byte1 === 0x01 && byte2 === 0x00) || byte1 === 0x00) break;
+        // Quest descriptions don't have a clear end marker somehow
+        if (hookName === "quest" && (byte1 === 0x81 && byte2 === 0x9a && byte3 === 0x93) || (byte1 === 0x00 && byte2 >= 0x30 && byte2 <= 0x39))
+            break;
+
+        if (hookName !== "quest" && ((byte1 === 0x01 && byte2 === 0x00) || byte1 === 0x00))
+            break;
 
         // New line
         if (byte1 === 0x01 || byte1 === 0x0A) {
@@ -349,19 +429,20 @@ function readString(address, hookName) {
         }
     }
 
+    // console.warn(hexdump(address, { header: false, ansi: false, length: 0x300 }));
+
     if (hookName === "dialogue" && !previous.includes(text)) {
         previous = text;
         text = cleanText(text);
-        // console.warn(hexdump(address, { header: false, ansi: false, length: 0x200 }));
 
         if (text.length <= 100)
             mainHandler(name + "\n" + text);
         else
             mainHandler(text); // To not display the name of the last character talked to when reading a book/newspaper
     }
-    else if (hookName === "choices") {
-        mainHandler(text);
-    }
+
+    else if (hookName !== "dialogue")
+        menuHandler(text);
 }
 
 
@@ -370,5 +451,7 @@ function cleanText(text) {
     return text
         .replace(/#[0-9]+I/g, ' ')
         .replace(/#\d+[a-zA-Z]/g, '')
-        .replace(/#.*?[0-9A-Za-z]/g, '');
+        .replace(/#.*?[0-9A-Za-z]/g, '')
+        .replace(/^[�;\u0005!]+/, "")
+        .replace(/\\n/g, '\n');
 }
