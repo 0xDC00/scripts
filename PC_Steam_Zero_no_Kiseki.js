@@ -259,7 +259,6 @@ let previous = '';
 function readString(address, hookName) {
     let text = '';
     let i = 0;
-    let sideText = '';
 
     if (address.readU8() <= 0x80)
         return; // Not Shift_JIS
