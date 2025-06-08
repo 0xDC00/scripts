@@ -10,21 +10,51 @@ const gameVer = "1.0.0";
 
 const { setHook } = require("./libYuzu.js");
 
-const mainHandler = trans.send(handler);
+let timer = null;
+let topText = "";
+let bottomText = "";
+let previous = "";
 
+const mainHandler = trans.send(handler, "200+");
+
+function orderedHandler() {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    trans.send(topText + "\r\n" + bottomText);
+    topText = "";
+    bottomText = "";
+  }, 500);
+}
+
+//prettier-ignore
 setHook(
   {
     "1.0.0": {
-      [0x821ff980 - 0x80004000]: mainHandler.bind_(null, 0, "text"),
+      "H5c40a2d473e706d0": mainHandler.bind_(null, 0, 0x5e, "text"),
+      "H43e2e446a6cec981": mainHandler.bind_(null, 1, 0, "choices"),
+      "Hafe13686e934c977": topHandler.bind_(null, 0, 0, "dict word"),
+      "H6fcd859aa0cb4d8c": bottomHandler.bind_(null, 0, 0, "dict meaning"),
     },
   }[(globalThis.gameVer = globalThis.gameVer ?? gameVer)]
 );
 
-function handler(regs, index, hookname) {
+function handler(regs, index, offset, hookname) {
   console.log("onEnter: " + hookname);
 
   const address = regs[index].value;
-  const s = address.readUtf8String().replace(/#n\u3000?/g, "");
+  const text = address.add(offset).readUtf8String();
 
-  return s;
+  return text;
 }
+
+function topHandler() {
+  (topText = handler(...arguments)) && orderedHandler();
+}
+
+function bottomHandler() {
+  (bottomText = handler(...arguments)) && orderedHandler();
+}
+
+trans.replace((s) => {
+  return s !== previous ? ((previous = s), s.replace(/#n\u3000?/g, "")) : null;
+});
