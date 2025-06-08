@@ -2,7 +2,7 @@
 // @name         [0100C30020F70000] BYAKKO ~Shijin Butai Enrenki~ (BYAKKO ～四神部隊炎恋記～)
 // @version      1.0.0
 // @author       Mansive
-// @description  Yuzu, Ryujinx
+// @description  Ryujinx
 // * Otomate
 // * Idea Factory Co., Ltd.
 // ==/UserScript==
