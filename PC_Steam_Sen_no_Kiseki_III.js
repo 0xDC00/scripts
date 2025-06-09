@@ -379,6 +379,10 @@ let previousCharacterNote1 = '';
         // characterNote1 = cleanText(characterNote1);
 
         if (characterNote1 !== previousCharacterNote1) {
+            // To extract the additional character details again if the next one viewed doesn't have any unlocked and then back to the same character
+            characterDetailsSet.clear();
+            previousCharacterNote2 = '';
+
             previousCharacterNote1 = characterNote1;
             mainHandler(characterNoteTitle + "\n" + characterNote1);
         }
@@ -386,31 +390,34 @@ let previousCharacterNote1 = '';
 })();
 
 
-// let previousCharacterNote2 = '';
-// (function () {
-//     const characterNote2Sig = 'e8 ?? ?? ?? ?? ?? 0f 28 de f3 0f 10';
-//     var results = Memory.scanSync(__e.base, __e.size, characterNote2Sig);
-//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+let previousCharacterNote2 = '';
+let currentCharacterNote = '';
+let characterDetailsSet = new Set();
+(function () {
+    const characterNote2Sig = 'e8 ?? ?? ?? ?? ?? 0f 28 de f3 0f 10';
+    var results = Memory.scanSync(__e.base, __e.size, characterNote2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-//     if (results.length === 0) {
-//         console.error('[characterNote2Pattern] Hook not found!');
-//         return;
-//     }
+    if (results.length === 0) {
+        console.error('[characterNote2Pattern] Hook not found!');
+        return;
+    }
 
-//     const address = results[0].address;
-//     console.log('[characterNote2Pattern] Found hook', address);
-//     Interceptor.attach(address, function (args) {
-//         // console.warn("in: characterNote2");
+    const address = results[0].address;
+    console.log('[characterNote2Pattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: characterNote2");
 
-//         const characterNote2Address = this.context.r9;
-//         let characterNote2 = characterNote2Address.readUtf8String();
+        const characterNote2Address = this.context.r9;
+        let characterNote2 = characterNote2Address.readUtf8String();
 
-//         if (characterNote2 !== previousCharacterNote2) {
-//             previousCharacterNote2 = characterNote2;
-//             mainHandler("\n" + characterNote2);
-//         }
-//     });
-// })();
+        if (characterNote2 !== previousCharacterNote2 && !characterDetailsSet.has(characterNote2)) {
+            previousCharacterNote2 = characterNote2;
+            characterDetailsSet.add(characterNote2);
+            mainHandler("\n" + characterNote2);
+        }
+    });
+})();
 
 
 (function () {

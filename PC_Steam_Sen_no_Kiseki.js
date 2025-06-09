@@ -361,28 +361,63 @@ let previousBattleDescription = '';
 })();
 
 
-let previousCharacterNote = '';
+let previousCharacterNote1 = '';
 (function () {
-    const characterNoteSig = 'e8 ?? ?? ?? ?? d9 ?? ?? dc 25 ?? ?? ?? ?? bf';
-    var results = Memory.scanSync(__e.base, __e.size, characterNoteSig);
+    const characterNote1Sig = 'e8 ?? ?? ?? ?? d9 ?? ?? dc 25 ?? ?? ?? ?? bf';
+    var results = Memory.scanSync(__e.base, __e.size, characterNote1Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[characterNotePattern] Hook not found!');
+        console.error('[characterNote1Pattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[characterNotePattern] Found hook', address);
+    console.log('[characterNote1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: characterNote");
+        // console.warn("in: characterNote1");
 
-        const characterNoteAddress = this.context.esp.add(8).readPointer();
-        let characterNote = characterNoteAddress.readShiftJisString();
+        const characterNote1Address = this.context.esp.add(8).readPointer();
+        let characterNote1 = characterNote1Address.readShiftJisString();
 
-        if (characterNote !== previousCharacterNote) {
-            previousCharacterNote = characterNote;
-            secondHandler(characterNote);
+        if (characterNote1 !== previousCharacterNote1) {
+            // To extract the additional character details again if the next one viewed doesn't have any unlocked and then back to the same character
+            characterDetailsSet.clear();
+            previousCharacterNote2 = '';
+
+            previousCharacterNote1 = characterNote1;
+            secondHandler(characterNote1);
+        }
+    });
+})();
+
+
+let previousCharacterNote2 = '';
+let currentCharacterNote = '';
+let characterDetailsSet = new Set();
+(function () {
+    const characterNote2Sig = 'e8 ?? ?? ?? ?? d9 ?? ?? bf 03 00 00 00 dc 25';
+    var results = Memory.scanSync(__e.base, __e.size, characterNote2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[characterNote2Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[characterNote2Pattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: characterNote2");
+
+        const characterNote2Address = this.context.esp.add(8).readPointer();
+        let characterNote2 = characterNote2Address.readShiftJisString();
+
+        if (characterNote2 !== previousCharacterNote2 && !characterDetailsSet.has(characterNote2)) {
+            previousCharacterNote2 = characterNote2;
+            characterDetailsSet.add(characterNote2);
+
+            secondHandler("\n" + characterNote2);
         }
     });
 })();
