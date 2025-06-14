@@ -80,6 +80,7 @@ const debounceDelayMs = 10;
 
         const dialogueAddress = this.context.rsi;
         let dialogue = dialogueAddress.readShiftJisString();
+        // console.warn(hexdump(dialogueAddress, { header: false, ansi: false, length: 0x50 }));
         readString(dialogueAddress, "dialogue");
         // mainHandler(dialogue);
     });
@@ -333,8 +334,8 @@ let previous = '';
 function readString(address, hookName) {
     let text = '';
     let i = 0;
-    
-    if (address.readU8() <= 0x80)
+
+    if (address.readU8() <= 0x80 && address.readU8() !== 0x20)
         return; // Not Shift_JIS
 
     while (address.add(i).readU8() !== 0x2) { // 0x2 ends dialogue
@@ -348,7 +349,7 @@ function readString(address, hookName) {
         if (hookName === "quest" && (byte1 === 0x81 && byte2 === 0x9a && byte3 === 0x93) || (byte1 === 0x00 && byte2 >= 0x30 && byte2 <= 0x39))
             break;
 
-        if (hookName !== "quest" && ((byte1 === 0x01 && byte2 === 0x00) || byte1 === 0x00))
+        if (hookName !== "quest" && ((byte1 === 0x01 && byte2 === 0x00) || (byte1 === 0x00 && byte2 === 0x00)))
             break;
 
         // New line
