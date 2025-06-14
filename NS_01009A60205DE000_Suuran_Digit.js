@@ -12,7 +12,6 @@ globalThis.ARM = true;
 const { setHook } = require("./libYuzu.js");
 
 const mainHandler = trans.send(handler, "200+");
-const choiceHandler = trans.send(handler2, "200+");
 
 setHook(
   {
@@ -33,18 +32,8 @@ function handler(regs, index, hookname) {
   const s = address
     .readUtf8String()
     .replace(/\\\u{3000}/gu, "") // single line
+    .replace(/\\/g, "\n") // multi line choice
     .replace(/#/g, ""); // color
-
-  return s;
-}
-
-function handler2(regs, index, hookname) {
-  // console.log("onEnter:", hookname);
-
-  const address = regs[index].value;
-  // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
-
-  const s = address.readUtf8String().replace(/\\/g, "\n");
 
   return s;
 }
