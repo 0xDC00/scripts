@@ -3,12 +3,12 @@
 // @version      0.2
 // @author       logantgt
 // @description  PCSX2 x64
-// * Interchannel/Prototype Legacy Engine
+// * HuneX PS2 Engine
 // ==/UserScript==
 
 const { setHookEE, asPsxPtr } = require("./libPCSX2.js");
 const Encoding = require('./libHelperEncoding.js');
-const enc = new Encoding(__dirname + '/charsets/tblNECInterChannelJP.txt');
+const enc = new Encoding(__dirname + '/charsets/tblSLPS25332SnowJP.txt');
 
 setHookEE({
     0x10D7CC: trans.send(handler)
