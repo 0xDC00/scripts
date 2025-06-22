@@ -3,7 +3,7 @@
 // @version      0.2
 // @author       logantgt
 // @description  PCSX2 x64
-// * Interchannel/Prototype Legacy Engine
+// * HuneX PS2 Engine
 // ==/UserScript==
 
 const { setHookEE, asPsxPtr } = require("./libPCSX2.js");
@@ -14,7 +14,7 @@ setHookEE({
 
 function handler(args) {
         // Read string
-        let s = this.context.s4(asPsxPtr).readShiftJisString().split(");")[0];
+        let s = this.context.s4(asPsxPtr).readShiftJisString(300).split(");")[0];
 
         // Filter out name text
         if(s.split('】').length > 1) { s = s.split('】')[1] }
