@@ -59,7 +59,8 @@ const ui = require("./libUI.js");
 const __e = Process.enumerateModules()[0];
 
 const BACKTRACE = false;
-const INSPECT_ARGS_REGS = true;
+const INSPECT_ARGS_REGS = false;
+const DEBUG_LOGS = false;
 
 let convertToSingleLine = true;
 
@@ -529,7 +530,7 @@ function filterReturnsStrategy({ address, name, register, argIndex, handler }) {
     onEnter(args) {
       // console.warn("filtering: " + this.returnAddress);
       if (returnAddresses.has(this.returnAddress.toInt32())) {
-        console.warn("passedFilter: " + name);
+        DEBUG_LOGS && console.warn("passedFilter: " + name);
 
         if (hooksStatus[name].enabled === false) {
           logDim("skipped: " + name);
@@ -607,7 +608,7 @@ function filterReturnsNestedHooksStrategy({ address, name, target, handler }) {
     onEnter(outerArgs) {
       // console.warn("filtering: " + this.returnAddress);
       if (returnAddresses.has(this.returnAddress.toInt32())) {
-        console.warn("passedFilter: " + name);
+        DEBUG_LOGS && console.warn("passedFilter: " + name);
 
         if (hooksStatus[name].enabled === false) {
           logDim("skipped: " + name);
@@ -775,15 +776,16 @@ function attachHook(params) {
   const args = { address, ...params };
 
   if (origins && target) {
-    console.log(
-      `[${name}] filtered with return addresses and targeting [${target.name}]`
-    );
+    DEBUG_LOGS &&
+      console.log(
+        `[${name}] filtered with return addresses and targeting [${target.name}]`
+      );
     filterReturnsNestedHooksStrategy(args);
   } else if (origins) {
-    console.log(`[${name}] filtered with return addresses`);
+    DEBUG_LOGS && console.log(`[${name}] filtered with return addresses`);
     filterReturnsStrategy(args);
   } else if (target) {
-    console.log(`[${name}] targeting [${target.name}]`);
+    DEBUG_LOGS && console.log(`[${name}] targeting [${target.name}]`);
     nestedHooksStrategy(args);
   } else {
     normalStrategy(args);
@@ -799,7 +801,10 @@ function attachHook(params) {
 function readFirisString(address) {
   const textAddress = address.readUtf8String();
 
-  console.log(`${color.FgYellow}${JSON.stringify(textAddress)}${color.Reset}`);
+  DEBUG_LOGS &&
+    console.log(
+      `${color.FgYellow}${JSON.stringify(textAddress)}${color.Reset}`
+    );
 
   return textAddress;
 }
@@ -964,7 +969,7 @@ function dialogueTextHandler(address) {
   }
 
   if (orderedHandlerIsActive() === true) {
-    console.warn("Expediting...");
+    DEBUG_LOGS && console.warn("Expediting...");
     priorityTexts.add(text);
     orderedHandler();
   } else {
@@ -984,7 +989,7 @@ function dialogueTextHandler(address) {
  */
 function eventTextHandler(address) {
   if (address.readU8() === previousEventId) {
-    console.log("Same ID, skipping...");
+    DEBUG_LOGS && console.log("Same ID, skipping...");
     return null;
   }
 
@@ -994,7 +999,7 @@ function eventTextHandler(address) {
   eventTexts.length = 0; // clear text from previous event
   address = address.add(4); // jump to opcode
 
-  console.warn("Processing event...");
+  DEBUG_LOGS && console.warn("Processing event...");
 
   parseEvent: while (true) {
     const opcode = address.readU8();
@@ -1020,7 +1025,7 @@ function eventTextHandler(address) {
       case 0xcd:
         break parseEvent;
       default:
-        console.warn("Undefined opcode: ", opcode);
+        DEBUG_LOGS && console.warn("Undefined opcode: ", opcode);
         // console.warn(address.readByteArray(50));
         break parseEvent;
     }
@@ -1037,12 +1042,12 @@ function centerTextHandler(address) {
   const id = readFirisString(address);
 
   if (id.startsWith("telop")) {
-    console.log("Is Paragraph");
+    DEBUG_LOGS && console.log("Is Paragraph");
   } else if (id.startsWith("name")) {
-    console.log("Is Name");
+    DEBUG_LOGS && console.log("Is Name");
     return null;
   } else {
-    console.warn("Unidentified ID: " + id);
+    DEBUG_LOGS && console.warn("Unidentified ID: " + id);
     return null;
   }
 
@@ -1109,7 +1114,7 @@ function recipeNoteNameHandler(address) {
  * @type {HookHandler}
  */
 function recipeNoteHintHandler(address) {
-  console.log("[RecipeNoteHintHandler] Intercepted!");
+  DEBUG_LOGS && console.log("[RecipeNoteHintHandler] Intercepted!");
   topText = "？？？？？\r\n";
 
   let text = readFirisString(address);
