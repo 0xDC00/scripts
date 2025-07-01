@@ -700,6 +700,7 @@ function normalStrategy({ address, name, register, argIndex, handler }) {
 function hotAttach(address, callback) {
   const hook = Interceptor.attach(address, function (args) {
     hook.detach();
+    Interceptor.flush();
 
     this.args = args;
 
