@@ -59,8 +59,9 @@ const ui = require("./libUI.js");
 const __e = Process.enumerateModules()[0];
 
 const BACKTRACE = false;
-const INSPECT_ARGS_REGS = false;
-const DEBUG_LOGS = false;
+
+let INSPECT_ARGS_REGS = false;
+let DEBUG_LOGS = false;
 
 let convertToSingleLine = true;
 
@@ -1052,10 +1053,14 @@ function centerTextHandler(address) {
     return null;
   }
 
-  const text = eventTexts.shift();
+  let text = eventTexts.shift();
 
   if (typeof text === "undefined") {
     return null;
+  }
+
+  if (convertToSingleLine === true) {
+    text = text.replace(/([^。…？！])<CR>/g, "$1");
   }
 
   genericHandler(text);
@@ -1554,6 +1559,12 @@ ui.options = [
     options: getHookOptions(hooksEncyclopedia),
     ephemeral: true,
   },
+  {
+    id: "debugLogs",
+    type: "checkbox",
+    label: "Show debugging information in console",
+    defaultValue: false
+  },
 ];
 
 ui.onchange = (id, current, previous) => {
@@ -1580,16 +1591,22 @@ ui.onchange = (id, current, previous) => {
       }
     }
 
-    logDim(`${id} set to ${current}`);
+    logDim(`UI: ${id} set to ${current}`);
     ui.config.hooksEnabledCount = `${getEnabledCount()} / ${hooksPrimaryTotal}`;
   } else if (id === "selectedHook") {
-    logDim(`Now displaying character count of [${current}]`);
+    logDim(`UI: Now displaying character count of [${current}]`);
     ui.config.selectedHookCharacterCount = hooksStatus[current].characters;
   } else if (id === "singleSentence") {
     current === true
-      ? logDim("Converting sentences to single-line")
-      : logDim("Maintaining sentences' original format");
+      ? logDim("UI: Converting sentences to single-line")
+      : logDim("UI: Maintaining sentences' original format");
     convertToSingleLine = current;
+  } else if (id === "debugLogs") {
+    current === true
+      ? logDim("UI: Enabling debug information")
+      : logDim("UI: Disabling debug information");
+    INSPECT_ARGS_REGS = current;
+    DEBUG_LOGS = current;
   }
 };
 
@@ -1603,7 +1620,7 @@ function uiStart() {
   ui.open()
     .then(() => {
       ui.config.hooksEnabledCount = `${getEnabledCount()} / ${hooksPrimaryTotal}`;
-      console.log("UI loaded!");
+      console.log("UI: UI loaded!");
     })
     .catch((err) => {
       console.error("UI error\n" + err.stack);
