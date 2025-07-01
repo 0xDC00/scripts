@@ -253,6 +253,21 @@ const hooksMiscellaneous = {
     target: targetHooks.ENCY,
     handler: furnitureTraitHandler,
   },
+  KenbuninAchievement: {
+    pattern: "E8 B4C31800",
+    register: "rdx",
+    handler: mainHandler2,
+  },
+  KenbuninItemReward: {
+    pattern: "E8 A8C61800",
+    register: "rdx",
+    handler: mainHandler2,
+  },
+  KenbuninMoneyReward: {
+    pattern: "E8 2BC61800",
+    register: "rdx",
+    handler: mainHandler2,
+  },
   Question: {
     pattern: "E8 1EEF2E00",
     target: targetHooks.SHALLOW,
@@ -649,9 +664,7 @@ function filterReturnsNestedHooksStrategy({ address, name, target, handler }) {
   });
 }
 
-/**
- * @param {Hook & {name: string} & {address: NativePointer}}
- */
+/** @param {Hook & {name: string} & {address: NativePointer}} */
 function normalStrategy({ address, name, register, argIndex, handler }) {
   Interceptor.attach(address, function (args) {
     if (hooksStatus[name].enabled === false) {
@@ -809,7 +822,7 @@ function readFirisString(address) {
   return textAddress;
 }
 
-/** @param {string} text*/
+/** @param {string} text */
 function genericHandler(text) {
   texts1.add(text);
 
@@ -820,7 +833,7 @@ function genericHandler(text) {
   }, 200);
 }
 
-/** @param {string} text*/
+/** @param {string} text */
 function genericHandler2(text) {
   texts2.add(text);
 
@@ -1404,17 +1417,16 @@ function logDim(message) {
 
 //#region UI Config
 
-function getHookOptions() {
-  const hookNames = [];
-  for (const hook in hooks) {
-    hookNames.push(`{ value: "${hook}", text: "${hook}" }`);
+// Now that I removed the ability to enable/disable individual hooks, I can clean
+// up the script by passing in arrays into the UI options instead of hardcoded
+// values like in the Atelier Sophie script
+function getHookOptions(subset) {
+  const options = [];
+  for (const hookName in subset) {
+    options.push({ value: hookName, text: hookName });
   }
 
-  // hookNames.sort((a, b) => a.value.localeCompare(b.text));
-
-  for (const thing of hookNames) {
-    console.log(thing + ",");
-  }
+  return options;
 }
 
 // Hacky way to avoid libUI bug?
@@ -1495,66 +1507,7 @@ ui.options = [
     type: "select",
     label: "Display character count from...",
     help: "Select a hook to display its character count.",
-    options: [
-      { value: "Answer", text: "Answer" },
-      { value: "AreaNameBanner1", text: "AreaNameBanner1" },
-      { value: "AreaNameBanner2", text: "AreaNameBanner2" },
-      { value: "BattleAction", text: "BattleAction" },
-      { value: "BattleActionAllySpecial", text: "BattleActionAllySpecial" },
-      { value: "BattleActionEnemySpecial", text: "BattleActionEnemySpecial" },
-      { value: "BattleEnemyName", text: "BattleEnemyName" },
-      { value: "BattleEnemyStatusInfo", text: "BattleEnemyStatusInfo" },
-      { value: "BattleSkillInfo1", text: "BattleSkillInfo1" },
-      { value: "BattleSkillInfo2", text: "BattleSkillInfo2" },
-      { value: "BattleSkillName", text: "BattleSkillName" },
-      { value: "CenterText", text: "CenterText" },
-      { value: "DialogueName", text: "DialogueName" },
-      { value: "DialogueText", text: "DialogueText" },
-      { value: "EncyclopediaAreaName", text: "EncyclopediaAreaName" },
-      { value: "EncyclopediaDialogue", text: "EncyclopediaDialogue" },
-      { value: "EncyclopediaEffectInfo", text: "EncyclopediaEffectInfo" },
-      { value: "EncyclopediaEffectName", text: "EncyclopediaEffectName" },
-      { value: "EncyclopediaEnemyName", text: "EncyclopediaEnemyName" },
-      { value: "EncyclopediaHelpInfo", text: "EncyclopediaHelpInfo" },
-      { value: "EncyclopediaHelpName", text: "EncyclopediaHelpName" },
-      { value: "EncyclopediaItemName", text: "EncyclopediaItemName" },
-      { value: "EncyclopediaTraitInfo", text: "EncyclopediaTraitInfo" },
-      { value: "EncyclopediaTraitName", text: "EncyclopediaTraitName" },
-      { value: "EventText", text: "EventText" },
-      { value: "FurnitureEffect", text: "FurnitureEffect" },
-      { value: "FurnitureTrait", text: "FurnitureTrait" },
-      { value: "ItemCategory", text: "ItemCategory" },
-      { value: "ItemEffect", text: "ItemEffect" },
-      { value: "ItemEffectExplanation", text: "ItemEffectExplanation" },
-      { value: "ItemName", text: "ItemName" },
-      { value: "ItemComponent", text: "ItemComponent" },
-      { value: "ItemTrait", text: "ItemTrait" },
-      { value: "ItemTraitTransfer", text: "ItemTraitTransfer" },
-      { value: "NotificationBanner", text: "NotificationBanner" },
-      { value: "OutfitEffectInfo", text: "OutfitEffectInfo" },
-      { value: "OutfitOverviewInfo", text: "OutfitOverviewInfo" },
-      { value: "QuestCompleteInfo", text: "QuestCompleteInfo" },
-      { value: "QuestIncompleteInfo", text: "QuestIncompleteInfo" },
-      { value: "QuestName", text: "QuestName" },
-      { value: "QuestObjective", text: "QuestObjective" },
-      { value: "Question", text: "Question" },
-      { value: "RecipeHassouName", text: "RecipeHassouName" },
-      { value: "RecipeJukurendoInfo", text: "RecipeJukurendoInfo" },
-      { value: "RecipeNoteCatalyst", text: "RecipeNoteCatalyst" },
-      { value: "RecipeNoteHint", text: "RecipeNoteHint" },
-      { value: "RecipeNoteMaterial1", text: "RecipeNoteMaterial1" },
-      { value: "RecipeNoteMaterial2", text: "RecipeNoteMaterial2" },
-      { value: "RecipeNoteName", text: "RecipeNoteName" },
-      { value: "RecipeNoteObjective", text: "RecipeNoteObjective" },
-      { value: "RecipeSynthesisCatalyst", text: "RecipeSynthesisCatalyst" },
-      { value: "RecipeSynthesisMaterial1", text: "RecipeSynthesisMaterial1" },
-      { value: "RecipeSynthesisMaterial2", text: "RecipeSynthesisMaterial2" },
-      { value: "RecipeSynthesisName", text: "RecipeSynthesisName" },
-      { value: "SideDialogue", text: "SideDialogue" },
-      { value: "StatusSkillInfo", text: "StatusSkillInfo" },
-      { value: "StatusSkillName", text: "StatusSkillName" },
-      { value: "SynthesisLineInfo", text: "SynthesisLineInfo" },
-    ],
+    options: getHookOptions(hooks).sort((a, b) => a.value.localeCompare(b.text)),
     defaultValue: "DialogueText",
   },
   {
@@ -1574,12 +1527,7 @@ ui.options = [
     help: `Dialogue during cutscenes and choices.
     <br>Only the DialogueName hook can be enabled/disabled.`,
     multiple: true,
-    options: [
-      { value: "DialogueName", text: "DialogueName" },
-      { value: "DialogueText", text: "DialogueText" },
-      { value: "EventText", text: "EventText" },
-      { value: "CenterText", text: "CenterText" },
-    ],
+    options: getHookOptions(hooksMain),
     ephemeral: true,
   },
   {
@@ -1588,24 +1536,7 @@ ui.options = [
     label: "Miscellaneous Hooks",
     help: `Trivial text while exploring, quest objectives, menu text, etc.`,
     multiple: true,
-    options: [
-      { value: "NotificationBanner", text: "NotificationBanner" },
-      { value: "AreaNameBanner1", text: "AreaNameBanner1" },
-      { value: "AreaNameBanner2", text: "AreaNameBanner2" },
-      { value: "SideDialogue", text: "SideDialogue" },
-      { value: "StatusSkillName", text: "StatusSkillName" },
-      { value: "StatusSkillInfo", text: "StatusSkillInfo" },
-      { value: "QuestName", text: "QuestName" },
-      { value: "QuestIncompleteInfo", text: "QuestIncompleteInfo" },
-      { value: "QuestCompleteInfo", text: "QuestCompleteInfo" },
-      { value: "QuestObjective", text: "QuestObjective" },
-      { value: "OutfitOverviewInfo", text: "OutfitOverviewInfo" },
-      { value: "OutfitEffectInfo", text: "OutfitEffectInfo" },
-      { value: "FurnitureEffect", text: "FurnitureEffect" },
-      { value: "FurnitureTrait", text: "FurnitureTrait" },
-      { value: "Question", text: "Question" },
-      { value: "Answer", text: "Answer" },
-    ],
+    options: getHookOptions(hooksMiscellaneous),
     ephemeral: true,
   },
   {
@@ -1614,16 +1545,7 @@ ui.options = [
     label: "Battle Hooks",
     help: `Text or notifications appearing in battle.`,
     multiple: true,
-    options: [
-      { value: "BattleEnemyName", text: "BattleEnemyName" },
-      { value: "BattleAction", text: "BattleAction" },
-      { value: "BattleActionAllySpecial", text: "BattleActionAllySpecial" },
-      { value: "BattleActionEnemySpecial", text: "BattleActionEnemySpecial" },
-      { value: "BattleSkillName", text: "BattleSkillName" },
-      { value: "BattleSkillInfo1", text: "BattleSkillInfo1" },
-      { value: "BattleSkillInfo2", text: "BattleSkillInfo2" },
-      { value: "BattleEnemyStatusInfo", text: "BattleEnemyStatusInfo" },
-    ],
+    options: getHookOptions(hooksBattle),
     ephemeral: true,
   },
   {
@@ -1632,28 +1554,7 @@ ui.options = [
     label: "Synthesis Hooks",
     help: `Synthesis-relevant text such as recipe info and item traits.`,
     multiple: true,
-    options: [
-      { value: "RecipeHassouName", text: "RecipeHassouName" },
-      { value: "RecipeNoteName", text: "RecipeNoteName" },
-      { value: "RecipeNoteHint", text: "RecipeNoteHint" },
-      { value: "RecipeNoteObjective", text: "RecipeNoteObjective" },
-      { value: "RecipeNoteCatalyst", text: "RecipeNoteCatalyst" },
-      { value: "RecipeNoteMaterial1", text: "RecipeNoteMaterial1" },
-      { value: "RecipeNoteMaterial2", text: "RecipeNoteMaterial2" },
-      { value: "RecipeSynthesisName", text: "RecipeSynthesisName" },
-      { value: "RecipeSynthesisCatalyst", text: "RecipeSynthesisCatalyst" },
-      { value: "RecipeSynthesisMaterial1", text: "RecipeSynthesisMaterial1" },
-      { value: "RecipeSynthesisMaterial2", text: "RecipeSynthesisMaterial2" },
-      { value: "RecipeJukurendoInfo", text: "RecipeJukurendoInfo" },
-      { value: "ItemName", text: "ItemName" },
-      { value: "ItemEffect", text: "ItemEffect" },
-      { value: "ItemEffectExplanation", text: "ItemEffectExplanation" },
-      { value: "ItemTrait", text: "ItemTrait" },
-      { value: "ItemTraitTransfer", text: "ItemTraitTransfer" },
-      { value: "ItemComponent", text: "ItemComponent" },
-      { value: "ItemCategory", text: "ItemCategory" },
-      { value: "SynthesisLineInfo", text: "SynthesisLineInfo" },
-    ],
+    options: getHookOptions(hooksSynthesis),
     ephemeral: true,
   },
   {
@@ -1662,18 +1563,7 @@ ui.options = [
     label: "Encyclopedia Hooks",
     help: `Encyclopedia entries' texts.`,
     multiple: true,
-    options: [
-      { value: "EncyclopediaItemName", text: "EncyclopediaItemName" },
-      { value: "EncyclopediaEnemyName", text: "EncyclopediaEnemyName" },
-      { value: "EncyclopediaAreaName", text: "EncyclopediaAreaName" },
-      { value: "EncyclopediaDialogue", text: "EncyclopediaDialogue" },
-      { value: "EncyclopediaHelpName", text: "EncyclopediaHelpName" },
-      { value: "EncyclopediaHelpInfo", text: "EncyclopediaHelpInfo" },
-      { value: "EncyclopediaEffectName", text: "EncyclopediaEffectName" },
-      { value: "EncyclopediaEffectInfo", text: "EncyclopediaEffectInfo" },
-      { value: "EncyclopediaTraitName", text: "EncyclopediaTraitName" },
-      { value: "EncyclopediaTraitInfo", text: "EncyclopediaTraitInfo" },
-    ],
+    options: getHookOptions(hooksEncyclopedia),
     ephemeral: true,
   },
 ];
