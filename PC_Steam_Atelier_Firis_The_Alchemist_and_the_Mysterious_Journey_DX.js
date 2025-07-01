@@ -106,9 +106,9 @@ const targetHooks = {
     address: NULL,
     register: "rdx",
     argIndex: 1,
-    /** @type {TreasureArgsFunction} */
-    getTreasureAddress({ args }) {
-      return args[this.argIndex];
+    /** @type {TreasureContextFunction} */
+    getTreasureAddress({ context }) {
+      return context[this.register];
     },
   },
   // trolled
@@ -297,12 +297,14 @@ const hooksBattle = {
   },
   BattleActionAllySpecial: {
     pattern: "E8 4CFDFFFF 48 83 7C 24 60 10",
-    argIndex: 1,
+    // argIndex: 1,
+    register: "rdx",
     handler: mainHandler2,
   },
   BattleActionEnemySpecial: {
     pattern: "E8 BCEFFFFF 48 83 7C 24 60 10",
-    argIndex: 1,
+    // argIndex: 1,
+    register: "rdx",
     handler: mainHandler2,
   },
   BattleSkillName: {
@@ -317,7 +319,8 @@ const hooksBattle = {
   },
   BattleSkillInfo2: {
     pattern: "E8 365DFBFF",
-    argIndex: 1,
+    // argIndex: 1,
+    register: "rdx",
     handler: positionBottomHandler,
   },
   BattleEnemyStatusInfo: {
@@ -540,11 +543,13 @@ function getTreasureAddress({ target, args, context }) {
  * Hooks an address and checks the return addresses before invoking the handler.
  * @param {Hook & {name: string} & {address: NativePointer}}
  */
-function filterReturnsStrategy({ address, name, register, argIndex, handler }) {
-  Interceptor.attach(address, {
-    onEnter(args) {
-      // console.warn("filtering: " + this.returnAddress);
-      if (returnAddresses.has(this.returnAddress.toInt32())) {
+function filterReturnsStrategy({ address, name, register, handler }) {
+  Breakpoint.add(address, {
+    onEnter() {
+      const returnAddress = this.context.rsp.readPointer();
+      // console.warn("filtering: " + returnAddress);
+
+      if (returnAddresses.has(returnAddress.toInt32())) {
         DEBUG_LOGS && console.warn("passedFilter: " + name);
 
         if (hooksStatus[name].enabled === false) {
@@ -554,17 +559,10 @@ function filterReturnsStrategy({ address, name, register, argIndex, handler }) {
 
         if (INSPECT_ARGS_REGS === true) {
           console.log("in: ORIGIN");
-          inspectArgs(args);
           inspectRegs(this.context);
         }
 
-        this.args = args;
-
-        const text = handler.call(
-          this,
-          this.context[register] ?? (argIndex ? args[argIndex] : null)
-        );
-
+        const text = handler.call(this, this.context[register]);
         setHookCharacterCount(name, text);
       } else {
         // console.warn(`Current return address: ${this.returnAddress}
@@ -580,8 +578,8 @@ function filterReturnsStrategy({ address, name, register, argIndex, handler }) {
  * @param {Hook & {name: string} & {address: NativePointer}}
  */
 function nestedHooksStrategy({ address, name, target, handler }) {
-  Interceptor.attach(address, {
-    onEnter(outerArgs) {
+  Breakpoint.add(address, {
+    onEnter() {
       if (hooksStatus[name].enabled === false) {
         logDim("skipped: " + name);
         return false;
@@ -591,21 +589,19 @@ function nestedHooksStrategy({ address, name, target, handler }) {
 
       if (INSPECT_ARGS_REGS === true) {
         console.log("in: ORIGIN");
-        inspectArgs(outerArgs);
         inspectRegs(this.context);
       }
 
       // this.outerArgs = outerArgs;
 
-      hotAttach(target.address, function (args) {
+      hotAttach(target.address, function () {
         if (INSPECT_ARGS_REGS === true) {
           console.log("in: TARGET");
-          inspectArgs(args);
           inspectRegs(this.context);
         }
 
         const text = handler(
-          getTreasureAddress({ target, args, context: this.context })
+          getTreasureAddress({ target, context: this.context })
         );
 
         setHookCharacterCount(name, text);
@@ -619,10 +615,12 @@ function nestedHooksStrategy({ address, name, target, handler }) {
  * @param {Hook & {name: string} & {address: NativePointer}}
  */
 function filterReturnsNestedHooksStrategy({ address, name, target, handler }) {
-  Interceptor.attach(address, {
-    onEnter(outerArgs) {
-      // console.warn("filtering: " + this.returnAddress);
-      if (returnAddresses.has(this.returnAddress.toInt32())) {
+  Breakpoint.add(address, {
+    onEnter() {
+      const returnAddress = this.context.rsp.readPointer();
+      // console.warn("filtering: " + returnAddress);
+
+      if (returnAddresses.has(returnAddress.toInt32())) {
         DEBUG_LOGS && console.warn("passedFilter: " + name);
 
         if (hooksStatus[name].enabled === false) {
@@ -634,25 +632,21 @@ function filterReturnsNestedHooksStrategy({ address, name, target, handler }) {
 
         if (INSPECT_ARGS_REGS === true) {
           console.log("in: ORIGIN");
-          inspectArgs(outerArgs);
           inspectRegs(this.context);
         }
 
-        // this.outerArgs = outerArgs;
         // const outerContext = this.context;
 
-        hotAttach(target.address, function (args) {
+        hotAttach(target.address, function () {
           if (INSPECT_ARGS_REGS === true) {
             console.log("in: TARGET");
-            inspectArgs(args);
             inspectRegs(this.context);
           }
 
-          // this.outerArgs = outerArgs;
           // this.outerContext = outerContext;
 
           const text = handler(
-            getTreasureAddress({ target, args, context: this.context })
+            getTreasureAddress({ target, context: this.context })
           );
 
           setHookCharacterCount(name, text);
@@ -665,8 +659,8 @@ function filterReturnsNestedHooksStrategy({ address, name, target, handler }) {
 }
 
 /** @param {Hook & {name: string} & {address: NativePointer}} */
-function normalStrategy({ address, name, register, argIndex, handler }) {
-  Interceptor.attach(address, function (args) {
+function normalStrategy({ address, name, register, handler }) {
+  Breakpoint.add(address, function () {
     if (hooksStatus[name].enabled === false) {
       logDim("skipped: " + name);
       return false;
@@ -675,14 +669,10 @@ function normalStrategy({ address, name, register, argIndex, handler }) {
     console.log("onEnter: " + name);
 
     if (INSPECT_ARGS_REGS === true) {
-      inspectArgs(args);
       inspectRegs(this.context);
     }
 
-    this.args = args;
-
-    const text =
-      handler.call(this, this.context[register] ?? args[argIndex]) ?? null;
+    const text = handler.call(this, this.context[register]) ?? null;
 
     setHookCharacterCount(name, text);
   });
@@ -698,13 +688,10 @@ function normalStrategy({ address, name, register, argIndex, handler }) {
  * @param {Function} callback
  */
 function hotAttach(address, callback) {
-  const hook = Interceptor.attach(address, function (args) {
-    hook.detach();
-    Interceptor.flush();
+  const hook = Breakpoint.add(address, function () {
+    Breakpoint.remove(hook);
 
-    this.args = args;
-
-    callback.call(this, args);
+    callback.call(this);
   });
 }
 
@@ -1636,8 +1623,6 @@ function start() {
   validateHooks();
   setupHooks();
   uiStart();
-
-  console.log("\n\tHooks are slightly unstable\n");
 }
 
 start();
