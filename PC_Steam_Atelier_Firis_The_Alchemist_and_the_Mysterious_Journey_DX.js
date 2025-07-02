@@ -689,10 +689,13 @@ function normalStrategy({ address, name, register, handler }) {
  * @param {Function} callback
  */
 function hotAttach(address, callback) {
-  const hook = Breakpoint.add(address, function () {
-    Breakpoint.remove(hook);
+  const hook = Interceptor.attach(address, function (args) {
+    hook.detach();
+    Interceptor.flush();
 
-    callback.call(this);
+    this.args = args;
+
+    callback.call(this, args);
   });
 }
 
