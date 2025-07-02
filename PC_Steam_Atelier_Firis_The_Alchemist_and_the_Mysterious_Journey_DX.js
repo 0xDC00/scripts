@@ -762,10 +762,11 @@ function setupHooks() {
     }
   }
 
-  console.log();
-  console.log(`${hooksPrimaryCount} primary hooks attached`);
-  console.log(`${hooksAuxCount} auxiliary hooks on standby`);
-  console.log(`${hooksPrimaryCount + hooksAuxCount} total hooks`);
+  console.log(`
+${hooksPrimaryCount} primary hooks attached
+${hooksAuxCount} auxiliary hooks on standby
+${hooksPrimaryCount + hooksAuxCount} total hooks
+  `);
 }
 
 /**
