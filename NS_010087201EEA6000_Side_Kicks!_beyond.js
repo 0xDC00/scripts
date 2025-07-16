@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name          [010087201EEA6000] Side Kicks! beyond 
+// @name         [010087201EEA6000] Side Kicks! beyond 
 // @author       GO123
 // @description  Sudachi
-// *   Extend
+// * Extend
 // *
 // ==/UserScript==
 const gameVer = '1.0.2';
