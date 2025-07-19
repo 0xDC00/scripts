@@ -45,7 +45,7 @@ Mono.setHook('', 'DialogueManager', 'GetStringFromLineID', -1, {
 });
 
 function textHasModifier(text) {
-    return text.match(/%[a-zA-Z]+\s*$/);
+    return /%[a-zA-Z]+\s*$/.test(text);
 }
 
 function cleanText(text) {
