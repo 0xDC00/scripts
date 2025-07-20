@@ -621,28 +621,28 @@ let previousInventoryDescription = '';
 
 let previousStatusDescription = '';
 (function () { // S-crafts, crafts and brave orders from the Status tab from the main menu
-    const StatusDescriptionSig = 'e8 ?? ?? ?? ?? ?? 39 b3 90 00 00 00 75';
-    var results = Memory.scanSync(__e.base, __e.size, StatusDescriptionSig);
+    const statusDescriptionSig = 'e8 ?? ?? ?? ?? ?? 39 b3 90 00 00 00 75';
+    var results = Memory.scanSync(__e.base, __e.size, statusDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[StatusDescriptionPattern] Hook not found!');
+        console.error('[statusDescriptionPattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[StatusDescriptionPattern] Found hook', address);
+    console.log('[statusDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: StatusDescription");
+        // console.warn("in: statusDescription");
 
-        const StatusDescriptionAddress = this.context.rdx;
-        let StatusDescription = StatusDescriptionAddress.readUtf8String();
+        const statusDescriptionAddress = this.context.rdx;
+        let statusDescription = statusDescriptionAddress.readUtf8String();
 
-        if (StatusDescription !== previousStatusDescription) {
-            previousStatusDescription = StatusDescription;
-            StatusDescription = cleanText(StatusDescription);
+        if (statusDescription !== previousStatusDescription) {
+            previousStatusDescription = statusDescription;
+            statusDescription = cleanText(statusDescription);
             
-            mainHandler(StatusDescription);
+            mainHandler(statusDescription);
         }
     });
 })();
