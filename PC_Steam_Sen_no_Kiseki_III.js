@@ -13,7 +13,6 @@
 
 console.warn("Known issues:\n- Sometimes a character will have more than one line of dialogue extracted at once.");
 console.warn("- There might be a random extraction when you open the instructor handbook or open the 'help' section from the system menu.");
-console.warn("- When viewing the details of a master quartz, only the last one will be extracted.");
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send((s) => s, '200+');
@@ -196,19 +195,19 @@ let previousOrbmentMenu = '';
 
 let previousMasterQuartzDescription = '';
 (function () {
-    const masterQuartzDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 81 c4 98 0c 00 00';
-    var results = Memory.scanSync(__e.base, __e.size, masterQuartzDescriptionSig);
+    const masterQuartzDescription1Sig = 'e8 ?? ?? ?? ?? ?? 8b ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 81 c4 98 0c 00 00';
+    var results = Memory.scanSync(__e.base, __e.size, masterQuartzDescription1Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[masterQuartzDescriptionPattern] Hook not found!');
+        console.error('[masterQuartzDescription1Pattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[masterQuartzDescriptionPattern] Found hook', address);
+    console.log('[masterQuartzDescription1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: masterQuartzDescription");
+        // console.warn("in: masterQuartzDescription1");
 
         const masterQuartzDescriptionAddress = this.context.rdx;
         let masterQuartzDescription = masterQuartzDescriptionAddress.readUtf8String();
@@ -221,6 +220,38 @@ let previousMasterQuartzDescription = '';
 })();
 
 
+(function () {
+    const masterQuartzDescription2Sig = 'e8 ?? ?? ?? ?? 0f b7 c5 eb ?? b8';
+    var results = Memory.scanSync(__e.base, __e.size, masterQuartzDescription2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[masterQuartzDescription2Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[masterQuartzDescription2Pattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: masterQuartzDescription2");
+
+        const masterQuartzDescriptionAddress = this.context.rdx;
+        let masterQuartzDescription = masterQuartzDescriptionAddress.readUtf8String();
+
+        if (masterQuartzDescription !== previousMasterQuartzDescription) {
+            masterQuartzAbilities.clear();
+            previousMasterQuartzAbility = '';
+
+            previousMasterQuartzDescription = masterQuartzDescription;
+            masterQuartzDescription = cleanText(masterQuartzDescription);
+            
+            mainHandler(masterQuartzDescription);
+        }
+    });
+})();
+
+
+let masterQuartzAbilities = new Set();
 let previousMasterQuartzAbility = '';
 (function () { // Also some items in the inventory
     const masterQuartzAbilitySig = 'e8 ?? ?? ?? ?? ?? 8b d8 ?? 85 c0 74 ?? ?? 8b 7c ?? ?? ?? 8b 0f ?? 85 c9 74 ?? 0f b6 d1 f6 d2 f6 c2 01 74 ?? e8 ?? ?? ?? ?? ?? 89 1f ?? 8b';
@@ -240,11 +271,12 @@ let previousMasterQuartzAbility = '';
         const masterQuartzAbilityAddress = this.context.rcx;
         let masterQuartzAbility = masterQuartzAbilityAddress.readUtf8String();
 
-        if (masterQuartzAbility !== previousMasterQuartzAbility) {
+        if (masterQuartzAbility !== previousMasterQuartzAbility && !masterQuartzAbilities.has(masterQuartzAbility)) {
             previousMasterQuartzAbility = masterQuartzAbility;
-            masterQuartzAbility = masterQuartzAbility.replace(/#\d{1,3}[a-zA-Z]/g, '');
+            masterQuartzAbilities.add(masterQuartzAbility);
+            masterQuartzAbility = cleanText(masterQuartzAbility);
 
-            secondHandler(masterQuartzAbility);
+            mainHandler(masterQuartzAbility);
         }
     });
 })();

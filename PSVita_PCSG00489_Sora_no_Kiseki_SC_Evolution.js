@@ -5,6 +5,11 @@
 // @description  Vita3k (v0.1.9 3520)
 // ==/UserScript==
 
+console.warn("This was one of my first scripts, so it might be a bit scuffed at times.\n");
+console.warn("Known issues:\n- Do not open the conversation log. The script makes the game run at ~3 FPS when it's on screen.");
+console.warn("- Opening the world map will make the game run at ~16 FPS.");
+console.warn("- A random line of text might get extracted on rare occasions.");
+
 const { setHook } = require("./libVita3k.js");
 
 const miscHandler = trans.send(handler, 200);
@@ -42,7 +47,7 @@ setHook({
     0x800e968e: questHandler.bind_(null, 6, 0, "quest progress"), // In handbook
     0x800e1e48: nameHandler.bind_(null, 1, 0, "recipe name"),
     0x800b6eea: descriptionHandler.bind_(null, 0, 0, "recipe"),
-})
+});
 
 let previousQuest = "";
 let fullProgress = "";
@@ -281,8 +286,8 @@ function mainTextHandler(regs, index, offset, hookName) {
     // force open the gate after 4 sec of no text
     clearTimeout(timer);
     timer = setTimeout(() => {
-        gate = true
-    }, 4000)
+        gate = true;
+    }, 4000);
 }
 
 function readString(address, options) {
