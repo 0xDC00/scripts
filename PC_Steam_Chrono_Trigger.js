@@ -14,6 +14,7 @@ const handler = trans.send(s => s, '100+');
 (function () {
     attach('DialoguePattern', '55 8B ?? 8B ?? ?? 53 8B ?? ?? 56 8B ?? C7', 'eax');
     attach('SkillMenu', '42 6A ?? E8 ?? ?? ?? ?? 83 C4 04 C7 45 ?? 0F 00 00 00 C7 45 ?? 00 00 00 00 C6 45 ?? ?? 85 DB 74 ?? 8B 95', 'ecx');
+    attach('BattleText', '42 6A ?? E8 ?? ?? ?? ?? 83 C4 04 8B 4D F4 64 ?? ?? ?? ?? ?? ?? 59 5F 5E 5B 8B 4D ?? 33 CD E8 ?? ?? ?? ?? 8B E5 5D C2 ?? ?? CC CC CC CC CC CC CC CC 55 8B EC 83 EC', 'ecx');
 
     function attach(name, pattern, register) {
         const results = Memory.scanSync(__e.base, __e.size, pattern);
@@ -21,8 +22,6 @@ const handler = trans.send(s => s, '100+');
             console.error(`[${name}] Hook not found!`);
             return;
         }
-
-        console.log(`[${name}] Found ${results.length} matches`);
 
         const address = results[0].address;
         console.log(`[${name}] Found hook`, address);
@@ -37,8 +36,3 @@ const handler = trans.send(s => s, '100+');
         });
     }
 })();
-
-
-
-
-
