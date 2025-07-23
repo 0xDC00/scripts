@@ -3,7 +3,7 @@
 // @version      1.0.3
 // @author       [Owlie]
 // @description  Yuzu
-// *   	SQUARE ENIX
+// * SQUARE ENIX
 // ==/UserScript==
 const gameVer = '1.0.3';
 
