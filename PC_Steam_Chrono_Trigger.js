@@ -31,7 +31,10 @@ const handler = trans.send(s => s, '100+');
                 .replace(/\s+/g, '')
                 .replace(/<C[0-9]>.+?<\/C[0-9]>/g, '')
                 .replaceAll('<CT>', '')
-                .replaceAll('<PAGE>', '\n');
+                .replaceAll('<PAGE>', '\n')
+                .replaceAll('<AUTO_PAGE>', '\n')
+                .replaceAll('<AUTO_END>', '\n')
+                .replaceAll(/<WAIT>.+?<\/WAIT>/g, '');
             handler(text);
         });
     }
