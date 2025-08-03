@@ -11,16 +11,14 @@
 // ==/UserScript==
 
 
-console.warn("Known issues:\n- Sometimes a character will have more than one line of dialogue extracted at once.");
-console.warn("- Art, craft, order, etc. descriptions from the battle menu will only have half extracted.");
-console.warn("- When opening the handbook or the 'help' section from the system menu a random extraction might occur.");
-console.warn("- If you attach the script before the title screen appears there will be a long random extraction.");
-console.warn("- It's possible there might a be a random two or three character junk extraction sometimes (might be related to turbo?).");
+console.warn("Known issues:\n- When a character has at least two textboxes worth of dialogue they might all be extracted at the same time.");
+console.warn("- There will be an extraction when you open the instructor handbook or open the 'help' section from the system menu.");
 
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send((s) => s, '200+');
 const secondHandler = trans.send((s) => s, 200);
+const thirdHandler = trans.send((s) => s, '50+');
 
 
 let name = '';
@@ -172,19 +170,45 @@ let name = '';
 
 let previousMenusDescription = '';
 (function () {
-    const menuDescriptionSig = 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? ?? 8d 8e b8 00 00 00 e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? ?? 8d';
-    var results = Memory.scanSync(__e.base, __e.size, menuDescriptionSig);
+    const menuDescription1Sig = 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? ?? 8d 8e b8 00 00 00 e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? ?? 8d';
+    var results = Memory.scanSync(__e.base, __e.size, menuDescription1Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[menuDescriptionPattern] Hook not found!');
+        console.error('[menuDescription1Pattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[menuDescriptionPattern] Found hook', address);
+    console.log('[menuDescription1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: menuDescription");
+        // console.warn("in: menuDescription1");
+
+        const menuDescriptionAddress = this.context.rdx;
+        let menuDescription = menuDescriptionAddress.readUtf8String();
+
+        if (menuDescription !== previousMenusDescription) {
+            previousMenusDescription = menuDescription;
+            secondHandler(menuDescription);
+        }
+    });
+})();
+
+
+(function () {
+    const menuDescription2Sig = 'e8 ?? ?? ?? ?? 0f b7 c5 e9 ?? ?? ?? ?? ba';
+    var results = Memory.scanSync(__e.base, __e.size, menuDescription2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[menuDescription2Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[menuDescription2Pattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: menuDescription2");
 
         const menuDescriptionAddress = this.context.rdx;
         let menuDescription = menuDescriptionAddress.readUtf8String();
@@ -225,40 +249,6 @@ let previousLinkDescription = '';
                 previousLinkDescription = '';
             }, 30000);
         }
-    });
-})();
-
-
-let previousEquipmentDescription = '';
-(function () {
-    const equipmentDescriptionSig = 'e8 ?? ?? ?? ?? 8b f8 85 c0 79 ?? ?? 8d';
-    var results = Memory.scanSync(__e.base, __e.size, equipmentDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[equipmentDescriptionPattern] Hook not found!');
-        return;
-    }
-
-    const address = results[0].address;
-    console.log('[equipmentDescriptionPattern] Found hook', address);
-    Interceptor.attach(address, function (args) {
-        // console.warn("in: equipmentDescription");
-
-        try {
-            const equipmentDescriptionAddress = this.context.r14.add(64).readPointer();
-            let equipmentDescription = equipmentDescriptionAddress.readUtf8String();
-            equipmentDescription = equipmentDescription.replace(/\d{1,3}(:\d{2}){1,2}\b/g, '');
-
-            if (equipmentDescription.length < 5 || equipmentDescription === battleDescription || equipmentDescription.includes('/'))
-                return;
-
-            if (equipmentDescription !== previousEquipmentDescription && equipmentDescription !== null) {
-                previousEquipmentDescription = equipmentDescription;
-                secondHandler(equipmentDescription);
-            }
-        }
-        catch (e) { }
     });
 })();
 
@@ -344,7 +334,7 @@ let previousMasterQuartzDescription = '';
             previousMasterQuartzDescription = masterQuartzDescription;
             masterQuartzDescription = cleanText(masterQuartzDescription);
             
-            mainHandler(masterQuartzDescription);
+            thirdHandler(masterQuartzDescription);
         }
     });
 })();
@@ -375,14 +365,14 @@ let previousMasterQuartzAbility = '';
             masterQuartzAbilities.add(masterQuartzAbility);
             masterQuartzAbility = cleanText(masterQuartzAbility);
 
-            mainHandler(masterQuartzAbility);
+            thirdHandler(masterQuartzAbility);
         }
     });
 })();
 
 
 let previousQuartzDescription = '';
-(function () { // Also some items from inventory and craft descriptions
+(function () { // Also items from inventory and equipment/craft description
     const quartzDescriptionSig = 'e8 ?? ?? ?? ?? 0f b6 8f a8 02 00 00 85 c9 74 ?? 83 e9 01 74 ?? 83 f9 01 75 ?? 66 0f 6e ?? ?? 0f 5b c0 f3 0f 59 05 ?? ?? ?? ?? f3 ?? 0f';
     var results = Memory.scanSync(__e.base, __e.size, quartzDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
@@ -405,7 +395,7 @@ let previousQuartzDescription = '';
 
         if (quartzDescription !== previousQuartzDescription) {
             previousQuartzDescription = quartzDescription;
-            quartzDescription = cleanText(quartzDescription);
+            quartzDescription = quartzDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
 
             secondHandler(quartzDescription);
         }
@@ -413,9 +403,9 @@ let previousQuartzDescription = '';
 })();
 
 
-let battleDescription = '';
+let previousBattleDescription = '';
 (function () { // Items, crafts, arts, brave orders
-    const battleDescriptionSig = 'e8 ?? ?? ?? ?? 8b 47 20 89';
+    const battleDescriptionSig = 'e8 ?? ?? ?? ?? e8 ?? ?? ?? ?? ba 4f 00 00 00 ?? 8b c8 ?? 8d 42 b0 e8 ?? ?? ?? ?? f3 0f 10 46 78 f3 0f 58 86 e0';
     var results = Memory.scanSync(__e.base, __e.size, battleDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -429,11 +419,47 @@ let battleDescription = '';
     Interceptor.attach(address, function (args) {
         // console.warn("in: battleDescription");
 
-        const battleDescriptionAddress = this.context.rdx;
-        battleDescription = battleDescriptionAddress.readUtf8String();
+        const battleDescriptionAddress = this.context.r9;
+        let battleDescription = battleDescriptionAddress.readUtf8String();
 
-        if (battleDescription.length > 5)
-            mainHandler(battleDescription);
+        if (battleDescription === previousBattleDescription)
+            return;
+
+        previousBattleDescription = battleDescription;
+        battleDescription = battleDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
+        secondHandler(battleDescription);
+    });
+})();
+
+
+let previousLocationName = '';
+(function () { 
+    const locationNameSig = 'e8 ?? ?? ?? ?? eb ?? ?? 8b 8d 98 92 04 00 e8';
+    var results = Memory.scanSync(__e.base, __e.size, locationNameSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[locationNamePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[locationNamePattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: locationName");
+
+        const locationNameAddress = this.context.rdx;
+        let locationName = locationNameAddress.readUtf8String();
+
+        if (locationName == previousLocationName) 
+            return;
+
+        previousLocationName = locationName;
+        secondHandler(locationName);
+        
+        setTimeout(() => {
+            previousLocationName = '';
+        }, 30000);
     });
 })();
 
@@ -458,6 +484,61 @@ let battleDescription = '';
         book = cleanText(book);
 
         secondHandler(book);
+    });
+})();
+
+
+let previousOptionDescription = '';
+(function () {
+    const optionDescription1Sig = 'e8 ?? ?? ?? ?? ?? 8b 0d ?? ?? ?? ?? ba b1 00 00 00 ?? 8b 89 58 b2 83 00 e8 ?? ?? ?? ?? ?? 8b d0';
+    var results = Memory.scanSync(__e.base, __e.size, optionDescription1Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[optionDescription1Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[optionDescription1Pattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: optionDescription1");
+
+        const optionDescriptionAddress = this.context.rdx;
+        let optionDescription = optionDescriptionAddress.readUtf8String();
+
+        if (optionDescription !== previousOptionDescription) {
+            previousOptionDescription = optionDescription;
+
+            secondHandler(optionDescription);
+        }
+    });
+})();
+
+
+(function () {
+    const optionDescription2Sig = 'e8 ?? ?? ?? ?? ?? 8b 0d ?? ?? ?? ?? ba b1 00 00 00 ?? 8b 89 58 b2 83 00 e8 ?? ?? ?? ?? ?? 8b 8f';
+    var results = Memory.scanSync(__e.base, __e.size, optionDescription2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[optionDescription2Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[optionDescription2Pattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: optionDescription2");
+
+        const optionDescriptionAddress = this.context.rdx;
+        let optionDescription = optionDescriptionAddress.readUtf8String();
+
+        if (optionDescription !== previousOptionDescription) {
+            previousOptionDescription = optionDescription;
+
+            secondHandler(optionDescription);
+        }
     });
 })();
 
@@ -573,8 +654,7 @@ let characterDetailsSet = new Set();
 
 const encoder = new TextEncoder('utf-8');
 const decoder = new TextDecoder('utf-8');
-let previous = '';
-function readString(address, hookName) {
+function readString(address) {
     let character = '';
     let sentence = "";
 
@@ -609,12 +689,18 @@ function readString(address, hookName) {
 
                 case 0x04: // Item logo?
                 case 0x06: // Item logo?
-                case 0x07: // Red text?
+                case 0x07: // Item logo?
                 case 0x08:
                 case 0x0b: // Green text
                 case 0x0c:
-                case 0x0e:
-                case 0x10: // Item name?
+                    address = address.add(1);
+                    continue;
+
+                case 0x0e: // Item reference?
+                    address = address.add(3);
+                    continue;
+
+                case 0x10: // Red text
                     address = address.add(1);
                     continue;
 

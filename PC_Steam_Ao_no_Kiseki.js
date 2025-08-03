@@ -10,23 +10,16 @@
 // https://www.gog.com/en/game/the_legend_of_heroes_trails_to_azure
 // ==/UserScript==
 
-/**
- * To do: 
- * - Finding a better quest description hook.
- * - Filter out the photo descriptions in newspapers.
- * - Finding a hook for the あらすじ.
- */
 
-
-console.warn("Known issues:\n- The name of the last character's whose name was displayed will be extracted in places where it shouldn't (e.g. during the tutorial).");
-console.warn("- Photos in newspapers sometimes have a very short description. That gets extracted and might be in the middle of a sentence of the main text.");
-console.warn("- Quest description extraction is weird; it might end too early, right on spot or even extract the text of more (could be a lot more) than just the currently desplayed quest.");
-console.warn("Also, they will only be extracted from your investigation handbook, so nothing from the terminal.");
+console.warn("Known issues:\n- The name of the last character's whose name was displayed will be extracted in places where it shouldn't (e.g. during the tutorial, when reading a book/newspaper).");
+console.warn("- The first quest shown on screen after selecting the chapter in the handbook might get extracted twice.");
+console.warn("- When reading a book or newspaper, flipping pages to previous ones will make every page's text get extracted up to the current one.");
 
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send(s => s, '200+');
-const menuHandler = trans.send(s => s, 200);
+const secondHandler = trans.send(s => s, 200);
+const thirdHandler = trans.send(s => s, '50+');
 
 
 let name = '';
@@ -52,8 +45,9 @@ let name = '';
 })();
 
 
-let lastCallTime = 0;
-const debounceDelayMs = 10;
+
+let previousDialogue = '';
+let previousDialogueAddress = null;
 (function () { // Also tutorial and book/newspaper text
     const dialogueSig = '0f b6 0e 80 f9 20 74 ?? 80 f9 81 75';
     var results = Memory.scanSync(__e.base, __e.size, dialogueSig);
@@ -68,21 +62,27 @@ const debounceDelayMs = 10;
     console.log('[dialoguePattern] Found hook', address);
 
     Interceptor.attach(address, function (args) {
-
-        // To properly extract book and newspaper text. 
-        const now = Date.now();
-        if (now - lastCallTime < debounceDelayMs) {
-            return;
-        }
-
-        lastCallTime = now;
         // console.warn("in: dialogue");
 
         const dialogueAddress = this.context.rsi;
-        let dialogue = dialogueAddress.readShiftJisString();
-        // console.warn(hexdump(dialogueAddress, { header: false, ansi: false, length: 0x50 }));
-        readString(dialogueAddress, "dialogue");
-        // mainHandler(dialogue);
+
+        try {
+            const difference = ptr(dialogueAddress).sub(previousDialogueAddress).toInt32();
+            if (difference >= 1 && difference <= 3) {
+                previousDialogueAddress = dialogueAddress;
+                return;
+            }
+        }
+        catch(e) {} 
+        previousDialogueAddress = dialogueAddress;
+
+        let dialogue = readString(dialogueAddress);
+
+        if(previousDialogue.includes(dialogue))
+            return;
+
+        previousDialogue = dialogue;
+        mainHandler(name + "\n" + dialogue);
     });
 })();
 
@@ -103,7 +103,8 @@ const debounceDelayMs = 10;
         // console.warn("in: choices");
 
         const choicesAddress = this.context.rdx;
-        readString(choicesAddress, "choices");
+        let choices = readString(choicesAddress);
+        mainHandler(choices);
     });
 })();
 
@@ -131,7 +132,7 @@ let previousMenusDescription1 = '';
             previousMenusDescription1 = menuDescription1;
             menuDescription1 = cleanText(menuDescription1);
 
-            menuHandler(menuDescription1);
+            secondHandler(menuDescription1);
         }
     });
 })();
@@ -158,11 +159,11 @@ let previousCraftDescription = '';
         try {
             let craftDescription = craftDescriptionAddress.readShiftJisString();
 
-            if (craftDescription !== previousCraftDescription) { // Hook is called every frame
+            if (craftDescription !== previousCraftDescription && craftDescription.length >= 5) { // Hook is called every frame
                 previousCraftDescription = craftDescription;
                 craftDescription = cleanText(craftDescription);
 
-                menuHandler(craftDescription);
+                secondHandler(craftDescription);
             }
         }
         catch (e) { /* This is purely to remove the error in a specific part of the menu */ }
@@ -194,8 +195,72 @@ let previousArtsDescription = '';
             previousArtsDescription = artsDescription;
             artsDescription = cleanText(artsDescription);
 
-            menuHandler(artsDescription);
+            secondHandler(artsDescription);
         }
+    });
+})();
+
+
+let previousMasterQuartzName = '';
+(function () {
+    const masterQuartzNameSig = 'e8 ?? ?? ?? ?? ?? 8b 46 40 f3 0f 10 80 70 01 00 00 f3 0f 58 05 ?? ?? ?? ?? f3 0f 2c f0 f3 0f 10';
+    var results = Memory.scanSync(__e.base, __e.size, masterQuartzNameSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[masterQuartzNamePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[masterQuartzNamePattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: masterQuartzName");
+
+        const masterQuartzNameAddress = this.context.r9;
+
+        let masterQuartzName = masterQuartzNameAddress.readShiftJisString();
+
+        if (masterQuartzName !== previousMasterQuartzName) { 
+            previousMasterQuartzName = masterQuartzName;
+            masterQuartzAbilitiySet.clear();
+
+            thirdHandler(masterQuartzName + "\n");
+        }
+    });
+})();
+
+
+let masterQuartzAbilitiySet = new Set();
+let previousMasterQuartzAbility = '';
+(function () {
+    const masterQuartzAbilitySig = 'e8 ?? ?? ?? ?? ?? 8b ?? ?? ff c7 ?? ff c6 83 ff 06';
+    var results = Memory.scanSync(__e.base, __e.size, masterQuartzAbilitySig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[masterQuartzAbilityPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[masterQuartzAbilityPattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: masterQuartzAbility");
+
+        const masterQuartzAbilityAddress = this.context.r9;
+
+        let masterQuartzAbility = masterQuartzAbilityAddress.readShiftJisString();
+
+        if (masterQuartzAbilitiySet.has(masterQuartzAbility))
+            return;
+
+        masterQuartzAbilitiySet.add(masterQuartzAbility);
+        masterQuartzAbility = cleanText(masterQuartzAbility);
+
+        thirdHandler(masterQuartzAbility);
     });
 })();
 
@@ -224,9 +289,10 @@ let previousQuartzDescription = '';
 
             if (quartzDescription !== previousQuartzDescription) { // Hook is called every frame
                 previousQuartzDescription = quartzDescription;
+                previousMasterQuartzName = '';
                 quartzDescription = cleanText(quartzDescription);
 
-                menuHandler(quartzDescription);
+                secondHandler(quartzDescription);
             }
         }
         catch (e) { /* This is purely to remove the error in a specific part of the menu */ }
@@ -259,7 +325,7 @@ let previousItemDescription = '';
                 previousItemDescription = itemDescription;
                 itemDescription = cleanText(itemDescription);
 
-                menuHandler(itemDescription);
+                secondHandler(itemDescription);
             }
         }
         catch (e) { /* Somehow the function tries to read something else and keeps failing. */ }
@@ -267,9 +333,44 @@ let previousItemDescription = '';
 })();
 
 
-let previousQuestDescription = '';
+let previousQuestName = '';
 (function () {
-    const questDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8d 47 b0 c6 44 ?? ?? 00 66 0f 6e f0';
+    const questNameSig = 'e8 ?? ?? ?? ?? ?? 8d 47 b0 c6 44 ?? ?? 00 66 0f 6e f0';
+    var results = Memory.scanSync(__e.base, __e.size, questNameSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[questNamePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[questNamePattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: questName");
+
+        const questNameAddress = this.context.rbx;
+        let questName = questNameAddress.readShiftJisString();
+
+        if (questName !== previousQuestName) {
+            previousQuestName = questName;
+            previousQuestDescription = '';
+            previousQuestProgressAddress = null;
+            questProgressList.clear();
+            previousQuestProgressAddress2 = null;
+            questProgressList2.clear();            
+
+            thirdHandler(questName + "\n");
+        }
+    });
+})();
+
+
+let previousQuestDescription = '';
+let previousQuestDescriptionAddress = null;
+(function () {
+    const questDescriptionSig = '33 c0 ?? 0f b6 11 80 fa 01 75';
     var results = Memory.scanSync(__e.base, __e.size, questDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -278,30 +379,119 @@ let previousQuestDescription = '';
         return;
     }
 
-    const address = results[0].address;
+    const address = results[0].address.add(0x2);
     console.log('[questDescriptionPattern] Found hook', address);
 
     Interceptor.attach(address, function (args) {
         // console.warn("in: questDescription");
 
-        // To disregard unecessary continuous calls
-        const now = Date.now();
-        if (now - lastCallTime < debounceDelayMs) {
+        const questDescriptionAddress = this.context.r9;
+
+        try {
+            if (questDescriptionAddress.equals(previousQuestDescriptionAddress.add(0x1))) {
+                previousQuestDescriptionAddress = questDescriptionAddress;
+                return;
+            }
+        }
+        catch(e) {} 
+        previousQuestDescriptionAddress = questDescriptionAddress;
+
+        let questDescription = readString(questDescriptionAddress);
+            
+        if(previousQuestDescription === questDescription) 
             return;
+
+        previousQuestDescription = questDescription;
+
+        setTimeout(() => {
+            thirdHandler(questDescription + "\n");
+        }, 30);
+    });
+})();
+
+
+let questProgressList = new Set();
+let previousQuestProgressAddress = null;
+(function () {
+    const questProgressSig = '0f 1f 84 00 00 00 00 00 ?? ff c0 ?? 80 3c 01 00 75 ?? ?? 85';
+    var results = Memory.scanSync(__e.base, __e.size, questProgressSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[questProgressPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address.add(0xb);
+    console.log('[questProgressPattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: questProgress");
+
+        const questProgressAddress = this.context.r9;
+
+        try {
+            if (questProgressAddress.equals(previousQuestProgressAddress)) {
+                previousQuestProgressAddress = questProgressAddress;
+                return;
+            }
         }
+        catch(e) {} 
+        previousQuestProgressAddress = questProgressAddress;
 
-        lastCallTime = now;
+        let questProgress = readString(questProgressAddress);
+            
+        if(questProgressList.has(questProgress)) 
+            return;
 
-        const questDescriptionAddress = this.context.rbx;
-        let questDescription = questDescriptionAddress.readShiftJisString();
+        questProgressList.add(questProgress);
 
-        // mainHandler(questDescription);
+        setTimeout(() => {
+            thirdHandler(questProgress);
+        }, 30);
+    });
+})();
 
-        if (questDescription !== previousQuestDescription) {
-            previousQuestDescription = questDescription;
 
-            readString(questDescriptionAddress, "quest");
+let questProgressList2 = new Set();
+let previousQuestProgressAddress2 = null;
+(function () {
+    const questProgress2Sig = '8b 40 18 ?? 03 c0 ?? 8b 0c 88';
+    var results = Memory.scanSync(__e.base, __e.size, questProgress2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[questProgress2Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address.add(0x10);
+    console.log('[questProgress2Pattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: questProgress2");
+
+        const questProgressAddress = this.context.r9;
+
+        try {
+            if (questProgressAddress.equals(previousQuestProgressAddress2)) {
+                previousQuestProgressAddress2 = questProgressAddress;
+                return;
+            }
         }
+        catch(e) {} 
+        previousQuestProgressAddress2 = questProgressAddress;
+
+        let questProgress = readString(questProgressAddress);
+            
+        if(questProgressList2.has(questProgress)) 
+            return;
+
+        questProgressList2.add(questProgress);
+
+        setTimeout(() => {
+            thirdHandler(questProgress);
+        }, 30);
     });
 })();
 
@@ -329,129 +519,73 @@ let previousQuestDescription = '';
 })();
 
 
+const encoder = new TextEncoder('shift_jis');
 const decoder = new TextDecoder('shift_jis');
-let previous = '';
-function readString(address, hookName) {
-    let text = '';
-    let i = 0;
+function readString(address) {
+    let character = '';
+    let sentence = "";
+    const buffer = new Uint8Array(2);
 
-    if (address.readU8() <= 0x80 && address.readU8() !== 0x20)
-        return; // Not Shift_JIS
-
-    while (address.add(i).readU8() !== 0x2) { // 0x2 ends dialogue
-        const current = address.add(i);
-        const byte1 = current.readU8();
-        const byte2 = current.add(1).readU8();
-        const byte3 = current.add(2).readU8();
-        const byte4 = current.add(3).readU8();
-
-        // Quest descriptions don't have a clear end marker somehow
-        if (hookName === "quest" && (byte1 === 0x81 && byte2 === 0x9a && byte3 === 0x93) || (byte1 === 0x00 && byte2 >= 0x30 && byte2 <= 0x39))
-            break;
-
-        if (hookName !== "quest" && ((byte1 === 0x01 && byte2 === 0x00) || (byte1 === 0x00 && byte2 === 0x00)))
-            break;
-
-        // New line
-        if (byte1 === 0x01 || byte1 === 0x0A) {
-            i++;
-            text += '\n';
-            continue;
+    while (character = address.readU8()) {
+        if(character >= 0x20) {
+            buffer[0] = character;
+            buffer[1] = address.add(1).readU8();
+            character = decoder.decode(buffer)[0]; // ShiftJIS: 1->2 bytes.
+            sentence += character;
+            address = address.add(encoder.encode(character).byteLength);
         }
 
-        if (byte1 === 0x20) {
-            i++;
-            continue;
-        }
-
-        // Skip weird spacing in books, typicially in the newspaper
-        if (byte1 === 0x81 && byte2 === 0x40) {
-            i += 2;
-            continue;
-        }
-
-        // Skip furigana that starts with #nR and ends with next #
-        if (
-            byte1 === 0x23 &&                  // '#'
-            byte2 >= 0x30 && byte2 <= 0x39     // '0'-'9'
-        ) {
-            //There can be a second digit
-            if (byte3 >= 0x30 && byte3 <= 0x39 && byte4 === 0x52) {
-                i += 4;
-
-                // Skip until the next '#' (0x23) or end of dialogue
-                while (address.add(i).readU8() !== 0x23 && address.add(i).readU8() !== 0x02) {
-                    i++;
-                }
-
-                // Skip the ending '#' itself
-                if (address.add(i).readU8() === 0x23)
-                    i++;
-            }
-
-            else if (byte3 === 0x52) {
-                i += 3;
-
-                // Skip until the next '#' (0x23) or end of dialogue
-                while (address.add(i).readU8() !== 0x23 && address.add(i).readU8() !== 0x02) {
-                    i++;
-                }
-
-                // Skip the ending '#' itself
-                if (address.add(i).readU8() === 0x23)
-                    i++;
-
-                continue;
-            }
-        }
-
-        // Skip color change tag
-        if (
-            byte1 === 0x23 &&                  // '#'
-            byte2 >= 0x30 && byte2 <= 0x39 &&     // '0'-'9'
-            byte3 === 0x43                     // 'C'
-        ) {
-            i += 3;
-            continue;
-        }
-
-        // If it's ASCII (tipically digits)
-        if (address.add(i).readU8() < 0x80) {
-            const buffer = new Uint8Array([byte1]);
-            text += decoder.decode(buffer);
-            i += 1;
-        }
         else {
-            // Assume 2-byte Shift_JIS
-            const buffer = new Uint8Array(address.add(i).readByteArray(2));
-            text += decoder.decode(buffer);
-            i += 2;
+            switch (character) {
+                case 0x01: // New line
+                case 0x0a: // Big font new line?
+                    sentence += "\n";
+                    address = address.add(1);
+                    continue;
+
+                case 0x02: // End of bubble
+                    sentence = cleanText(sentence);
+                    // address = address.add(1);
+                    return sentence;
+
+                case 0x03: // Next bubble
+                case 0x04: // Item logo?
+                case 0x05: // Green text
+                case 0x06: // ??
+                case 0x07: // Color change tag
+                    if(address.add(1).readU8() === 0x00) { // Avoid new line in tutorial after blue text
+                        address = address.add(2);
+                        continue;
+                    }
+
+                case 0x09: // Something in books/newspaper
+                case 0x10: // New line in books/newspaper
+                case 0x18: // End of system message?
+                case 0x1f: // Item logo?
+                    address = address.add(1);
+                    continue;
+
+                default:
+                        console.warn(`unhandled code: ${ptr(character)}`);
+                        console.warn(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+                        address = address.add(1);
+                        continue;
+            }
         }
     }
-
-    // console.warn(hexdump(address, { header: false, ansi: false, length: 0x300 }));
-
-    if (hookName === "dialogue" && !previous.includes(text)) {
-        previous = text;
-        text = cleanText(text);
-
-        if (text.length <= 100)
-            mainHandler(name + "\n" + text);
-        else
-            mainHandler(text); // To not display the name of the last character talked to when reading a book/newspaper
-    }
-
-    else if (hookName !== "dialogue")
-        menuHandler(text);
+    sentence = cleanText(sentence);
+    return sentence;
 }
 
 
 
 function cleanText(text) {
     return text
+        .replace(/#[0-9]+R[^#]*#/g, '')
+        .replace(/\b(?:[0-9]{1,2}|100)\.\d%/g, '')
         .replace(/#[0-9]+I/g, ' ')
         .replace(/#\d+[a-zA-Z]/g, '')
         .replace(/#.*?[0-9A-Za-z]/g, '')
-        .replace(/^[�;\u0005!]+/, "")
+        .replace(/^[�;\u0005!]+/, '')
         .replace(/\\n/g, '\n');
 }

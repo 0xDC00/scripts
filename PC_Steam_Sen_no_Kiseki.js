@@ -11,17 +11,16 @@
 // ==/UserScript==
 
 
-console.warn("Known issues:\n- There are extra text extractions during battles.");
-console.warn("- When a character has at least two identical textboxes worth of dialogue they will all be extracted at the same time, and it's possible there'll be one or two random characters before the text.");
-console.warn("- When opening a book or turning a page the game will freeze/lag for about a second.");
-console.warn("- When opening the student handbook a note you might not have seen yet will be extracted.");
-console.warn("Furthermore, when viewing quest notes the top one won't get extracted before you view a different one from the same list. So if there's only one it won't get extracted.");
+console.warn("Known issues:\n- When a character has at least two identical textboxes worth of dialogue they will all be extracted at the same time, and it's possible there'll be a random characters before the text.");
+console.warn("- When opening the student handbook there will be an extraction (some text from it gets loaded the moment the handbook is opened even if it's not on screen).");
+console.warn("- You might not be able to extract the content of a certain note in the handbook if you only have one entry for that category, as you might need to alternate between two entries first.");
 
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send((s) => s, -200);
 const secondHandler = trans.send((s) => s, '200+');
-const otherHandler = trans.send((s) => s, 200);
+const thirdHandler = trans.send((s) => s, 200);
+const fourthHandler = trans.send((s) => s, '50+');
 
 
 let name = '';
@@ -47,7 +46,7 @@ let name = '';
 
 
 (function () {
-    const dialogueSig = '8a 07 3c 20 73 ?? 0f';
+    const dialogueSig = 'e8 ?? ?? ?? ?? 83 c4 0c 83 bf c0 00 00 00 01 89';
     var results = Memory.scanSync(__e.base, __e.size, dialogueSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -61,15 +60,58 @@ let name = '';
     Interceptor.attach(address, function (args) {
         // console.warn("in: dialogue");
 
-        const dialogueAddress = this.context.edi;
-        let text = dialogueAddress.readShiftJisString();
+        const dialogueAddress = this.context.esi;
+        let text = readString(dialogueAddress);
         // console.warn(hexdump(dialogueAddress, { header: false, ansi: false, length: 0x50 }));
 
         // Dialogue hook is called before the name hook
         setTimeout(() => {
-            readString(dialogueAddress);
-        }, 200);
-        name = '';
+                mainHandler(name + "\n" + text);
+        }, 100);
+    });
+})();
+
+
+(function () {
+    const activeVoiceSig = 'e8 ?? ?? ?? ?? d9 05 ?? ?? ?? ?? 8d 4f 04 d9 9f 94';
+    var results = Memory.scanSync(__e.base, __e.size, activeVoiceSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[activeVoicePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[activeVoicePattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: activeVoice");
+
+        const activeVoiceAddress = this.context.edx;
+        let activeVoice = activeVoiceAddress.readShiftJisString();
+        secondHandler(activeVoice);
+    });
+})();
+
+
+(function () {
+    const systemMessageSig = 'e8 ?? ?? ?? ?? 8b ?? ?? 8b d8 b8 01';
+    var results = Memory.scanSync(__e.base, __e.size, systemMessageSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[systemMessagePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[systemMessagePattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: systemMessage");
+
+        const systemMessageAddress = this.context.esi;
+        let systemMessage = readString(systemMessageAddress);
+        secondHandler(systemMessage);
     });
 })();
 
@@ -124,14 +166,14 @@ let previousInventoryDescription = '';
                 previousMenusDescription = menuDescription;
                 menuDescription = cleanText(menuDescription);
 
-                otherHandler(menuDescription);
+                thirdHandler(menuDescription);
             }
 
             else if (inventoryDescription !== previousInventoryDescription) {
                 previousInventoryDescription = inventoryDescription;
                 inventoryDescription = inventoryDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
 
-                otherHandler(inventoryDescription);
+                thirdHandler(inventoryDescription);
             }
         }
         catch (e) { }
@@ -160,10 +202,42 @@ let previousArtsDescription = '';
 
         if (artsDescription !== previousArtsDescription) {
             previousArtsDescription = artsDescription;
-            artsDescription = cleanText(artsDescription);
+            artsDescription = artsDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');;
 
-            otherHandler(artsDescription);
+            thirdHandler(artsDescription);
         }
+    });
+})();
+
+
+let masterQuartzAbilitiySet = new Set();
+(function () {
+    const masterQuartzAbilitySig = 'e8 ?? ?? ?? ?? 8d ?? fc fb ff ff 50 8d ?? fc fd ff ff 51 68';
+    var results = Memory.scanSync(__e.base, __e.size, masterQuartzAbilitySig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[masterQuartzAbilityPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[masterQuartzAbilityPattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: masterQuartzAbility");
+
+        const masterQuartzAbilityAddress = this.context.eax;
+
+        let masterQuartzAbility = masterQuartzAbilityAddress.readShiftJisString();
+
+        if (masterQuartzAbilitiySet.has(masterQuartzAbility))
+            return;
+
+        masterQuartzAbilitiySet.add(masterQuartzAbility);
+        masterQuartzAbility = masterQuartzAbility.replace(/%[a-zA-Z0-9]+/g, ' ');
+
+        fourthHandler(masterQuartzAbility);
     });
 })();
 
@@ -189,9 +263,10 @@ let previousQuartzDescription1 = '';
 
         if (quartzDescription1 !== previousQuartzDescription1) {
             previousQuartzDescription1 = quartzDescription1;
-            quartzDescription1 = cleanText(quartzDescription1);
+            masterQuartzAbilitiySet.clear();
+            quartzDescription1 = quartzDescription1.replace(/#\d{1,3}[a-zA-Z]/g, '');;
 
-            otherHandler(quartzDescription1);
+            thirdHandler(quartzDescription1);
         }
     });
 })();
@@ -218,15 +293,15 @@ let previousQuartzDescription2 = '';
 
         if (quartzDescription2 !== previousQuartzDescription2) {
             previousQuartzDescription2 = quartzDescription2;
-            quartzDescription2 = cleanText(quartzDescription2);
+            quartzDescription2 = quartzDescription2.replace(/#\d{1,3}[a-zA-Z]/g, '');;
 
-            otherHandler(quartzDescription2);
+            thirdHandler(quartzDescription2);
         }
     });
 })();
 
 
-let previousEquipmentDescription1 = '';
+let previousEquipmentDescription = '';
 (function () {
     const equipmentDescription1Sig = 'e8 ?? ?? ?? ?? 5f 5e 66 8b c3 5b c3 5e b8 0f';
     var results = Memory.scanSync(__e.base, __e.size, equipmentDescription1Sig);
@@ -245,17 +320,16 @@ let previousEquipmentDescription1 = '';
         const equipmentDescription1Address = this.context.edx;
         let equipmentDescription1 = equipmentDescription1Address.readShiftJisString();
 
-        if (equipmentDescription1 !== previousEquipmentDescription1) {
-            previousEquipmentDescription1 = equipmentDescription1;
-            equipmentDescription1 = cleanText(equipmentDescription1);
+        if (equipmentDescription1 !== previousEquipmentDescription) {
+            previousEquipmentDescription = equipmentDescription1;
+            equipmentDescription1 = equipmentDescription1.replace(/#\d{1,3}[a-zA-Z]/g, '');
 
-            otherHandler(equipmentDescription1);
+            thirdHandler(equipmentDescription1);
         }
     });
 })();
 
 
-let previousEquipmentDescription2 = '';
 (function () {
     const equipmentDescription2Sig = 'e8 ?? ?? ?? ?? 5f 5e 66 8b c3 5b c3 6a 42 8b 0d';
     var results = Memory.scanSync(__e.base, __e.size, equipmentDescription2Sig);
@@ -274,19 +348,18 @@ let previousEquipmentDescription2 = '';
         const equipmentDescription2Address = this.context.eax;
         let equipmentDescription2 = equipmentDescription2Address.readShiftJisString();
 
-        if (equipmentDescription2 !== previousEquipmentDescription2) {
-            previousEquipmentDescription2 = equipmentDescription2;
-            equipmentDescription2 = cleanText(equipmentDescription2);
+        if (equipmentDescription2 !== previousEquipmentDescription) {
+            previousEquipmentDescription = equipmentDescription2;
+            equipmentDescription2 = equipmentDescription2.replace(/#\d{1,3}[a-zA-Z]/g, '');
 
-            otherHandler(equipmentDescription2);
+            thirdHandler(equipmentDescription2);
         }
     });
 })();
 
 
-let previousBattleDescription = '';
-(function () { // Descriptions of items, crafts and arts
-    const battleDescriptionSig = 'e8 ?? ?? ?? ?? 0f b7 4f 14 66 89';
+(function () { // Description of crafts and arts
+    const battleDescriptionSig = 'e8 ?? ?? ?? ?? 8b ?? ?? ?? ?? ?? 8b 8a 78 02';
     var results = Memory.scanSync(__e.base, __e.size, battleDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -300,15 +373,39 @@ let previousBattleDescription = '';
     Interceptor.attach(address, function (args) {
         // console.warn("in: battleDescription");
 
-        const battleDescriptionAddress = this.context.eax;
+        const battleNameAddress = this.context.eax.add(12).readPointer();
+        const battleDescriptionAddress = this.context.eax.add(16).readPointer();
+        let battleName = battleNameAddress.readShiftJisString();
         let battleDescription = battleDescriptionAddress.readShiftJisString();
 
-        if (battleDescription !== previousBattleDescription) {
-            previousBattleDescription = battleDescription;
-            battleDescription = battleDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
+        battleDescription = battleDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
+        thirdHandler(battleName + "\n" + battleDescription);
+    });
+})();
 
-            mainHandler(battleDescription);
-        }
+
+(function () { 
+    const battleItemDescriptionSig = 'e8 ?? ?? ?? ?? 8b 15 ?? ?? ?? ?? 8b 8a 5c 63 0b';
+    var results = Memory.scanSync(__e.base, __e.size, battleItemDescriptionSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[battleItemDescriptionPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[battleItemDescriptionPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: battleItemDescription");
+
+        const battleItemNameAddress = this.context.eax.add(12).readPointer();
+        const battleItemDescriptionAddress = this.context.eax.add(16).readPointer();
+        let battleItemName = battleItemNameAddress.readShiftJisString();
+        let battleItemDescription = battleItemDescriptionAddress.readShiftJisString();
+
+        battleItemDescription = battleItemDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
+        thirdHandler(battleItemName + "\n" + battleItemDescription);
     });
 })();
 
@@ -356,7 +453,7 @@ let previousBattleDescription = '';
         let quest = questAddress.readShiftJisString();
         quest = cleanText(quest);
 
-        secondHandler(quest);
+        fourthHandler(quest);
     });
 })();
 
@@ -386,7 +483,7 @@ let previousCharacterNote1 = '';
             previousCharacterNote2 = '';
 
             previousCharacterNote1 = characterNote1;
-            secondHandler(characterNote1);
+            fourthHandler(characterNote1);
         }
     });
 })();
@@ -417,8 +514,36 @@ let characterDetailsSet = new Set();
             previousCharacterNote2 = characterNote2;
             characterDetailsSet.add(characterNote2);
 
-            secondHandler("\n" + characterNote2);
+            fourthHandler("\n" + characterNote2);
         }
+    });
+})();
+
+
+let previousFishNote = '';
+(function () {
+    const fishNoteSig = 'e8 ?? ?? ?? ?? 89 ?? ?? bf 04 00 00 00 90 8b';
+    var results = Memory.scanSync(__e.base, __e.size, fishNoteSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[fishNotePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[fishNotePattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: fishNote");
+
+        const fishNoteAddress = this.context.edx;            
+        let fishNote = fishNoteAddress.readShiftJisString();
+
+        if(fishNote === previousFishNote)
+            return;
+
+        previousFishNote = fishNote;
+        thirdHandler(fishNote);
     });
 })();
 
@@ -446,12 +571,13 @@ let previousShopItemDescription = '';
             previousShopItemDescription = shopItemDescription;
             shopItemDescription = cleanText(shopItemDescription);
 
-            otherHandler(shopItemDescription);
+            thirdHandler(shopItemDescription);
         }
     });
 })();
 
 
+let previousBookAddress = null;
 (function () {
     const bookSig = '8a 08 40 84 c9 75 ?? 2b c2 40 6a 02 50 89 ?? ?? e8 ?? ?? ?? ?? 8b f0 83 c4 08 3b f7 74 ';
     var results = Memory.scanSync(__e.base, __e.size, bookSig);
@@ -467,86 +593,109 @@ let previousShopItemDescription = '';
     Interceptor.attach(address, function (args) {
         // console.warn("in: book");
 
-        const bookAddress = this.context.edx;
+        const bookAddress = this.context.edx.sub(1);
+
+        try {
+            if (previousBookAddress.equals(bookAddress)) {
+                previousBookAddress = bookAddress;
+                return;
+            }
+        }
+        catch(e) {}
+        previousBookAddress = bookAddress;
+        
         let book = bookAddress.readShiftJisString();
         book = cleanText(book);
 
-        secondHandler(book);
+        thirdHandler(book);
     });
 })();
 
 
 const encoder = new TextEncoder('shift_jis');
 const decoder = new TextDecoder('shift_jis');
-let previous = '';
-function readString(address, hookName) {
+function readString(address) {
     let character = '';
     let sentence = "";
     const buffer = new Uint8Array(2);
 
-    if (address.readU8() <= 0x80)
-        return; // Not Shift_JIS
-
-
     while (character = address.readU8()) {
-        buffer[0] = character;
-        buffer[1] = address.add(1).readU8();
-        character = decoder.decode(buffer)[0]; // ShiftJIS: 1->2 bytes.
-        sentence += character;
-        address = address.add(encoder.encode(character).byteLength);
+        if(character >= 0x20) {
+            buffer[0] = character;
+            buffer[1] = address.add(1).readU8();
+            character = decoder.decode(buffer)[0]; // ShiftJIS: 1->2 bytes.
+            sentence += character;
+            address = address.add(encoder.encode(character).byteLength);
 
-        switch (character.charCodeAt(0)) {
-            case 0x00:
-                if (address.add(2).readU8() === 0x23)
-                    address = address.add(2);
-                continue;
-
-            case 0x01: // New line
-                sentence += "\n";
-                continue;
-
-            // case 0x02: // Next bubble
-            case 0x03: // End of bubble
-                sentence += "\n\n";
-                continue;
-
-            case 0x11:
-                address = address.add(4);
-                continue;
+            if (address.add(1).readU8() === 0x00 && address.add(3).readU8() === 0x23)
+                address = address.add(3);
         }
 
-        if (address.add(1).readU8() === 0x00 && address.add(3).readU8() === 0x23)
-            address = address.add(3);
+        else {
+            switch (character) {
+                case 0x01: // New line
+                    sentence += "\n";
+                    address = address.add(1);
+                    continue;
+
+                case 0x02: // Next bubble
+                    sentence += "\n";
+                    address = address.add(1);
+                    continue;
+
+                case 0x03: // End of bubble
+                    sentence += "\n";
+                    address = address.add(1);
+                    continue;
+
+                case 0x06:
+                case 0x07:
+                case 0x08:
+                case 0x0b: // Green text
+                case 0x0c: // Item logo
+                    address = address.add(1);
+                    continue;
+
+                case 0x0e: // Item reference?
+                    address = address.add(3);
+                    continue;
+
+                case 0x10: // Red text
+                    address = address.add(1);
+                    continue;
+
+                case 0x11: // Voice command
+                case 0x12:
+                    address = address.add(5);
+                    continue;
+
+                default:
+                    console.warn(`unhandled code: ${ptr(character)}`);
+                    console.warn(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+                    address = address.add(1);
+                    continue;
+            }
+        }   
     }
-
-    if (!previous.includes(sentence)) {
-        sentence = cleanText(sentence);
-
-        if (name !== '') {
-            // console.warn(hexdump(address, { header: false, ansi: false, length: 0x50 }));
-            previous = sentence;
-            mainHandler(name + "\n" + sentence);
-        }
-
-        else
-            mainHandler(sentence);
-    }
+    sentence = cleanText(sentence);
+    return sentence;
 }
-
 
 function cleanText(text) {
     return text
         // There probably are a few that are now useless but I'm too lazy to test them out individually
         .replace(/#\d{3}[a-zA-Z]/g, '')
+        .replace(/#-\d{3}[a-zA-Z]+/g, '')
         .replace(/#.*?#/g, '')
         .replace(/[a-z]\d[A-Z]#/g, '')         // Remove things like y0T#
         .replace(/[a-z]?[A-Z]\[\d+\]/g, '')    // Remove things like M[9], vM[0]
         .replace(/[a-z]?[A-Z]\d+/g, '')        // Remove things like M0, bM0
         .replace(/[a-z]\d\b/g, '')             // Remove things like z0
+        .replace(/[a-zA-Z0-9]_[a-zA-Z0-9]/g, '')
+        .replace(/[a-zA-Z0-9][a-zA-Z0-9]/g, '')
         .replace(/%\d+d/g, '')
         .replace(/^[a-zA-Z0-9]$/, '')
         .replace(/\b\d{3}y\b/g, '')
-        .replace(/L_ｴ/g, '')
         .replace(/ｴ/g, '')
         .replace(/Iv@/g, '')
         .replace(/#\w+/g, '')

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Zero no Kiseki / Trails from Zero
 // @version      1.4.13
-// @author       T4uburn (found dialogue hook and its logic) & Tom (tomrock645)
+// @author       T4uburn (found dialogue hook) & Tom (tomrock645)
 // @description  Steam, GOG
 // * developer   Nihon Falcom
 // * publisher   NIS America
@@ -11,21 +11,15 @@
 // ==/UserScript==
 
 
-/**
- * To do: 
- * - Finding a better quest description hook.
- * - Filter out the photo descriptions in newspapers.
- */
-
-
-console.warn("Known issue:\n- Photos in newspapers sometimes have a very short description. That gets extracted and might be in the middle of a sentence of the main text.");
-console.warn("- Quest descriptions is weird; it might end too early, right on spot or even extract the text of more (could be a lot more) than just the currently desplayed quest.");
-console.warn("Also, they will only be extracted from your investigation handbook, so nothing from the terminal.");
+console.warn("Known issues:\n- The name of the last character's whose name was displayed will be extracted in places where it shouldn't (e.g. when reading a book/newspaper).");
+console.warn("- The first quest shown on screen after selecting the chapter in the handbook might get extracted twice.");
+console.warn("- There's a bit of lag when flipping back a page of a book/newspaper, which also extracts every page's text up to the current one.");
 
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send(s => s, '200+');
-const menuHandler = trans.send(s => s, 200);
+const secondHandler = trans.send(s => s, 200);
+const thirdHandler = trans.send(s => s, '50+');
 
 let name = '';
 (function () {
@@ -50,6 +44,8 @@ let name = '';
 })();
 
 
+let previousDialogue = '';
+let previousDialogueAddress = null;
 (function () { // Also tutorial and book/newspaper text
     const dialogueSig = '0F B6 03 3C ?? 0F 83 ?? ?? ?? ?? 48 FF C3 83 ?? ?? ?? ?? 41 8B 8C 82 ?? ?? ?? ?? 49 03 CA FF E1 66 44 89 6A';
     var results = Memory.scanSync(__e.base, __e.size, dialogueSig);
@@ -66,7 +62,24 @@ let name = '';
         // console.warn("in: dialogue");
 
         const dialogueAddress = this.context.rbx;
-        readString(dialogueAddress, "dialogue");
+
+        
+        try {
+            if (dialogueAddress.equals(previousDialogueAddress.add(0x1))) {
+                previousDialogueAddress = dialogueAddress;
+                return;
+            }
+        }
+        catch(e) {} 
+        previousDialogueAddress = dialogueAddress;
+
+        let dialogue = readString(dialogueAddress);
+
+        if(previousDialogue.includes(dialogue))
+            return;
+
+        previousDialogue = dialogue;
+        mainHandler(name + "\n" + dialogue);
     });
 })();
 
@@ -88,7 +101,8 @@ let name = '';
         // console.warn("in: choices");
 
         const choicesAddress = this.context.rdx;
-        readString(choicesAddress, "choices");
+        let choices = readString(choicesAddress);
+        mainHandler(choices);
     });
 })();
 
@@ -116,7 +130,7 @@ let previousMenusDescription1 = '';
             previousMenusDescription1 = menuDescription1;
             menuDescription1 = cleanText(menuDescription1);
 
-            mainHandler(menuDescription1);
+            secondHandler(menuDescription1);
         }
     });
 })();
@@ -147,7 +161,7 @@ let previousMenusDescription2 = '';
                 previousMenusDescription2 = menuDescription2;
                 menuDescription2 = cleanText(menuDescription2);
 
-                menuHandler(menuDescription2);
+                secondHandler(menuDescription2);
             }
         }
         catch (e) { /* This is purely to remove the error in a specific part of the menu */ }
@@ -179,7 +193,7 @@ let previousArtsDescription = '';
             previousArtsDescription = artsDescription;
             artsDescription = cleanText(artsDescription);
 
-            menuHandler(artsDescription);
+            secondHandler(artsDescription);
         }
     });
 })();
@@ -209,17 +223,50 @@ let previousQuartzDescription = '';
             previousQuartzDescription = quartzDescription;
             quartzDescription = cleanText(quartzDescription);
 
-            menuHandler(quartzDescription);
+            secondHandler(quartzDescription);
+        }
+    });
+})();
+
+
+let previousQuestName = '';
+(function () {
+    const questNameSig = 'e8 ?? ?? ?? ?? ?? 8b ?? ?? ?? 8d ?? 90 f3 0f 10 3d';
+    var results = Memory.scanSync(__e.base, __e.size, questNameSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[questNamePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[questNamePattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: questName");
+
+        const questNameAddress = this.context.rsi;
+        let questName = questNameAddress.readShiftJisString();
+        // let questName = newReadString(questNameAddress, "quest");
+
+        if (questName !== previousQuestName) {
+            previousQuestName = questName;
+            previousQuestDescription = '';
+            questProgressList1.clear();
+            previousQuestProgress2 = '';
+            
+
+            thirdHandler(questName + "\n");
         }
     });
 })();
 
 
 let previousQuestDescription = '';
-let lastCallTime = 0;
-const debounceDelayMs = 300;
+let previousQuestDescriptionAddress = null;
 (function () {
-    const questDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b ?? ?? ?? 8d ?? 90 f3 0f 10 3d';
+    const questDescriptionSig = '33 c0 ?? 0f b6 11 80 fa 01 75';
     var results = Memory.scanSync(__e.base, __e.size, questDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -228,152 +275,177 @@ const debounceDelayMs = 300;
         return;
     }
 
-    const address = results[0].address;//.add(2);
+    const address = results[0].address.add(0x2);
     console.log('[questDescriptionPattern] Found hook', address);
 
     Interceptor.attach(address, function (args) {
         // console.warn("in: questDescription");
 
-        // To disregard unecessary continuous calls
-        const now = Date.now();
-        if (now - lastCallTime < debounceDelayMs) {
+        const questDescriptionAddress = this.context.r9;
+
+        try {
+            if (questDescriptionAddress.equals(previousQuestDescriptionAddress.add(0x1))) {
+                previousQuestDescriptionAddress = questDescriptionAddress;
+                return;
+            }
+        }
+        catch(e) {} 
+        previousQuestDescriptionAddress = questDescriptionAddress;
+
+        let questDescription = readString(questDescriptionAddress);
+            
+        if(previousQuestDescription === questDescription) 
             return;
-        }
 
-        lastCallTime = now;
-
-        const questDescriptionAddress = this.context.rsi;
-        let questDescription = questDescriptionAddress.readShiftJisString();
-
-        if (questDescription !== previousQuestDescription) {
-            previousQuestDescription = questDescription;
-
-            readString(questDescriptionAddress, "quest");
-        }
+        previousQuestDescription = questDescription;
+        thirdHandler(questDescription);
     });
 })();
 
 
+let questProgressList1 = new Set();
+let previousQuestProgressAddress1 = null;
+(function () {
+    const questProgress1Sig = '75 ?? ?? 85 c0 0f 84 ?? ?? ?? ?? ?? 8b a4';
+    var results = Memory.scanSync(__e.base, __e.size, questProgress1Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[questProgress1Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address.sub(0x5);
+    console.log('[questProgress1Pattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: questProgress1");
+
+        const questProgressAddress = this.context.r9;
+
+        try {
+            if (questProgressAddress.equals(previousQuestProgressAddress1)) {
+                previousQuestProgressAddress1 = questProgressAddress;
+                return;
+            }
+        }
+        catch(e) {} 
+        previousQuestProgressAddress1 = questProgressAddress;
+
+        let questProgress = readString(questProgressAddress);
+            
+        if(questProgressList1.has(questProgress)) 
+            return;
+
+        questProgressList1.add(questProgress);
+        thirdHandler(questProgress);
+    });
+})();
+
+
+let previousQuestProgress2 = '';
+let previousQuestProgressAddress2 = null;
+(function () {
+    const questProgress2Sig = '75 ?? ?? 85 e4 0f 84 ?? ?? ?? ?? ?? 8b';
+    var results = Memory.scanSync(__e.base, __e.size, questProgress2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[questProgress2Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address.sub(0x8);
+    console.log('[questProgress2Pattern] Found hook', address);
+
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: questProgress2");
+
+        const questProgressAddress = this.context.r9;
+
+        try {
+            if (questProgressAddress.equals(previousQuestProgressAddress2)) {
+                previousQuestProgressAddress2 = questProgressAddress;
+                return;
+            }
+        }
+        catch(e) {} 
+        previousQuestProgressAddress2 = questProgressAddress;
+
+        let questProgress = readString(questProgressAddress);
+            
+        if(previousQuestProgress2 === questProgress) 
+            return;
+
+        previousQuestProgress2 = questProgress;
+        thirdHandler(questProgress);
+    });
+})();
+
+
+const encoder = new TextEncoder('shift_jis');
 const decoder = new TextDecoder('shift_jis');
-let previous = '';
-function readString(address, hookName) {
-    let text = '';
-    let i = 0;
+function readString(address) {
+    let character = '';
+    let sentence = "";
+    const buffer = new Uint8Array(2);
 
-    if (address.readU8() <= 0x80)
-        return; // Not Shift_JIS
-
-    while (address.add(i).readU8() !== 0x2) { // 0x2 ends dialogue
-        const current = address.add(i);
-        const byte1 = current.readU8();
-        const byte2 = current.add(1).readU8();
-        const byte3 = current.add(2).readU8();
-        const byte4 = current.add(3).readU8();
-
-        // Quest descriptions don't have a clear end marker somehow
-        if (hookName === "quest" && (byte1 === 0x81 && byte2 === 0x9a && byte3 === 0x93) || (byte1 === 0x00 && byte2 >= 0x30 && byte2 <= 0x39))
-            break;
-
-        if (hookName !== "quest" && ((byte1 === 0x01 && byte2 === 0x00) || byte1 === 0x00))
-            break;
-
-        // New line
-        if (byte1 === 0x01 || byte1 === 0x0A) {
-            i++;
-            text += '\n';
-            continue;
+    while (character = address.readU8()) {
+        if(character >= 0x20) {
+            buffer[0] = character;
+            buffer[1] = address.add(1).readU8();
+            character = decoder.decode(buffer)[0]; // ShiftJIS: 1->2 bytes.
+            sentence += character;
+            address = address.add(encoder.encode(character).byteLength);
         }
 
-        if (byte1 === 0x20) {
-            i++;
-            continue;
-        }
-
-        // Skip weird spacing in books, typicially in the newspaper
-        if (byte1 === 0x81 && byte2 === 0x40) {
-            i += 2;
-            continue;
-        }
-
-        // Skip furigana that starts with #nR and ends with next #
-        if (
-            byte1 === 0x23 &&                  // '#'
-            byte2 >= 0x30 && byte2 <= 0x39     // '0'-'9'
-        ) {
-            //There can be a second digit
-            if (byte3 >= 0x30 && byte3 <= 0x39 && byte4 === 0x52) {
-                i += 4;
-
-                // Skip until the next '#' (0x23) or end of dialogue
-                while (address.add(i).readU8() !== 0x23 && address.add(i).readU8() !== 0x02) {
-                    i++;
-                }
-
-                // Skip the ending '#' itself
-                if (address.add(i).readU8() === 0x23)
-                    i++;
-            }
-
-            else if (byte3 === 0x52) {
-                i += 3;
-
-                // Skip until the next '#' (0x23) or end of dialogue
-                while (address.add(i).readU8() !== 0x23 && address.add(i).readU8() !== 0x02) {
-                    i++;
-                }
-
-                // Skip the ending '#' itself
-                if (address.add(i).readU8() === 0x23)
-                    i++;
-
-                continue;
-            }
-        }
-
-        // Skip color change tag
-        if (
-            byte1 === 0x23 &&                  // '#'
-            byte2 >= 0x30 && byte2 <= 0x39 &&     // '0'-'9'
-            byte3 === 0x43                     // 'C'
-        ) {
-            i += 3;
-            continue;
-        }
-
-        // If it's ASCII (tipically digits)
-        if (address.add(i).readU8() < 0x80) {
-            const buffer = new Uint8Array([byte1]);
-            text += decoder.decode(buffer);
-            i += 1;
-        }
         else {
-            // Assume 2-byte Shift_JIS
-            const buffer = new Uint8Array(address.add(i).readByteArray(2));
-            text += decoder.decode(buffer);
-            i += 2;
+            switch (character) {
+                case 0x01: // New line
+                case 0x0a: // Big font new line?
+                    sentence += "\n";
+                    address = address.add(1);
+                    continue;
+
+                case 0x02: // End of bubble
+                    sentence = cleanText(sentence);
+                    // address = address.add(1);
+                    return sentence;
+
+                case 0x03: // Next bubble
+                case 0x04: // Item logo?
+                case 0x05: // Green text
+                case 0x06: // ??
+                case 0x07: // Color change tag
+                    if(address.add(1).readU8() === 0x00) {
+                        address = address.add(2);
+                        continue;
+                    }
+
+                case 0x09: // Something in books/newspaper
+                case 0x10: // New line in books/newspaper
+                case 0x18: // End of system message?
+                case 0x1f: // Item logo?
+                    address = address.add(1);
+                    continue;
+
+                default:
+                        console.warn(`unhandled code: ${ptr(character)}`);
+                        console.warn(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+                        address = address.add(1);
+                        continue;
+            }
         }
     }
-
-    // console.warn(hexdump(address, { header: false, ansi: false, length: 0x300 }));
-
-    if (hookName === "dialogue" && !previous.includes(text)) {
-        previous = text;
-        text = cleanText(text);
-
-        if (text.length <= 100)
-            mainHandler(name + "\n" + text);
-        else
-            mainHandler(text); // To not display the name of the last character talked to when reading a book/newspaper
-    }
-
-    else if (hookName !== "dialogue")
-        menuHandler(text);
+    sentence = cleanText(sentence);
+    return sentence;
 }
 
 
 
 function cleanText(text) {
     return text
+        .replace(/#[0-9]+R[^#]*#/g, '')
         .replace(/\b(?:[0-9]{1,2}|100)\.\d%/g, '')
         .replace(/#[0-9]+I/g, ' ')
         .replace(/#\d+[a-zA-Z]/g, '')

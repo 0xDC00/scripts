@@ -11,12 +11,13 @@
 // ==/UserScript==
 
 
-console.warn("Known issues:\n- Sometimes a character will have more than one line of dialogue extracted at once.");
-console.warn("- There might be a random extraction when you open the instructor handbook or open the 'help' section from the system menu.");
+console.warn("Known issues:\n- When a character has at least two textboxes worth of dialogue they might all be extracted at the same time.");
+console.warn("- There will be an extraction when you open the instructor handbook or open the 'help' section from the system menu.");
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send((s) => s, '200+');
 const secondHandler = trans.send((s) => s, 200);
+const thirdHandler = trans.send((s) => s, '50+');
 
 
 (function () {
@@ -108,6 +109,7 @@ const secondHandler = trans.send((s) => s, 200);
 
         const systemMessage1Address = this.context.r8;
         let systemMessage1 = readString(systemMessage1Address);
+        // console.warn(hexdump(systemMessage1Address, { header: false, ansi: false, length: 0x100 }));
         mainHandler(systemMessage1);
     });
 })();
@@ -139,19 +141,45 @@ const secondHandler = trans.send((s) => s, 200);
 
 let previousMenusDescription = '';
 (function () {
-    const menuDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 8d d0 01';
-    var results = Memory.scanSync(__e.base, __e.size, menuDescriptionSig);
+    const menuDescription1Sig = 'e8 ?? ?? ?? ?? ?? 8b 8d d0 01';
+    var results = Memory.scanSync(__e.base, __e.size, menuDescription1Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[menuDescriptionPattern] Hook not found!');
+        console.error('[menuDescription1Pattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[menuDescriptionPattern] Found hook', address);
+    console.log('[menuDescription1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: menuDescription");
+        // console.warn("in: menuDescription1");
+
+        const menuDescriptionAddress = this.context.rdx;
+        let menuDescription = menuDescriptionAddress.readUtf8String();
+
+        if (menuDescription !== previousMenusDescription) {
+            previousMenusDescription = menuDescription;
+            secondHandler(menuDescription);
+        }
+    });
+})();
+
+
+(function () {
+    const menuDescription2Sig = 'e8 ?? ?? ?? ?? 0f b7 c5 e9';
+    var results = Memory.scanSync(__e.base, __e.size, menuDescription2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[menuDescription2Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[menuDescription2Pattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: menuDescription2");
 
         const menuDescriptionAddress = this.context.rdx;
         let menuDescription = menuDescriptionAddress.readUtf8String();
@@ -245,7 +273,7 @@ let previousMasterQuartzDescription = '';
             previousMasterQuartzDescription = masterQuartzDescription;
             masterQuartzDescription = cleanText(masterQuartzDescription);
             
-            mainHandler(masterQuartzDescription);
+            thirdHandler(masterQuartzDescription + "\n");
         }
     });
 })();
@@ -253,7 +281,7 @@ let previousMasterQuartzDescription = '';
 
 let masterQuartzAbilities = new Set();
 let previousMasterQuartzAbility = '';
-(function () { // Also some items in the inventory
+(function () { // Also some items from inventory
     const masterQuartzAbilitySig = 'e8 ?? ?? ?? ?? ?? 8b d8 ?? 85 c0 74 ?? ?? 8b 7c ?? ?? ?? 8b 0f ?? 85 c9 74 ?? 0f b6 d1 f6 d2 f6 c2 01 74 ?? e8 ?? ?? ?? ?? ?? 89 1f ?? 8b';
     var results = Memory.scanSync(__e.base, __e.size, masterQuartzAbilitySig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
@@ -276,7 +304,7 @@ let previousMasterQuartzAbility = '';
             masterQuartzAbilities.add(masterQuartzAbility);
             masterQuartzAbility = cleanText(masterQuartzAbility);
 
-            mainHandler(masterQuartzAbility);
+            thirdHandler(masterQuartzAbility);
         }
     });
 })();
@@ -306,10 +334,13 @@ let previousQuartzDescription = '';
 
         if (quartzDescription !== previousQuartzDescription) {
             previousQuartzDescription = quartzDescription;
-            quartzDescription = cleanText(quartzDescription);
+            quartzDescription = quartzDescription.replace(/#\d+[a-zA-Z]/g, '');
+            previousMasterQuartzDescription = '';
 
             secondHandler(quartzDescription);
         }
+
+
     });
 })();
 
@@ -335,10 +366,42 @@ let previousBattleDescription = '';
 
         if (battleDescription !== previousBattleDescription) {
             previousBattleDescription = battleDescription;
-            battleDescription = cleanText(battleDescription);
+            battleDescription = battleDescription.replace(/#\d+[a-zA-Z]/g, '');
 
             secondHandler(battleDescription);
         }
+    });
+})();
+
+
+let previousLocationName = '';
+(function () { 
+    const locationNameSig = 'e8 ?? ?? ?? ?? eb ?? ?? 8b 8d 50 ae';
+    var results = Memory.scanSync(__e.base, __e.size, locationNameSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[locationNamePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[locationNamePattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: locationName");
+
+        const locationNameAddress = this.context.rdx;
+        let locationName = locationNameAddress.readUtf8String();
+
+        if (locationName == previousLocationName) 
+            return;
+
+        previousLocationName = locationName;
+        secondHandler(locationName);
+        
+        setTimeout(() => {
+            previousLocationName = '';
+        }, 30000);
     });
 })();
 
@@ -479,8 +542,7 @@ let characterDetailsSet = new Set();
 
 const encoder = new TextEncoder('utf-8');
 const decoder = new TextDecoder('utf-8');
-let previous = '';
-function readString(address, hookName) {
+function readString(address) {
     let character = '';
     let sentence = "";
 
@@ -515,12 +577,18 @@ function readString(address, hookName) {
 
                 case 0x04: // Item logo?
                 case 0x06: // Item logo?
-                case 0x07: // Red text?
+                case 0x07: // Item logo?
                 case 0x08:
                 case 0x0b: // Green text
                 case 0x0c:
-                case 0x0e:
-                case 0x10: // Item name?
+                    address = address.add(1);
+                    continue;
+
+                case 0x0e: // Item reference?
+                    address = address.add(3);
+                    continue;
+
+                case 0x10: // Red text
                     address = address.add(1);
                     continue;
 
