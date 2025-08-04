@@ -20,6 +20,7 @@ console.warn("- If you only have one episode note it will most likely not get ex
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send((s) => s, 200);
 const secondHandler = trans.send((s) => s, '200+');
+const thirdHandler = trans.send((s) => s, '50+');
 
 
 (function () {
@@ -237,7 +238,7 @@ const secondHandler = trans.send((s) => s, '200+');
 
         const itemGetDescriptionAddress = this.context.rdx;
         let itemGetDescription = itemGetDescriptionAddress.readUtf8String();
-        itemGetDescription = cleanText(itemGetDescription);
+        itemGetDescription = itemGetDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
 
         secondHandler(itemGetDescription);
     });
@@ -372,7 +373,7 @@ let previousEquipmentDescription = '';
 
         if (equipmentDescription !== previousEquipmentDescription) {
             previousEquipmentDescription = equipmentDescription;
-            equipmentDescription = cleanText(equipmentDescription);
+            equipmentDescription = equipmentDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
 
             mainHandler(equipmentName + "\n" + equipmentDescription);
         }
@@ -400,7 +401,7 @@ let previousEquipmentDescription = '';
 
         if (equipmentDescription !== previousEquipmentDescription) {
             previousEquipmentDescription = equipmentDescription;
-            equipmentDescription = cleanText(equipmentDescription);
+            equipmentDescription = equipmentDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
 
             mainHandler(equipmentName + "\n" + equipmentDescription);
         }
@@ -429,7 +430,7 @@ let previousArtDescription = '';
 
         if (artDescription !== previousArtDescription) {
             previousArtDescription = artDescription;
-            artDescription = cleanText(artDescription);
+            artDescription = artDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
             mainHandler(artDescription);
         }
     });
@@ -460,9 +461,9 @@ let previousMasterQuartzDescription = '';
             previousMasterQuartzAbility = '';
 
             previousMasterQuartzDescription = masterQuartzDescription;
-            masterQuartzDescription = cleanText(masterQuartzDescription);
+            masterQuartzDescription = masterQuartzDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
             
-            secondHandler(masterQuartzDescription);
+            thirdHandler(masterQuartzDescription + "\n");
         }
     });
 })();
@@ -491,9 +492,9 @@ let previousMasterQuartzAbility = '';
         if (masterQuartzAbility !== previousMasterQuartzAbility && !masterQuartzAbilities.has(masterQuartzAbility)) {
             previousMasterQuartzAbility = masterQuartzAbility;
             masterQuartzAbilities.add(masterQuartzAbility);
-            masterQuartzAbility = cleanText(masterQuartzAbility);
+            masterQuartzAbility = masterQuartzAbility.replace(/#[0-9]+[a-zA-Z]/g, '');
             
-            secondHandler(masterQuartzAbility);
+            thirdHandler(masterQuartzAbility);
         }
     });
 })();
@@ -520,7 +521,7 @@ let previousQuartzDescription = '';
 
         if (quartzDescription !== previousQuartzDescription) {
             previousQuartzDescription = quartzDescription;
-            quartzDescription = cleanText(quartzDescription);
+            quartzDescription = quartzDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
 
             if(equipmentName !== '') {
                 mainHandler(equipmentName + "\n" + quartzDescription);
@@ -555,7 +556,7 @@ let previousQuartzDescription = '';
 
         if (quartzDescription !== previousQuartzDescription) {
             previousQuartzDescription = quartzDescription;
-            quartzDescription = cleanText(quartzDescription);
+            quartzDescription = quartzDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
             mainHandler(equipmentName + "\n" + quartzDescription);
         }
     });
@@ -583,7 +584,7 @@ let previousInventoryDescription = '';
 
         if (inventoryDescription !== previousInventoryDescription) {
             previousInventoryDescription = inventoryDescription;
-            inventoryDescription = cleanText(inventoryDescription);
+            inventoryDescription = inventoryDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
             
             mainHandler(inventoryDescription);
         }
@@ -611,7 +612,7 @@ let previousInventoryDescription = '';
 
         if (inventoryDescription !== previousInventoryDescription) {
             previousInventoryDescription = inventoryDescription;
-            inventoryDescription = cleanText(inventoryDescription);
+            // inventoryDescription = inventoryDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
             
             mainHandler(inventoryDescription);
         }
@@ -640,7 +641,7 @@ let previousStatusDescription = '';
 
         if (statusDescription !== previousStatusDescription) {
             previousStatusDescription = statusDescription;
-            statusDescription = cleanText(statusDescription);
+            statusDescription = statusDescription.replace(/#\d{1,3}[a-zA-Z]/g, '').replace(/#-[a-zA-Z0-9]+/g, '');
             
             mainHandler(statusDescription);
         }
@@ -669,7 +670,7 @@ let previousLinkAbilityDescription = '';
 
         if (linkAbilityDescription !== previousLinkAbilityDescription) {
             previousLinkAbilityDescription = linkAbilityDescription;
-            linkAbilityDescription = cleanText(linkAbilityDescription);
+            // linkAbilityDescription = cleanText(linkAbilityDescription);
             
             mainHandler(linkAbilityDescription);
         }
@@ -679,26 +680,54 @@ let previousLinkAbilityDescription = '';
 
 let previousOptionDescription = '';
 (function () { 
-    const optionDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 0d ?? ?? ?? ?? ba e6 00 00 00 ?? 8b 89 30 7a 56 00 e8 ?? ?? ?? ?? ?? 8b d0';
-    var results = Memory.scanSync(__e.base, __e.size, optionDescriptionSig);
+    const optionDescription1Sig = 'e8 ?? ?? ?? ?? ?? 8b 0d ?? ?? ?? ?? ba e6 00 00 00 ?? 8b 89 30 7a 56 00 e8 ?? ?? ?? ?? ?? 8b d0';
+    var results = Memory.scanSync(__e.base, __e.size, optionDescription1Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[optionDescriptionPattern] Hook not found!');
+        console.error('[optionDescription1Pattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[optionDescriptionPattern] Found hook', address);
+    console.log('[optionDescription1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: optionDescription");
+        // console.warn("in: optionDescription1");
 
         const optionDescriptionAddress = this.context.rdx;
         let optionDescription = optionDescriptionAddress.readUtf8String();
 
         if (optionDescription !== previousOptionDescription) {
             previousOptionDescription = optionDescription;
-            optionDescription = cleanText(optionDescription);
+            // optionDescription = cleanText(optionDescription);
+            
+            mainHandler(optionDescription);
+        }
+    });
+})();
+
+
+(function () { 
+    const optionDescription2Sig = 'e8 ?? ?? ?? ?? ?? 8b 0d ?? ?? ?? ?? ba e6 00 00 00 ?? 8b 89 30 7a 56 00 e8 ?? ?? ?? ?? ?? 8b 8f b0 58 16 00';
+    var results = Memory.scanSync(__e.base, __e.size, optionDescription2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[optionDescription2Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[optionDescription2Pattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: optionDescription2");
+
+        const optionDescriptionAddress = this.context.rdx;
+        let optionDescription = optionDescriptionAddress.readUtf8String();
+
+        if (optionDescription !== previousOptionDescription) {
+            previousOptionDescription = optionDescription;
+            // optionDescription = cleanText(optionDescription);
             
             mainHandler(optionDescription);
         }
@@ -728,10 +757,42 @@ let previousBattleDescription = '';
 
         if (battleDescription !== previousBattleDescription) {
             previousBattleDescription = battleDescription;
-            battleDescription = cleanText(battleDescription);
+            battleDescription = battleDescription.replace(/#\d{1,3}[a-zA-Z]/g, '').replace(/#-[a-zA-Z0-9]+/g, '');
             
             mainHandler(battleDescription);
         }
+    });
+})();
+
+
+let previousLocationName = '';
+(function () { 
+    const locationNameSig = 'e8 ?? ?? ?? ?? eb ?? 0f b6 9c';
+    var results = Memory.scanSync(__e.base, __e.size, locationNameSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[locationNamePattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[locationNamePattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: locationName");
+
+        const locationNameAddress = this.context.rdx;
+        let locationName = locationNameAddress.readUtf8String();
+
+        if (locationName == previousLocationName) 
+            return;
+
+        previousLocationName = locationName;
+        secondHandler(locationName);
+        
+        setTimeout(() => {
+            previousLocationName = '';
+        }, 30000);
     });
 })();
 
@@ -758,7 +819,7 @@ let previousShopItemDescription = '';
 
         if (shopItemDescription !== previousShopItemDescription) {
             previousShopItemDescription = shopItemDescription;
-            shopItemDescription = cleanText(shopItemDescription);
+            shopItemDescription = shopItemDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
             
             mainHandler(shopItemDescription);
         }
@@ -787,7 +848,7 @@ let previousShopItemDescription = '';
 
         if (shopItemDescription !== previousShopItemDescription) {
             previousShopItemDescription = shopItemDescription;
-            shopItemDescription = cleanText(shopItemDescription);
+            shopItemDescription = shopItemDescription.replace(/#\d{1,3}[a-zA-Z]/g, '');
             
             mainHandler(shopItemDescription);
         }
@@ -1144,30 +1205,30 @@ let previousDaydreamResult = '';
 })();
 
 
-let previousDaydreamItemResult = '';
+let previousDaydreamItemResultDescription = '';
 (function () { // When obtaining at least one new item via the daydream item gacha
-    const daydreamItemResultSig = 'e8 ?? ?? ?? ?? ?? 8b 4f 70 ?? 8b 01';
-    var results = Memory.scanSync(__e.base, __e.size, daydreamItemResultSig);
+    const daydreamItemResultDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 4f 70 ?? 8b 01';
+    var results = Memory.scanSync(__e.base, __e.size, daydreamItemResultDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[daydreamItemResultPattern] Hook not found!');
+        console.error('[daydreamItemResultDescriptionPattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[daydreamItemResultPattern] Found hook', address);
+    console.log('[daydreamItemResultDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: daydreamItemResult");
+        // console.warn("in: daydreamItemResultDescription");
 
-        const daydreamItemResultAddress = this.context.rdx;
-        let daydreamItemResult = daydreamItemResultAddress.readUtf8String();
+        const daydreamItemResultDescriptionAddress = this.context.rdx;
+        let daydreamItemResultDescription = daydreamItemResultDescriptionAddress.readUtf8String();
 
-        if (daydreamItemResult !== previousDaydreamItemResult) {
-            previousDaydreamItemResult = daydreamItemResult;
-            daydreamItemResult = cleanText(daydreamItemResult);
+        if (daydreamItemResultDescription !== previousDaydreamItemResultDescription) {
+            previousDaydreamItemResultDescription = daydreamItemResultDescription;
+            daydreamItemResultDescription = cleanText(daydreamItemResultDescription);
 
-            mainHandler(daydreamItemResult);
+            mainHandler(daydreamItemResultDescription);
         }
     });
 })();
@@ -1210,12 +1271,18 @@ function readString(address) {
 
                 case 0x04: // Item logo?
                 case 0x06: // Item logo?
-                case 0x07: // Red text?
+                case 0x07: // Item logo?
                 case 0x08:
                 case 0x0a:
                 case 0x0b: // Green text
                 case 0x0c:
-                case 0x0e:
+                    address = address.add(1);
+                    continue;
+
+                case 0x0e: // Item reference?
+                    address = address.add(3);
+                    continue;
+
                 case 0x0f: // Narration start/blue-ish text?
                 case 0x10: // Item name?
                     address = address.add(1);
