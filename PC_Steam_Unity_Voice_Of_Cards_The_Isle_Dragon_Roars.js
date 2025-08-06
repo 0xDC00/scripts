@@ -12,10 +12,15 @@ const handler = trans.send(s => s, '200+');
 
 // General hook for all text. Works but it's spammy
 const TMP_Text = Mono.use('Unity.TextMeshPro', 'TMPro.TextMeshProUGUI'); // TextMeshProUGUI TMP_Text
+let lastAddress;
 TMP_Text.set_text.attach({
     onEnter(args) {
-        const s = args[1].readMonoString()
-            .replace(/(<.*?>)+/g, '');;
+        let s = args[1];
+        const address = s.toString();
+        if (address === '0x0' || address === lastAddress) return;
+        lastAddress = address;
+        s = args[1].readMonoString()
+            .replace(/(<.*?>)+/g, '');
 
         const excluded = [
             '', 'LOADING', 'Autosaving...', 'Speed Changed', 'アイテム', 'スキル'
@@ -27,7 +32,7 @@ TMP_Text.set_text.attach({
     }
 });
 
-// Main menu and submenus
+// Main menu and submenus: currently highlighted card
 Mono.setHook('', 'CardAnalogica.TopMenuCard', 'Highlight', 0, {
     onEnter(args) {
         /** @type {Mono.MonoObjectWrapper} */
@@ -36,3 +41,5 @@ Mono.setHook('', 'CardAnalogica.TopMenuCard', 'Highlight', 0, {
         handler(frontText);
     }
 });
+
+// todo: battle
