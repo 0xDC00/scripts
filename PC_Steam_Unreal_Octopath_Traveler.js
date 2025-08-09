@@ -8,12 +8,16 @@
 // ==/UserScript==
 
 const __e = Process.enumerateModules()[0];
-const handler = trans.send(s => s, '700');
+const handler = trans.send(s => s, '200+');
 
-console.warn('Make sure to attach to Octopath_Traveler-Win64-Shipping.exe!');
+const processName = 'Octopath_Traveler-Win64-Shipping.exe';
+if (__e.name !== processName) {
+    console.error(`Make sure to attach to ${processName} instead of Octopath_Traveler.exe!`);
+    return;
+}
 
 (function () {
-    attach('DialogueHook', 'E8 17 B6 83 01', 'rdx');
+    attach('Dialogue', 'E8 17 B6 83 01', 'rdx');
 
     function attach(name, pattern, register) {
         const results = Memory.scanSync(__e.base, __e.size, pattern);
@@ -30,11 +34,19 @@ console.warn('Make sure to attach to Octopath_Traveler-Win64-Shipping.exe!');
             const text = this.context[register].readUtf16String();
             if (!isInstruction(text)) {
                 // console.log(name, "'", text, "'");
-                handler(text);
+                handler(cleanText(text));
             }
         });
     }
 })();
+
+console.warn('Missing: menus');
+console.warn('Missing: quest log');
+console.warn('Missing: character bios (new game)');
+console.warn('Missing: location notifications');
+console.warn('Missing: scrutinize popup');
+console.warn('Missing: action popup (e.g. some doors)')
+console.warn('Missing: battles');
 
 
 /**
@@ -44,4 +56,13 @@ console.warn('Make sure to attach to Octopath_Traveler-Win64-Shipping.exe!');
  */
 function isInstruction(text) {
     return /-?[\d]+/.test(text) || (text.includes('_') && !text.includes(' '));
+}
+
+/**
+ * 
+ * @param {string} text 
+ * @returns {string}
+ */
+function cleanText(text) {
+    return text.replace(/[\r\n]+/g, '').trim();
 }
