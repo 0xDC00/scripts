@@ -18,6 +18,7 @@ if (__e.name !== processName) {
 
 (function () {
     attach('Dialogue', 'E8 17 B6 83 01', 'rdx');
+    attach('ActionPopup', '66 66 0F 1F 84 00 ?? ?? ?? ?? 0F B7 1A', 'rdx'); // 66 66 0F 1F 84 00 00 00 00 00 0F B7 1A
 
     function attach(name, pattern, register) {
         const results = Memory.scanSync(__e.base, __e.size, pattern);
@@ -32,7 +33,7 @@ if (__e.name !== processName) {
         console.log(`[${name}] Found hook ${address})`);
         Interceptor.attach(address, function (args) {
             const text = this.context[register].readUtf16String();
-            if (!isInstruction(text)) {
+            if (!isInstruction(text) && !isStandardAction(text)) {
                 // console.log(name, "'", text, "'");
                 handler(cleanText(text));
             }
@@ -40,17 +41,9 @@ if (__e.name !== processName) {
     }
 })();
 
-console.warn('Missing: menus');
-console.warn('Missing: quest log');
-console.warn('Missing: character bios (new game)');
-console.warn('Missing: location notifications');
-console.warn('Missing: scrutinize popup');
-console.warn('Missing: action popup (e.g. some doors)')
-console.warn('Missing: battles');
 
-
-/**
- * 
+/**  
+ * Checks if the text is an instruction embedded in dialogue, such as 'open_door' or '-1'
  * @param {string} text 
  * @returns {boolean}
  */
@@ -59,10 +52,34 @@ function isInstruction(text) {
 }
 
 /**
- * 
+ * Checks if the text is a recurring action that would otherwise be spammed a lot, such as 'confirm', 'cancel', etc.
+ * @param {string} text 
+ * @returns {boolean}
+ */
+function isStandardAction(text) {
+    return [
+        '決定',
+        '戻る',
+        '選択',
+        'キャンセル',
+        'データ無し',
+        'Auto Saving…',
+        'Auto Saving …',
+        '⑬ ボタンでパーティーチャットを再生',
+        'ボタン長押しでスキップ',
+        '閉じる',
+        '外す',
+        'ヘルプを閉じる'
+    ].includes(text);
+}
+
+/**
  * @param {string} text 
  * @returns {string}
  */
 function cleanText(text) {
-    return text.replace(/[\r\n]+/g, '').trim();
+    return text
+        .replace(/[\r\n]+/g, '')
+        .replace(/\\n/g, '\n')
+        .trim();
 }
