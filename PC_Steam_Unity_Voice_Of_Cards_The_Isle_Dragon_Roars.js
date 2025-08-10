@@ -15,20 +15,14 @@ const TMP_Text = Mono.use('Unity.TextMeshPro', 'TMPro.TextMeshProUGUI'); // Text
 let lastAddress;
 TMP_Text.set_text.attach({
     onEnter(args) {
-        let s = args[1];
+        const s = args[1];
         const address = s.toString();
         if (address === '0x0' || address === lastAddress) return;
         lastAddress = address;
-        s = args[1].readMonoString()
-            .replace(/(<.*?>)+/g, '');
-
-        const excluded = [
-            '', 'LOADING', 'Autosaving...', 'Speed Changed', 'アイテム', 'スキル'
-        ];
-        if (excluded.includes(s)) return;
-        if (/\d+/.test(s)) return;
-
-        handler(s);
+        const text = cleanText(args[1].readMonoString());
+        if (shouldHandle(text)) {
+            handler(text);
+        }
     }
 });
 
@@ -43,3 +37,28 @@ Mono.setHook('', 'CardAnalogica.TopMenuCard', 'Highlight', 0, {
 });
 
 // todo: battle
+
+
+/**
+ * Filter out stuff like standard controls (e.g. 'return') and damage numbers to reduce spam
+ * @param {string} text 
+ * @returns {boolean}
+ */
+function shouldHandle(text) {
+    const excluded = [
+        '', 'LOADING', 'Autosaving...', 'Speed Changed', 'アイテム', 'スキル', '戻る'
+    ];
+    if (excluded.includes(text)) return false;
+    if (/\d+/.test(text)) return false;
+    return true;
+}
+
+/**
+ * @param {string} text 
+ * @returns {string}
+ */
+function cleanText(text) {
+    return text
+        .replace(/(<.*?>)+/g, '')
+        .trim();
+}
