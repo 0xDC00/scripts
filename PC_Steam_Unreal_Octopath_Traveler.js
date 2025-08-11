@@ -18,7 +18,7 @@ if (__e.name !== processName) {
 
 (function () {
     attach('Dialogue', 'E8 17 B6 83 01', 'rdx');
-    attach('ActionPopup', '66 66 0F 1F 84 00 ?? ?? ?? ?? 0F B7 1A', 'rdx'); // 66 66 0F 1F 84 00 00 00 00 00 0F B7 1A
+    attach('GeneralText', '66 66 0F 1F 84 00 ?? ?? ?? ?? 0F B7 1A', 'rdx'); // 66 66 0F 1F 84 00 00 00 00 00 0F B7 1A
 
     function attach(name, pattern, register) {
         const results = Memory.scanSync(__e.base, __e.size, pattern);
