@@ -10,6 +10,8 @@
 const Mono = require('./libMono.js');
 const handler = trans.send(s => s, '200+');
 
+console.warn('For now, all cards are translated at the start of a battle');
+
 // General hook for all text. Works but it's spammy
 const TMP_Text = Mono.use('Unity.TextMeshPro', 'TMPro.TextMeshProUGUI'); // TextMeshProUGUI TMP_Text
 let lastAddress;
@@ -35,8 +37,6 @@ Mono.setHook('', 'CardAnalogica.TopMenuCard', 'Highlight', 0, {
         handler(frontText);
     }
 });
-
-// todo: battle
 
 
 /**
