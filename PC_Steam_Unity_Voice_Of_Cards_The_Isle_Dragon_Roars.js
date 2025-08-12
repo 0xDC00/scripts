@@ -17,11 +17,11 @@ const TMP_Text = Mono.use('Unity.TextMeshPro', 'TMPro.TextMeshProUGUI'); // Text
 let lastAddress;
 TMP_Text.set_text.attach({
     onEnter(args) {
-        const s = args[1];
-        const address = s.toString();
-        if (address === '0x0' || address === lastAddress) return;
+        /** @type {NativePointer} */
+        const address = args[1];
+        if (address.isNull() || lastAddress?.equals(address)) return;
         lastAddress = address;
-        const text = cleanText(args[1].readMonoString());
+        const text = cleanText(address.readMonoString());
         if (shouldHandle(text)) {
             handler(text);
         }
@@ -48,8 +48,7 @@ function shouldHandle(text) {
     const excluded = [
         '', 'LOADING', 'Autosaving...', 'Speed Changed', 'アイテム', 'スキル', '戻る'
     ];
-    if (excluded.includes(text)) return false;
-    if (/\d+/.test(text)) return false;
+    if (excluded.includes(text) || /\d+/.test(text)) return false;
     return true;
 }
 
@@ -59,6 +58,6 @@ function shouldHandle(text) {
  */
 function cleanText(text) {
     return text
-        .replace(/(<.*?>)+/g, '')
+        .replace(/<.*?>+/g, '')
         .trim();
 }
