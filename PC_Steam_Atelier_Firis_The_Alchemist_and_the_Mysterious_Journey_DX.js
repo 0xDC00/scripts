@@ -126,8 +126,7 @@ const targetHooks = {
   // },
   ENCY: {
     name: "ENCY",
-    pattern:
-      "48 8B D8 48 85 C0 74 53 48 8B D0 48 89 74 24 30 48 8D 4F 08 E8 13 4C D9 FF",
+    pattern: "48 8B D8 48 85 C0 74 53 48 8B D0 48 89 74 24 30 48 8D 4F 08 E8 13 4C D9 FF",
     address: NULL,
     register: "rax",
     argIndex: -1,
@@ -278,6 +277,16 @@ const hooksMiscellaneous = {
     pattern: "E8 AAEE2E00",
     target: targetHooks.SHALLOW,
     handler: mainHandler2,
+  },
+  ExtraMusicName: {
+    pattern: "E8 7B57F9FF",
+    target: targetHooks.SHALLOW,
+    handler: positionTopHandler,
+  },
+  ExtraMusicDescription: {
+    pattern: "E8 1057F9FF",
+    target: targetHooks.SHALLOW,
+    handler: positionMiddleSingleHandler,
   },
 };
 
@@ -601,9 +610,7 @@ function nestedHooksStrategy({ address, name, target, handler }) {
           inspectRegs(this.context);
         }
 
-        const text = handler(
-          getTreasureAddress({ target, context: this.context })
-        );
+        const text = handler(getTreasureAddress({ target, context: this.context }));
 
         setHookCharacterCount(name, text);
       });
@@ -646,9 +653,7 @@ function filterReturnsNestedHooksStrategy({ address, name, target, handler }) {
 
           // this.outerContext = outerContext;
 
-          const text = handler(
-            getTreasureAddress({ target, context: this.context })
-          );
+          const text = handler(getTreasureAddress({ target, context: this.context }));
 
           setHookCharacterCount(name, text);
         });
@@ -745,9 +750,7 @@ function setupHooks() {
 
     if (origins) {
       for (const origin of origins) {
-        returnAddresses.add(
-          getPatternAddress(name + "RETURN", origin).toUInt32()
-        );
+        returnAddresses.add(getPatternAddress(name + "RETURN", origin).toUInt32());
         hooksAuxCount += 1;
       }
     }
@@ -783,9 +786,7 @@ function attachHook(params) {
 
   if (origins && target) {
     DEBUG_LOGS &&
-      console.log(
-        `[${name}] filtered with return addresses and targeting [${target.name}]`
-      );
+      console.log(`[${name}] filtered with return addresses and targeting [${target.name}]`);
     filterReturnsNestedHooksStrategy(args);
   } else if (origins) {
     DEBUG_LOGS && console.log(`[${name}] filtered with return addresses`);
@@ -807,10 +808,7 @@ function attachHook(params) {
 function readFirisString(address) {
   const textAddress = address.readUtf8String();
 
-  DEBUG_LOGS &&
-    console.log(
-      `${color.FgYellow}${JSON.stringify(textAddress)}${color.Reset}`
-    );
+  DEBUG_LOGS && console.log(`${color.FgYellow}${JSON.stringify(textAddress)}${color.Reset}`);
 
   return textAddress;
 }
@@ -1336,10 +1334,7 @@ function setHookCharacterCount(name, text) {
     return null;
   }
 
-  const cleanedText = text.replace(
-    /[。…、？！「」―ー・]|<[^>]+>|\r|\n|\u3000/gu,
-    ""
-  );
+  const cleanedText = text.replace(/[。…、？！「」―ー・]|<[^>]+>|\r|\n|\u3000/gu, "");
   hooksStatus[name].characters += cleanedText.length;
 }
 
@@ -1617,8 +1612,7 @@ ui.onchange = (id, current, previous) => {
 function uiStart() {
   // Update character count every 5 seconds
   setInterval(() => {
-    ui.config.selectedHookCharacterCount =
-      hooksStatus[ui.config.selectedHook].characters;
+    ui.config.selectedHookCharacterCount = hooksStatus[ui.config.selectedHook].characters;
   }, 5000);
 
   ui.open()
