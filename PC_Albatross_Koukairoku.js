@@ -26,6 +26,11 @@ class Identity {
     return new Identity(value);
   }
 
+  tap(callback) {
+    callback(this._value);
+    return this;
+  }
+
   value() {
     return this._value;
   }
@@ -66,6 +71,7 @@ trans.replace((s) => {
   const cleanedText = new Identity(s)
     .map((text) => text.replace(/\^?d[\d]+?/g, ""))
     .map((text) => text.replace(/\^n\s*/g, "\n"))
+    .tap((text) => text.match(/\[.+?\]/g)?.forEach((thing) => console.log("ruby:", thing)))
     .map((text) => text.replace(/\||\[.+?\]/g, ""))
     .map((text) => text.trim())
     .value();
