@@ -39,7 +39,7 @@
 const Mono = require("./libMono.js");
 
 const BACKTRACE = false;
-const DEBUG_LOGS = false;
+const DEBUG_LOGS = true;
 
 const OPTIONS = {
   fancyOutput: true, // works best for CJK languages
@@ -371,6 +371,10 @@ const talkController = {
   talkTimer: -1,
   customerText: "",
 
+  get isChoosingTime() {
+    return this.customerText.length > 0;
+  },
+
   clearTexts() {
     this.talks.clear();
     this.names.clear();
@@ -379,10 +383,6 @@ const talkController = {
 
   customerTextHandler(text) {
     this.customerText = text;
-  },
-
-  isChoosingTime() {
-    return this.customerText.length > 0;
   },
 
   nameHandler(name) {
@@ -396,22 +396,27 @@ const talkController = {
     this.talkTimer = setTimeout(() => {
       const texts = [...this.talks];
 
-      if (this.isChoosingTime()) {
+      const outputChoose = () => {
         const second = texts.pop();
         const first = texts.pop();
 
-        const result = OPTIONS.fancyOutput
+        return OPTIONS.fancyOutput
           ? chooseBubbles({ top: first, middle: this.customerText, bottom: second })
           : [first, this.customerText, second].join("\n\n");
+      };
 
-        trans.send(result);
-        this.clearTexts();
-      } else {
-        const result = [...this.names].map((name, index) => name + "\n" + texts[index]).join("\n");
+      const outputNormal = () => {
+        const names = [...this.names];
 
-        trans.send(result);
-        this.clearTexts();
-      }
+        return texts
+          .map((text, index) => (names[index] ? names[index] + "\n" : "") + text)
+          .join("\n");
+      };
+
+      const result = this.isChoosingTime ? outputChoose() : outputNormal();
+
+      trans.send(result);
+      this.clearTexts();
     }, 200);
   },
 };
