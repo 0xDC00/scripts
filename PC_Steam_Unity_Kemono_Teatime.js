@@ -52,13 +52,13 @@ const OPTIONS = {
 
 if (BACKTRACE === true) {
   // too much text
-  // Mono.setHook("", "ART_TMProText", "SetText", -1, {
-  //   onEnter(args) {
-  //     console.log(args[1].readMonoString());
-  //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
-  //     console.warn("callstack:", callstack.splice(0, 8));
-  //   },
-  // });
+  Mono.setHook("", "ART_TMProText", "SetText", -1, {
+    onEnter(args) {
+      args[0].wrap().console.log(args[1].readMonoString());
+      const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
+      console.warn("callstack:", callstack.splice(0, 8));
+    },
+  });
   // WORKING
   // ART_ScriptEngineTalkWindow
   // public void SetText(string text)
@@ -78,13 +78,13 @@ if (BACKTRACE === true) {
   //   },
   // });
 
-  Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
-    onEnter(args) {
-      console.log(args[1].readMonoString());
-      const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
-      console.warn("callstack:", callstack.splice(0, 8));
-    },
-  });
+  // Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
+  //   onEnter(args) {
+  //     console.log(args[1].readMonoString());
+  //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
+  //     console.warn("callstack:", callstack.splice(0, 8));
+  //   },
+  // });
   return;
 }
 
@@ -291,6 +291,7 @@ const texts1 = new Set();
 const topTexts = new Set();
 const middleTexts = new Set();
 const bottomTexts = new Set();
+const deepTexts = new Set();
 
 /** @param {NativePointer} address */
 function readString(address) {
@@ -316,11 +317,12 @@ function genericHandler(text, delay = 200) {
 function orderedHandler() {
   clearTimeout(timer3);
   timer3 = setTimeout(() => {
-    trans.send([...topTexts, ...middleTexts, ...bottomTexts].join("\n"));
+    trans.send([...topTexts, ...middleTexts, ...bottomTexts, ...deepTexts].join("\n"));
 
     topTexts.clear();
     middleTexts.clear();
     bottomTexts.clear();
+    deepTexts.clear();
   }, 600);
 }
 
@@ -364,20 +366,28 @@ function positionBottomHandler(text, list = false) {
   return text;
 }
 
+/** @type {HookHandler} */
+function positionDeepHandler(text, list = false) {
+  textSetControl(text, deepTexts, list);
+  orderedHandler();
+
+  return text;
+}
+
 /** Manages the ordering of dialogue. */
 const talkController = {
-  talks: new Set(),
-  names: new Set(),
-  talkTimer: -1,
+  texts: [],
+  names: [],
   customerText: "",
+  talkTimer: -1,
 
   get isChoosingTime() {
     return this.customerText.length > 0;
   },
 
   clearTexts() {
-    this.talks.clear();
-    this.names.clear();
+    this.texts.length = 0;
+    this.names.length = 0;
     this.customerText = "";
   },
 
@@ -386,28 +396,26 @@ const talkController = {
   },
 
   nameHandler(name) {
-    this.names.add(name);
+    this.names.push(name);
   },
 
   textHandler(text) {
-    this.talks.add(text);
+    this.texts.push(text);
 
     clearTimeout(this.talkTimer);
     this.talkTimer = setTimeout(() => {
-      const texts = [...this.talks];
+      const texts = this.texts;
 
       const outputChoose = () => {
         const second = texts.pop();
         const first = texts.pop();
-
         return OPTIONS.fancyOutput
           ? chooseBubbles({ top: first, middle: this.customerText, bottom: second })
           : [first, this.customerText, second].join("\n\n");
       };
 
       const outputNormal = () => {
-        const names = [...this.names];
-
+        const names = this.names;
         return texts
           .map((text, index) => (names[index] ? names[index] + "\n" : "") + text)
           .join("\n");
@@ -582,6 +590,7 @@ Mono.setHook("", "FoodandRecipiDetail", "SetDetail", -1, {
       FoodMaterialData_DetailReturn.attach({
         onLeave(retval) {
           console.log("onLeave: FoodMaterialData.DetailReturn");
+
           topTexts.clear();
 
           const text = readString(retval);
@@ -611,13 +620,21 @@ Mono.setHook("", "CommentData", "TextReturn", -1, {
     console.log("onLeave: CommentData.TextReturn");
 
     // console.log(this.CommentData_TextReturn_Id, previous_CommentData_TextReturn_Id);
-    if (this.CommentData_TextReturn_Id === previous_CommentData_TextReturn_Id) {
+    // if (this.CommentData_TextReturn_Id === previous_CommentData_TextReturn_Id) {
+    //   return null;
+    // }
+    // previous_CommentData_TextReturn_Id = this.CommentData_TextReturn_Id;
+
+    // const text = readString(retval);
+    // positionBottomHandler(text, true);
+
+    // slightly jank
+    if (this.context.r9.isNull()) {
       return null;
     }
-    previous_CommentData_TextReturn_Id = this.CommentData_TextReturn_Id;
 
     const text = readString(retval);
-    positionBottomHandler(text, true);
+    positionDeepHandler(text);
   },
 });
 
@@ -719,7 +736,7 @@ Mono.setHook("", "CharaBoard", "DataSet", -1, {
 
       // middle
       const descriptionBox = createTextContainer({
-        text: description.replace(/―/g, "ー"),
+        text: description.replace(/―/g, "ー").replace(/…/g, "．．．"),
         type: "box",
         // tail: {
         // direction: "left",
@@ -757,7 +774,13 @@ Mono.setHook("", "CharaBoard", "DataSet", -1, {
 
 //#endregion
 
+let previous = "";
 trans.replace((s) => {
+  if (s === previous) {
+    return null;
+  }
+  previous = s;
+
   DEBUG_LOGS && console.warn(JSON.stringify(s));
 
   return s
