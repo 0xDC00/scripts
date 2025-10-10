@@ -42,7 +42,7 @@ const BACKTRACE = false;
 const DEBUG_LOGS = true;
 
 const OPTIONS = {
-  fancyOutput: true, // works best for CJK languages
+  fancyOutput: false, // works best for CJK languages
   singleSentence: false, // should only be applicable when fancyOutput is false
 };
 
@@ -140,7 +140,9 @@ const simpleBorder = {
 
 // TODO: add text centering
 /**
- * Works best with characters of the same width.
+ * Creates a simple or fancy ASCII textbox.\
+ * Works best with characters of the same width.\
+ * Probably a huge waste of time.
  * @param {Object} style
  * @param {string=} style.type
  * @param {Object} style.tail - Thing on speech bubbles that points towards the speaker
@@ -269,7 +271,6 @@ function createTextContainer({
 
   return container.join("\n");
 }
-// 6/3 = 2
 
 /** @param {string} text */
 function logText(text) {
@@ -338,7 +339,7 @@ function textSetControl(text, set, list = false) {
   set.add(text);
 }
 
-/** @type {HookHandler} */
+/** @type {HookHandler & {list: boolean}} */
 function positionTopHandler(text, list = false) {
   bottomTexts.clear();
 
@@ -348,7 +349,7 @@ function positionTopHandler(text, list = false) {
   return text;
 }
 
-/** @type {HookHandler} */
+/** @type {HookHandler & {list: boolean}} */
 function positionMiddleHandler(text, list = false) {
   bottomTexts.clear();
 
@@ -358,7 +359,7 @@ function positionMiddleHandler(text, list = false) {
   return text;
 }
 
-/** @type {HookHandler} */
+/** @type {HookHandler & {list: boolean}} */
 function positionBottomHandler(text, list = false) {
   textSetControl(text, bottomTexts, list);
   orderedHandler();
@@ -366,7 +367,7 @@ function positionBottomHandler(text, list = false) {
   return text;
 }
 
-/** @type {HookHandler} */
+/** @type {HookHandler & {list: boolean}} */
 function positionDeepHandler(text, list = false) {
   textSetControl(text, deepTexts, list);
   orderedHandler();
