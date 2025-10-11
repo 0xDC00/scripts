@@ -1,6 +1,5 @@
 // ==UserScript==
-// @name         [0100B9701BD4E000] Distorted_Code_Seija_no_Nokoriga
-
+// @name         [0100B9701BD4E000] Distorted Code Seija no Nokoriga
 // @version      1.0.1
 // @author       GO123
 // @description  Citron
@@ -37,3 +36,4 @@ function handler(regs, index, hookname) {
     ;
   return s;
 }
+
