@@ -1,6 +1,5 @@
 // ==UserScript==
 // @name         [0100B9701BD4E000] Distorted Code Seija no Nokoriga
-
 // @version      1.0.1
 // @author       GO123
 // @description  Citron
@@ -59,10 +58,8 @@ function handler(regs, index, hookname) {
 
 
     }
-
-    ;
 }
-ui.title = 'Distorted code Settings';
+ui.title = 'Distorted Code Settings';
 ui.description = `Modify script behavior`;
 
 ui.options = [
@@ -71,6 +68,7 @@ ui.options = [
         type: 'text',
         label: 'Log Label',
         defaultValue: 'DistortedCode',
+		readOnly: true,
         help: 'The label to use in the console log.',
     },
     {
@@ -99,3 +97,4 @@ ui.open().then(() => {
     .catch(err => {
         console.error(err);
     });
+
