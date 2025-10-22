@@ -29,7 +29,7 @@
 const ui = require("./libUI.js");
 const Mono = require("./libMono.js");
 
-const DEBUG_LOGS = true;
+const DEBUG_LOGS = false;
 
 const SETTINGS = {
   singleSentence: true,
@@ -320,7 +320,7 @@ ui.description = /*html*/ `
 <br>Check Agent's console output to see each text's hook name.
 `;
 
-ui.storage = false;
+// ui.storage = false;
 
 ui.options = [
   {
