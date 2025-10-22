@@ -237,8 +237,13 @@ setHook("Tips", "", "UIPauseMenu", "StartPause", -1, {
     /** @type {Mono.MonoObjectWrapper} */
     const thiz = this.thiz;
     const textComponent = thiz.tipsMessageObj_.wrap().GetComponentByName("Text").wrap();
-    const text = readString(textComponent.text);
-    handler(text);
+    let tip = readString(textComponent.text);
+
+    if (SETTINGS.singleSentence) {
+      tip = tip.replace(/([^\n】])\n(?!\n)/gu, "$1　");
+    }
+
+    handler(tip);
   },
 });
 
