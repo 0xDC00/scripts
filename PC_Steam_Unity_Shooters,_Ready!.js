@@ -333,7 +333,7 @@ ui.options = [
     type: "checkbox",
     label: "Single-line sentences",
     help: `Attempt to convert sentences that span multiple lines into a single line.
-    Useful for external apps that need to parse sentences.
+    Useful for external apps or translation services that need to parse sentences.
     Disable if you want to retain the text's original formatting.`,
     defaultValue: true,
   },
