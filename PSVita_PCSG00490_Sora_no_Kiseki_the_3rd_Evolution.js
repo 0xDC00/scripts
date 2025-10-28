@@ -5,6 +5,9 @@
 // @description  Vita3k (v0.1.9 3520)
 // ==/UserScript==
 
+console.warn("This was one of my first scripts, so it might be a bit scuffed at times.\n");
+console.warn("Known issue:\n- A random line of text might get extracted on rare occasions.");
+
 const { setHook } = require("./libVita3k.js");
 
 const miscHandler = trans.send(handler, 200);
@@ -42,7 +45,7 @@ setHook({
     0x80113494: questHandler.bind_(null, 6, 0, "doors"), // In handbook,
     0x8010d854: nameHandler.bind_(null, 1, 0, "recipe name"),
     0x8010b93c: descriptionHandler.bind_(null, 0, 0, "recipe"),
-})
+});
 
 let previousQuest = "";
 let fullQuest = "";
@@ -349,8 +352,8 @@ function mainTextHandler(regs, index, offset, hookName) {
     // force open the gate after 4 sec of no text
     clearTimeout(timer);
     timer = setTimeout(() => {
-        gate = true
-    }, 4000)
+        gate = true;
+    }, 4000);
 }
 
 function readString(address, options) {

@@ -21,7 +21,8 @@ setHook({
         //[0x80083174 - 0x80004000]: mainHandler, // x0 name + text (readUtf8String) - E0 ? 03 91 ? 43 04 91
     },
     '1.2.0': {
-        [0x800c2d20 - 0x80004000]: mainHandler, // ret x0 name + text (readShiftJisString)
+        [0x800bdff8 - 0x80004000]: mainHandler, // 0x800bd6c8 instructions from 1.0.0 matched to 1.2.0
+        //[0x800c2d20 - 0x80004000]: mainHandler, // ret x0 name + text (readShiftJisString)
         //[0x800869b0 - 0x80004000]: mainHandler, // x0 name + text (readUtf8String) - E0 ? 03 91 ? 43 04 91
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);

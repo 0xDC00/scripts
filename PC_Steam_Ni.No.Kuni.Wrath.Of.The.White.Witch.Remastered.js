@@ -7,8 +7,20 @@
 //
 // https://store.steampowered.com/app/798460/Ni_no_Kuni_Wrath_of_the_White_Witch_Remastered/
 // ==/UserScript==
-const __e = Process.enumerateModules()[0];
-const handlerLine = trans.send((s) => s, "250+");
+
+// The time span in milliseconds during which:
+// - Text events are merged into a single message (for agent)
+// - Text is deduplicated (text will not be emitted over the websocket if it has
+//   been less than this many milliseconds since the text was last seen)
+const debounceMs = 250;
+
+// Strings that should not be sent to agent. The pause menu text otherwise shows
+// up every time you alt-tab away from the game, which is a bit much.
+const ignoredText = [
+  "つづける",
+  "タイトルにもどる",
+  "スキップ"
+];
 
 const hooks = [
   {
@@ -43,6 +55,9 @@ const hooks = [
   // },
 ];
 
+const __e = Process.enumerateModules()[0];
+const handlerLine = trans.send((s) => s, `${debounceMs}+`);
+
 (function () {
   for (const hook of hooks) {
     const results = Memory.scanSync(__e.base, __e.size, hook.signature);
@@ -72,7 +87,15 @@ const hooks = [
   }
 
   for (const hook of hooks) {
-    const lastTwentyStrings = [];
+    // This stores the timestamp a string was last seen. Needed because the
+    // hooked function is called with the same text for every frame. This
+    // approach is much less aggressive than simply keeping track of a list of
+    // recently seen strings, which also filters out repeat visits of the same
+    // menu page.
+    const lastSeenTimestamps = new Map();
+    // Needed to work around `Date.now()` not being monotonic, see below
+    let lastTimestamp = Date.now();
+
     Interceptor.attach(hook.address, {
       onEnter(args) {
         const string = args[hook.argIndex].readCString();
@@ -99,14 +122,39 @@ const hooks = [
 
         // Some of these hooks are called every frame with the same value(s), so
         // duplicate values need to be filtered out
-        if (cleaned === "" || lastTwentyStrings.includes(cleaned)) {
+        if (cleaned === "" || ignoredText.includes(cleaned)) {
+          return;
+        }
+
+        // NOTE: `Date.now()` is not a good way to measure time here because
+        //       it's not monotonic, but the `performance` API doesn't seem to
+        //       exist in QuickJS and `os.now()` does not seem to be available
+        //       either. This check at least prevents the script from breaking
+        //       if time suddenly goes backwards.
+        const now = Date.now();
+        if (lastTimestamp > now) {
+          lastSeenTimestamps.clear();
+        }
+        lastTimestamp = now;
+
+        const lastSeen = lastSeenTimestamps.get(cleaned);
+        lastSeenTimestamps.set(cleaned, now);
+
+        const hideRepeatsSince = now - debounceMs;
+        if (lastSeen !== undefined && lastSeen >= hideRepeatsSince) {
           return;
         }
 
         handlerLine(cleaned);
-        lastTwentyStrings.push(cleaned);
-        if (lastTwentyStrings.size > 20) {
-          lastTwentyStrings.shift();
+
+        // This map needs to be occasionally pruned so we don't store a whole
+        // game's worth of strings
+        if (lastSeenTimestamps.size > 50) {
+          for (const [key, lastSeen] of lastSeenTimestamps) {
+            if (lastSeen < hideRepeatsSince) {
+              lastSeenTimestamps.delete(key);
+            }
+          }
         }
       },
     });
