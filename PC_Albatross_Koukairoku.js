@@ -8,7 +8,7 @@
 // ==/UserScript==
 
 const __e = Process.enumerateModules()[0];
-const handler = trans.send((s) => s, -100);
+const handler = trans.send((s) => s, "200+");
 
 const DEBUG_LOGS = false;
 
@@ -52,9 +52,9 @@ class Identity {
   }
 }
 
-attach("DialogueHook", "0f 85 ?? ?? ?? ?? 8b c6 5f 5e c6 03", "ebp");
-
-console.log("\nMight be missing some brackets\n");
+// idk how i found this hook
+// edi -> line number
+attach("DialogueHook", "e8 ?? ?? ?? ?? 8b b4", "eax");
 
 function attach(name, pattern, register) {
   const results = Memory.scanSync(__e.base, __e.size, pattern);
@@ -70,7 +70,15 @@ function attach(name, pattern, register) {
   console.log(`[${name}] @ ${address}`);
 
   Interceptor.attach(address, function (args) {
-    let text = this.context[register].readShiftJisString();
+    /** @type {NativePointer} */
+    const clue = this.context.ebp;
+    if (!clue.isNull()) {
+      DEBUG_LOGS && console.warn("Scrolling detected, skipping text...");
+      return null;
+    }
+
+    /** @type {string} */
+    const text = this.context[register].readShiftJisString();
 
     handler(text);
   });
