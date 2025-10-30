@@ -14,18 +14,34 @@ const DEBUG_LOGS = false;
 
 let previous = "";
 
-// A monad is just a monoid in the category of endofunctors
+/**
+ * A monad is just a monoid in the category of endofunctors.
+ * @template T The type of the value held by the Identity instance.
+ */
 class Identity {
+  /** @type {T} */
+  _value;
+
+  /** @param {T} value The initial value to wrap. */
   constructor(value) {
     this._value = value;
   }
 
+  /**
+   * @template U The type of the value returned by the transformer.
+   * @param {(value: T) => U} transformer
+   * @returns {Identity<U>}
+   */
   map(transformer) {
     const value = transformer(this._value);
     DEBUG_LOGS && console.warn(JSON.stringify(value));
     return new Identity(value);
   }
 
+  /**
+   * @param {(value: T) => void} callback
+   * @returns {this}
+   */
   tap(callback) {
     callback(this._value);
     return this;
@@ -60,7 +76,7 @@ function attach(name, pattern, register) {
   });
 }
 
-trans.replace((s) => {
+trans.replace((/**@type {string}*/ s) => {
   if (s === previous) {
     return null;
   }
