@@ -151,7 +151,7 @@ const hooksMain = {
   DatalogEntry: {
     pattern: "E8 FB 1A 06 00",
     register: "edx",
-    handler: mainHandler,
+    handler: positionMiddleHandler,
   },
   Tutorial: {
     pattern: "83 BC 10 B8 00 00 00 00 75 11 6A 01 68 24 9C 19 01 8D 4D DC",
@@ -304,7 +304,6 @@ function mysteryHookStrategy({ address, name, target, handler }) {
     const hook = Interceptor.attach(target.address, {
       onEnter(args) {
         if (this.context.eax.equals(this.context.edx)) {
-          console.warn("skipped, equal eax and edx");
           this.shouldSkip = true;
           return null;
         }
@@ -313,7 +312,6 @@ function mysteryHookStrategy({ address, name, target, handler }) {
       },
       onLeave(retval) {
         if (this.shouldSkip) {
-          console.warn("skipped in onleave");
           return null;
         }
 
@@ -963,9 +961,10 @@ function textSetControl(text, set, list = false) {
 }
 
 /** @type {HookHandler & {list: boolean}} */
-function positionTopHandler(text, list = false) {
+function positionTopHandler(address, list = false) {
   bottomTexts.clear();
 
+  const text = readString(address);
   textSetControl(text, topTexts, list);
   orderedHandler();
 
@@ -973,9 +972,10 @@ function positionTopHandler(text, list = false) {
 }
 
 /** @type {HookHandler & {list: boolean}} */
-function positionMiddleHandler(text, list = false) {
+function positionMiddleHandler(address, list = false) {
   bottomTexts.clear();
 
+  const text = readString(address);
   textSetControl(text, middleTexts, list);
   orderedHandler();
 
@@ -983,7 +983,8 @@ function positionMiddleHandler(text, list = false) {
 }
 
 /** @type {HookHandler & {list: boolean}} */
-function positionBottomHandler(text, list = false) {
+function positionBottomHandler(address, list = false) {
+  const text = readString(address);
   textSetControl(text, bottomTexts, list);
   orderedHandler();
 
@@ -991,7 +992,8 @@ function positionBottomHandler(text, list = false) {
 }
 
 /** @type {HookHandler & {list: boolean}} */
-function positionDeepHandler(text, list = false) {
+function positionDeepHandler(address, list = false) {
+  const text = readString(address);
   textSetControl(text, deepTexts, list);
   orderedHandler();
 
@@ -1008,19 +1010,23 @@ function mainHandler(address) {
   return text;
 }
 
+let menuOptionDescriptionPrevious = NULL;
 /** @type {HookHandler} */
 function MenuOptionDescriptionHandler(address) {
-  const clue = this.outerContext.eax.readShiftJisString();
+  /** @type {NativePointer} */
+  const eax = this.outerContext.eax;
+
+  if (eax.equals(menuOptionDescriptionPrevious) || eax.isNull()) {
+    return null;
+  }
+  menuOptionDescriptionPrevious = eax;
+
+  const clue = eax.readShiftJisString();
 
   if (clue.startsWith("$")) {
-    const text = readString(address);
-
-    positionTopHandler(text);
-    return text;
+    return positionTopHandler(address);
   } else {
-    positionTopHandler(clue);
-
-    return clue;
+    return positionTopHandler(eax);
   }
 }
 
