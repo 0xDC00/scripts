@@ -62,9 +62,9 @@
 
 const __e = Process.enumerateModules()[0];
 
-const BACKTRACE = false;
-const DEBUG_LOGS = true;
-const INSPECT_ARGS_REGS = true;
+const BACKTRACE = true;
+const DEBUG_LOGS = false;
+const INSPECT_ARGS_REGS = false;
 
 const SETTINGS = {
   singleSentence: true,
@@ -80,8 +80,8 @@ let hooksAuxCount = 0;
 let timer1 = null;
 let timer3 = null;
 
-const encoder = new TextEncoder("utf-8");
-const decoder = new TextDecoder("utf-8");
+const encoder = new TextEncoder("shift_jis");
+const decoder = new TextDecoder("shift_jis");
 
 const texts1 = new Set();
 
@@ -153,7 +153,7 @@ const hooksMain = {
     register: "edx",
     handler: positionMiddleHandler,
   },
-  Tutorial: {
+  Popups: {
     pattern: "83 BC 10 B8 00 00 00 00 75 11 6A 01 68 24 9C 19 01 8D 4D DC",
     target: targetHooks.MYSTERY,
     handler: mainHandler,
@@ -321,8 +321,9 @@ function mysteryHookStrategy({ address, name, target, handler }) {
 
         console.log("onLeave: " + name);
 
-        const text = handler.call(this, this.edx) ?? null;
         // console.log(hexdump(this.edx, { header: false, ansi: false, length: 0x100 }));
+
+        const text = handler.call(this, this.edx) ?? null;
         setHookCharacterCount(name, text);
       },
     });
@@ -577,6 +578,15 @@ function attachHook(params) {
 
 // https://github.com/LR-Research-Team/Datalog/wiki/ZTR
 const encodingKeys = {
+  singleByte: {
+    "00": "{End}",
+    "01": "{Escape}",
+    "02": "{Italic}",
+    "03": "{StraightLine}",
+    "04": "{Article}",
+    "05": "{ArticleMany}",
+    ff: "{FF}",
+  },
   icons: {
     f0_40: "{Icon Clock}",
     f0_41: "{Icon Warning}",
@@ -840,6 +850,18 @@ const encodingKeys = {
 const encodingKeys2 = new Map();
 for (const category in encodingKeys) {
   for (const [key, value] of Object.entries(encodingKeys[category])) {
+    let newKey;
+    if (key.includes("_")) {
+      const [hex1, hex2] = key.split("_");
+      newKey = parseInt(hex1, 16) + parseInt(hex2, 16);
+    } else {
+      newKey = parseInt(key, 16);
+    }
+    encodingKeys2.set(newKey, value);
+  }
+}
+for (const category in encodingKeys) {
+  for (const [key, value] of Object.entries(encodingKeys[category])) {
     const [hex1, hex2] = key.split("_");
     const newKey = parseInt(hex1, 16) + parseInt(hex2, 16);
     encodingKeys2.set(newKey, value);
@@ -907,12 +929,17 @@ function readString(address) {
       s += "\n";
       address = address.add(1);
     }
+    // Single byte key
+    else if (byte1 >= 0x01 && byte1 <= 0x05) {
+      console.warn("Single byte key:", encodingKeys2.get(byte1));
+      address = address.add(1);
+    }
     // null terminator
     else if (byte1 === 0x0) {
       // console.warn("Found null terminator");
       break;
     } else {
-      c = decoder.decode(address.readByteArray(4))[0]; // utf-8: 1->4 bytes.
+      c = decoder.decode([byte1, byte2])[0];
       s += c;
       address = address.add(encoder.encode(c).byteLength);
     }
@@ -1017,6 +1044,7 @@ function MenuOptionDescriptionHandler(address) {
   const eax = this.outerContext.eax;
 
   if (eax.equals(menuOptionDescriptionPrevious) || eax.isNull()) {
+    console.warn("Skipping duplicate or null MenuOptionDescription");
     return null;
   }
   menuOptionDescriptionPrevious = eax;
