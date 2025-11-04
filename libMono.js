@@ -2380,7 +2380,7 @@ function monoInit(isAot) {
                     }
                 }
 
-                console.log('\r\nFeilds:');
+                console.log('\r\nFields:');
                 const iter = Memory.alloc(POINTER_SIZE);
                 while (true) {
                     const hfield = MonoApi.mono_class_get_fields(thix.handle, iter);
