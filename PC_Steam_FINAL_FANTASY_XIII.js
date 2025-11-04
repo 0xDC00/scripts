@@ -62,8 +62,8 @@
 
 const __e = Process.enumerateModules()[0];
 
-const BACKTRACE = true;
-const DEBUG_LOGS = false;
+const BACKTRACE = false;
+const DEBUG_LOGS = true;
 const INSPECT_ARGS_REGS = false;
 
 const SETTINGS = {
@@ -155,6 +155,11 @@ const hooksMain = {
   },
   Popups: {
     pattern: "83 BC 10 B8 00 00 00 00 75 11 6A 01 68 24 9C 19 01 8D 4D DC",
+    target: targetHooks.MYSTERY,
+    handler: mainHandler,
+  },
+  Tutorial: {
+    pattern: "E8 C0 80 F0 FF",
     target: targetHooks.MYSTERY,
     handler: mainHandler,
   },
@@ -321,7 +326,7 @@ function mysteryHookStrategy({ address, name, target, handler }) {
 
         console.log("onLeave: " + name);
 
-        // console.log(hexdump(this.edx, { header: false, ansi: false, length: 0x100 }));
+        DEBUG_LOGS && console.log(hexdump(this.edx, { header: false, ansi: false, length: 0x100 }));
 
         const text = handler.call(this, this.edx) ?? null;
         setHookCharacterCount(name, text);
@@ -333,7 +338,7 @@ function mysteryHookStrategy({ address, name, target, handler }) {
       if (isDetached === false) {
         hook.detach();
         Interceptor.flush();
-        console.warn("timeout: detached hook for " + name);
+        DEBUG_LOGS && console.warn("Timeout: detached hook for " + name);
       }
     }, 10);
   });
@@ -1043,13 +1048,18 @@ function MenuOptionDescriptionHandler(address) {
   /** @type {NativePointer} */
   const eax = this.outerContext.eax;
 
-  if (eax.equals(menuOptionDescriptionPrevious) || eax.isNull()) {
-    console.warn("Skipping duplicate or null MenuOptionDescription");
+  if (eax.isNull()) {
+    DEBUG_LOGS && console.warn("Skip null eax");
     return null;
   }
-  menuOptionDescriptionPrevious = eax;
 
   const clue = eax.readShiftJisString();
+
+  if (menuOptionDescriptionPrevious === clue) {
+    DEBUG_LOGS && console.warn("Skip duplicate clue");
+    return null;
+  }
+  menuOptionDescriptionPrevious = clue;
 
   if (clue.startsWith("$")) {
     return positionTopHandler(address);
