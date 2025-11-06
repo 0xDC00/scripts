@@ -92,15 +92,6 @@ const deepTexts = new Set();
 
 let previous = "";
 
-/** @param {NativePointer} address */
-function readString(address) {
-  const text = address.readMonoString();
-
-  DEBUG_LOGS && logText(text);
-
-  return text;
-}
-
 //#endregion
 
 //#region Hooks
@@ -160,6 +151,11 @@ const hooksMain = {
   },
   Popups1: {
     pattern: "E8 C0 80 F0 FF",
+    target: targetHooks.MYSTERY,
+    handler: mainHandler,
+  },
+  Popups2: {
+    pattern: "e8 b0 2b 00 00",
     target: targetHooks.MYSTERY,
     handler: mainHandler,
   },
