@@ -158,7 +158,7 @@ const hooksMain = {
     target: targetHooks.MYSTERY,
     handler: mainHandler,
   },
-  Tutorial: {
+  Popups1: {
     pattern: "E8 C0 80 F0 FF",
     target: targetHooks.MYSTERY,
     handler: mainHandler,
@@ -851,7 +851,7 @@ const encodingKeys = {
 };
 
 // encodingKeys is for human readability, while encodingKeys2 is for actual use
-// keys as numbers avoids needing to convert hex to strings for object lookups
+// keys as numbers avoids needing to convert hex to strings in readString()
 const encodingKeys2 = new Map();
 for (const category in encodingKeys) {
   for (const [key, value] of Object.entries(encodingKeys[category])) {
@@ -879,8 +879,6 @@ for (const category in encodingKeys) {
 
 /** @param {NativePointer} address */
 function readString(address) {
-  let limit = 500;
-  let count = 0;
   let byte1 = 0;
   let byte2 = 0;
   let s = "";
@@ -890,25 +888,23 @@ function readString(address) {
     byte1 = address.readU8();
     byte2 = address.add(1).readU8();
 
+    // icons
     if (byte1 >= 0xf0 && byte1 <= 0xf2 && byte2 >= 0x40 && byte2 <= 0x70) {
       const controlCode = encodingKeys2.get(byte1 + byte2);
       if (!controlCode) {
         console.warn("Unknown control code:", byte1, byte2);
-        c = `[${byte1} ${byte2}]`;
-        s += c;
+        s += `[${byte1} ${byte2}]`;
       } else {
         s += "▢"; // placeholder
       }
       address = address.add(2);
     }
-
     // colors
     else if (byte1 === 0xf9 && byte2 >= 0x32 && byte2 <= 0x5b) {
       const colorCode = encodingKeys2.get(byte1 + byte2);
       if (!colorCode) {
         console.warn("Unknown color code:", byte1, byte2);
-        c = `[${byte1} ${byte2}]`;
-        s += c;
+        s += `[${byte1} ${byte2}]`;
       }
       address = address.add(2);
     }
@@ -917,8 +913,7 @@ function readString(address) {
       const specialChar = encodingKeys2.get(byte1 + byte2);
       if (!specialChar) {
         console.warn("Unknown special character:", byte1, byte2);
-        c = `[${byte1} ${byte2}]`;
-        s += c;
+        s += `[${byte1} ${byte2}]`;
       } else {
         s += specialChar;
       }
@@ -934,7 +929,7 @@ function readString(address) {
       s += "\n";
       address = address.add(1);
     }
-    // Single byte key
+    // single byte key
     else if (byte1 >= 0x01 && byte1 <= 0x05) {
       console.warn("Single byte key:", encodingKeys2.get(byte1));
       address = address.add(1);
@@ -944,12 +939,12 @@ function readString(address) {
       // console.warn("Found null terminator");
       break;
     } else {
-      c = decoder.decode([byte1, byte2])[0];
-      s += c;
+      s += decoder.decode([byte1, byte2])[0];
       address = address.add(encoder.encode(c).byteLength);
     }
   }
 
+  // $(t_dpad) -> 方向キー
   const text = s;
 
   DEBUG_LOGS && console.log(`${color.FgYellow}${JSON.stringify(text)}${color.Reset}`);
@@ -982,8 +977,8 @@ function orderedHandler() {
 
 /**
  * @param {string} text
- * @param {Set<string>} set
- * @param {boolean} list
+ * @param {Set<string>} set Positional text queue
+ * @param {boolean} list Whether to append text to the list instead of overwriting
  */
 function textSetControl(text, set, list = false) {
   if (list === false) {
@@ -1054,6 +1049,11 @@ function MenuOptionDescriptionHandler(address) {
   }
 
   const clue = eax.readShiftJisString();
+
+  if (clue === "") {
+    DEBUG_LOGS && console.warn("Skip empty clue");
+    return null;
+  }
 
   if (menuOptionDescriptionPrevious === clue) {
     DEBUG_LOGS && console.warn("Skip duplicate clue");
@@ -1169,15 +1169,15 @@ function inspectArgs(args) {
     // yeehaw
     try {
       type = "P";
-      text = args[i].readPointer().readShiftJisString();
+      text = readString(args[i].readPointer());
     } catch (err) {
       try {
         type = "PP";
-        text = args[i].readPointer().readPointer().readShiftJisString();
+        text = readString(args[i].readPointer().readPointer());
       } catch (err) {
         try {
           type = "S";
-          text = args[i].readShiftJisString();
+          text = readString(args[i]);
         } catch (err) {
           // type = "A";
           // text = args[i].toString();
@@ -1224,7 +1224,7 @@ function inspectRegs(context) {
   for (const reg of regs) {
     address = context[reg];
     try {
-      text = address.readShiftJisString();
+      text = readString(address);
     } catch (err) {
       continue;
     }
