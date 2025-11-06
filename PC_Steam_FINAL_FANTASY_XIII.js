@@ -63,6 +63,7 @@
 const __e = Process.enumerateModules()[0];
 
 const BACKTRACE = false;
+const BACKTRACE = true;
 const DEBUG_LOGS = true;
 const INSPECT_ARGS_REGS = false;
 
@@ -943,7 +944,7 @@ function readString(address) {
   // $(t_dpad) -> 方向キー
   const text = s;
 
-  DEBUG_LOGS && console.log(`${color.FgYellow}${JSON.stringify(text)}${color.Reset}`);
+  DEBUG_LOGS && !BACKTRACE && console.log(`${color.FgYellow}${JSON.stringify(text)}${color.Reset}`);
 
   return text;
 }
@@ -1238,6 +1239,57 @@ function inspectRegs(context) {
   regsTexts.length = 0;
 }
 
+/**
+ * @param {NativePointer} relativeOffset
+ * @returns {String}
+ */
+function createCallPattern(relativeOffset) {
+  // 1. Convert the numeric offset to a hex string.
+  let hexOperand = relativeOffset.toString(16);
+
+  // 2. Pad with leading zeros to ensure it's 8 characters (4 bytes).
+  // This is crucial for offsets smaller than 0x10000000.
+  hexOperand = hexOperand.padStart(8, "0"); // e.g., "0027c3ad"
+
+  // 3. Split the hex string into an array of byte pairs.
+  const bytes = hexOperand.match(/../g);
+  if (!bytes) {
+    return "e8 00 00 00 00"; // Return a default or handle error
+  }
+
+  // 4. Reverse the byte order to create the little-endian pattern.
+  const littleEndianPattern = bytes.reverse().join(" "); // e.g., "ad c3 27 00"
+
+  // 5. Prepend the 'call' opcode (e8) and a space.
+  const fullPattern = "e8 " + littleEndianPattern;
+
+  return fullPattern;
+}
+
+/**
+ * @param {Instruction} ins
+ * @returns {NativePointer}
+ */
+function getCallRelativeOffset(ins) {
+  if (ins.mnemonic !== "call") {
+    // console.warn(`Instruction ${ins.address} is not a call`);
+    return NULL;
+  }
+
+  const operand = ins.operands[0];
+  if (operand.type !== "imm") {
+    // console.warn("Call operand is not immediate");
+    return NULL;
+  }
+
+  const insNext = ins.next;
+  const functionAddress = ptr(operand.value);
+
+  const relativeOffset = functionAddress.sub(insNext);
+
+  return relativeOffset;
+}
+
 /** Prints the backtrace or callstack for a hook. */
 function startTrace() {
   console.warn("Tracing!!");
@@ -1247,41 +1299,7 @@ function startTrace() {
   const traceAddress = getPatternAddress(traceTarget.name, traceTarget.pattern);
   traceTarget.address = traceAddress;
   const previousTexts = new Set();
-
-  // Interceptor.attach(traceAddress, {
-  //   onEnter(args) {
-  //     let text = "";
-  //     const context = this.context;
-  //     try {
-  //       text = getTreasureAddress({
-  //         target: traceTarget,
-  //         args,
-  //         context,
-  //       }).readShiftJisString();
-  //     } catch (err) {
-  //       // console.error("Reading from address failed:", err.message);
-  //       return null;
-  //     }
-
-  //     if (previousTexts.has(text)) {
-  //       return null;
-  //     }
-  //     previousTexts.add(text);
-
-  //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
-
-  //     console.log(`
-  //       \rONENTER: ${traceTarget.name}
-  //       \r${text}
-  //       \rCallstack: ${callstack.splice(0, 8)}
-  //       \rReturn: ${this.returnAddress}`);
-
-  //     if (INSPECT_ARGS_REGS === true) {
-  //       inspectArgs(args);
-  //       inspectRegs(this.context);
-  //     }
-  //   },
-  // });
+  const previousAddresses = new Set();
 
   Interceptor.attach(traceAddress, {
     onEnter(args) {
@@ -1307,11 +1325,25 @@ function startTrace() {
       }
       previousTexts.add(text);
 
-      const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
+      const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE).splice(2, 8);
+      const result = [];
+
+      for (let i = 0; i < callstack.length; i++) {
+        const addr = callstack[i];
+        const ins = Instruction.parse(addr.sub(0x5));
+        const offset = getCallRelativeOffset(ins);
+
+        if (offset.isNull()) {
+          result.push(` ${i + 1}. ${addr.toString()}`);
+        } else {
+          const pattern = createCallPattern(offset);
+          result.push(` ${i + 1}. ${addr.toString()} - ${pattern}`);
+        }
+      }
 
       console.log(`ONLEAVE: ${traceTarget.name}
         \r${text}
-        \rCallstack: ${callstack.splice(0, 8)}`);
+        \rCallstack: \n${result.join("\r\n")}\n`);
     },
   });
 }
