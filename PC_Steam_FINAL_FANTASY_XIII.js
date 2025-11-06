@@ -882,7 +882,6 @@ function readString(address) {
   let byte1 = 0;
   let byte2 = 0;
   let s = "";
-  let c = "";
 
   while (true) {
     byte1 = address.readU8();
@@ -939,7 +938,8 @@ function readString(address) {
       // console.warn("Found null terminator");
       break;
     } else {
-      s += decoder.decode([byte1, byte2])[0];
+      const c = decoder.decode([byte1, byte2])[0];
+      s += c;
       address = address.add(encoder.encode(c).byteLength);
     }
   }
