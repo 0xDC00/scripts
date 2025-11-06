@@ -62,7 +62,6 @@
 
 const __e = Process.enumerateModules()[0];
 
-const BACKTRACE = false;
 const BACKTRACE = true;
 const DEBUG_LOGS = true;
 const INSPECT_ARGS_REGS = false;
@@ -100,6 +99,8 @@ let previous = "";
 const hooksStatus = {
   // exampleHookName: { enabled: true, characters: 0 },
 };
+
+const returnAddresses = new Set();
 
 // ASLR disabled
 /** @type {Object.<string, TargetHook>} */
@@ -510,7 +511,8 @@ function setupHooks() {
   for (const hook in targetHooks) {
     const name = hook;
     const pattern = targetHooks[name].pattern;
-    targetHooks[hook].address = getPatternAddress(name, pattern);
+    const targetHookAddress = getPatternAddress(name, pattern);
+    targetHooks[hook].address = targetHookAddress;
     hooksAuxCount += 1;
   }
 
@@ -520,7 +522,8 @@ function setupHooks() {
 
     if (origins) {
       for (const origin of origins) {
-        returnAddresses.add(getPatternAddress(name + "RETURN", origin).toUInt32());
+        const returnAddress = getPatternAddress(name + "RETURN", origin);
+        returnAddresses.add(returnAddress.toUInt32());
         hooksAuxCount += 1;
       }
     }
@@ -944,7 +947,9 @@ function readString(address) {
   // $(t_dpad) -> 方向キー
   const text = s;
 
-  DEBUG_LOGS && !BACKTRACE && console.log(`${color.FgYellow}${JSON.stringify(text)}${color.Reset}`);
+  DEBUG_LOGS &&
+    !BACKTRACE &&
+    console.log(`${colors.FgYellow}${JSON.stringify(text)}${colors.Reset}`);
 
   return text;
 }
@@ -1080,7 +1085,7 @@ trans.replace((/**@type {string}*/ s) => {
 
 //#region Miscellaneous
 
-const color = {
+const colors = {
   Reset: "\x1b[0m",
   Bright: "\x1b[1m",
   Dim: "\x1b[2m",
@@ -1111,11 +1116,11 @@ const color = {
 };
 
 function logText(message) {
-  console.log(`${color.FgYellow}${JSON.stringify(message)}${color.Reset}`);
+  console.log(`${colors.FgYellow}${JSON.stringify(message)}${colors.Reset}`);
 }
 
 function logDim(message) {
-  console.log(`${color.Dim}${message}${color.Reset}`);
+  console.log(`${colors.Dim}${message}${colors.Reset}`);
 }
 
 function validateHooks() {
@@ -1192,7 +1197,7 @@ function inspectArgs(args) {
   }
 
   for (const text of argsTexts) {
-    console.log(`${color.BgMagenta}${text}${color.Reset}`);
+    console.log(`${colors.BgMagenta}${text}${colors.Reset}`);
   }
   argsTexts.length = 0;
 }
@@ -1234,7 +1239,7 @@ function inspectRegs(context) {
   }
 
   for (const text of regsTexts) {
-    console.log(`${color.BgBlue}${text}${color.Reset}`);
+    console.log(`${colors.BgBlue}${text}${colors.Reset}`);
   }
   regsTexts.length = 0;
 }
@@ -1294,6 +1299,14 @@ function getCallRelativeOffset(ins) {
 function startTrace() {
   console.warn("Tracing!!");
 
+  console.warn("Storing hooked addresses...");
+  const hookedAddresses = new Set();
+  for (const hook in hooks) {
+    const hookInfo = hooks[hook];
+    const address = getPatternAddress(hook, hookInfo.pattern);
+    hookedAddresses.add(address.toUInt32());
+  }
+
   const traceTarget = targetHooks.MYSTERY;
 
   const traceAddress = getPatternAddress(traceTarget.name, traceTarget.pattern);
@@ -1325,19 +1338,30 @@ function startTrace() {
       }
       previousTexts.add(text);
 
+      // first two are redundant
       const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE).splice(2, 8);
       const result = [];
 
       for (let i = 0; i < callstack.length; i++) {
-        const addr = callstack[i];
-        const ins = Instruction.parse(addr.sub(0x5));
+        let color = "";
+        const returnAddress = callstack[i];
+        const callInsAddress = returnAddress.sub(0x5); // not quite right but good enough
+
+        // Highlight if the call instruction is from a hooked function
+        if (hookedAddresses.has(callInsAddress.toUInt32())) {
+          color = colors.BgBlue;
+        }
+
+        const ins = Instruction.parse(callInsAddress);
         const offset = getCallRelativeOffset(ins);
+        const returnAddressString = returnAddress.toString();
+        const relations = ` ${i + 1}. ${callInsAddress.toString()}`;
 
         if (offset.isNull()) {
-          result.push(` ${i + 1}. ${addr.toString()}`);
+          result.push(relations);
         } else {
           const pattern = createCallPattern(offset);
-          result.push(` ${i + 1}. ${addr.toString()} - ${pattern}`);
+          result.push(`${color}${relations} -> ${returnAddressString} - ${pattern}${colors.Reset}`);
         }
       }
 
