@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [0100D11018A7E000] Angelique Luminarise
+// @name         [0100E190117D6000] Angelique Luminarise
 // @version      1.0.0
 // @author       [DC]
 // @description  Yuzu
