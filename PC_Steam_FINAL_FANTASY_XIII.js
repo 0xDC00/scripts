@@ -195,7 +195,7 @@ const hooksMain = {
     pattern: "E8 BB ED E9 FF",
     // pattern: "E8 6C 6F 0A 00",
     target: targetHooks.MYSTERY,
-    handler: MenuOptionDescriptionHandler,
+    handler: menuOptionDescriptionHandler,
   },
 };
 
@@ -908,7 +908,7 @@ function mainHandler(address) {
 
 let menuOptionDescriptionPrevious = NULL;
 /** @type {HookHandler} */
-function MenuOptionDescriptionHandler(address) {
+function menuOptionDescriptionHandler(address) {
   /** @type {NativePointer} */
   const eax = this.outerContext.eax;
 
