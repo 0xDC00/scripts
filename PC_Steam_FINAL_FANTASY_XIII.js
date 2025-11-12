@@ -4,6 +4,9 @@
 // @author       Mansive
 // @description  Steam
 // * Square Enix
+//
+// Only supports game languages English and Japanese
+// Works with Nova Chrysalia
 // https://store.steampowered.com/app/292120/FINAL_FANTASY_XIII/
 // ==/UserScript==
 
@@ -30,6 +33,7 @@
  * @property {NativePointer} address - Mainly used for debugging
  * @property {string} register
  * @property {number} argIndex
+ * @property {Function} [strategy]
  * @property {TreasureArgsFunction | TreasureContextFunction} getTreasureAddress
  */
 
@@ -62,12 +66,13 @@
 
 const __e = Process.enumerateModules()[0];
 
-const BACKTRACE = true;
-const DEBUG_LOGS = true;
+const BACKTRACE = false;
+const DEBUG_LOGS = false;
 const INSPECT_ARGS_REGS = false;
 
 const SETTINGS = {
   singleSentence: true,
+  YEEHAWMode: false,
   // enableHooksName: true,
   // enableHooksTips: true,
   // enableHooksMenuExplanation: true,
@@ -105,17 +110,6 @@ const returnAddresses = new Set();
 // ASLR disabled
 /** @type {Object.<string, TargetHook>} */
 const targetHooks = {
-  // ENCY: {
-  //   name: "ENCY",
-  //   pattern: "48 8B D8 48 85 C0 74 53 48 8B D0 48 89 74 24 30 48 8D 4F 08 E8",
-  //   address: ptr(0x140303454),
-  //   register: "rax",
-  //   argIndex: -1,
-  //   /** @type {TreasureContextFunction} */
-  //   getTreasureAddress({ context }) {
-  //     return context[this.register];
-  //   },
-  // },
   MYSTERY: {
     name: "MYSTERY",
     // pattern: "E8 0D 01 00 00 8B 45 E8 8B E5",
@@ -146,26 +140,26 @@ const hooksMain = {
     register: "edx",
     handler: positionMiddleHandler,
   },
-  Popups: {
+  Popups1: {
     pattern: "83 BC 10 B8 00 00 00 00 75 11 6A 01 68 24 9C 19 01 8D 4D DC",
     target: targetHooks.MYSTERY,
     handler: mainHandler,
   },
-  Popups1: {
+  Popups2: {
     pattern: "E8 C0 80 F0 FF",
     target: targetHooks.MYSTERY,
     handler: mainHandler,
   },
-  Popups2: {
+  Popups3: {
     pattern: "e8 b0 2b 00 00",
     target: targetHooks.MYSTERY,
     handler: mainHandler,
   },
-  DifficultySelection: {
-    pattern: "E8 74 8A ED FF",
-    target: targetHooks.MYSTERY,
-    handler: mainHandler,
-  },
+  // DifficultySelection: {
+  //   pattern: "E8 74 8A ED FF",
+  //   target: targetHooks.MYSTERY,
+  //   handler: mainHandler,
+  // },
   LoadingChapter: {
     pattern: "E8 27 43 EE FF 8B 8D 90 FE FF FF 8B 51 74 52 68 10 8C 19 01",
     target: targetHooks.MYSTERY,
@@ -195,7 +189,7 @@ const hooksMain = {
   ShopItemDescription: {
     pattern: "E8 16 D6 F2 FF 8B 45 10 50 0F BF 4D DA",
     target: targetHooks.MYSTERY,
-    handler: mainHandler,
+    handler: positionMiddleHandler,
   },
   MenuOptionDescription: {
     pattern: "E8 BB ED E9 FF",
@@ -203,24 +197,6 @@ const hooksMain = {
     target: targetHooks.MYSTERY,
     handler: MenuOptionDescriptionHandler,
   },
-};
-
-//#endregion
-
-//#region Hooks: Ency
-
-const hooksEncyclopedia = {
-  // EncyclopediaHelpInfo: {
-  //   pattern: "48 89 5C 24 10 57 48 83 EC 20 48 8B F9 8B CA E8 7C 0E F3 FF", // above ency
-  //   origins: [
-  //     "49 8B 4C 24 28 33 D2 48 8B 01 FF 50 20 49 8B 8C 24 98 00 00 00 41 83 C9 FF 45 33 C0 48 8B 89 20 02 00 00 41 8D 51 02 E8 11 47 1B 00", // open help menu
-  //     "48 8B 7C 24 38 33 C0 48 83 C4 20 5B C3 49 8B 8A 20 02 00 00 41 83 C9 FF 45 33 C0 33 D2 E8 6A 45 1B 00", // switch entry
-  //     "48 8B 7C 24 38 33 C0 48 83 C4 20 5B C3 48 8B CB 89 BB A8 00 00 00 E8 EC F7 FF FF", // flip entry page
-  //     // "39 BB AC 00 00 00 0F 8E A0 00 00 00", // flip menu page
-  //   ],
-  //   target: targetHooks.ENCY,
-  //   handler: encyclopediaHelpInfoHandler,
-  // },
 };
 
 //#endregion
@@ -252,40 +228,8 @@ function getTreasureAddress({ target, args, context }) {
   return target.getTreasureAddress({ args, context });
 }
 
-/**
- * Hooks an address and checks the return addresses before invoking the handler.
- * Expects the address to be the function prologue.
- * @param {Hook & {name: string} & {address: NativePointer}}
- */
-function filterReturnsStrategy({ address, name, register, handler }) {
-  Breakpoint.add(address, function () {
-    const returnAddress = this.context.rsp.readPointer();
-    // console.warn("filtering: " + returnAddress);
-
-    if (returnAddresses.has(returnAddress.toInt32())) {
-      DEBUG_LOGS && console.warn("passedFilter: " + name);
-
-      if (hooksStatus[name].enabled === false) {
-        logDim("skipped: " + name);
-        return false;
-      }
-
-      if (INSPECT_ARGS_REGS === true) {
-        console.log("in: ORIGIN");
-        inspectRegs(this.context);
-      }
-
-      const text = handler.call(this, this.context[register]);
-      setHookCharacterCount(name, text);
-    } else {
-      // console.warn(`Current return address: ${this.returnAddress}
-      // \rreturnAddresses Set: ${JSON.stringify(returnAddresses)}`);
-    }
-  });
-}
-
 // The function is called twice, but we only want the second call.
-// Only the first call have EAX and EDX equal to each other,
+// Only the first call has EAX and EDX equal to each other,
 // so we can use that behavior to skip the first call.
 // The beginning of the function stores the string's memory location in EDX,
 // and EDX contains the completed string only after the function finishes.
@@ -295,15 +239,15 @@ function mysteryHookStrategy({ address, name, target, handler }) {
       logDim("skipped: " + name);
       return false;
     }
-    console.log("onEnter: " + name);
+    // console.log("onEnter: " + name);
     if (INSPECT_ARGS_REGS === true) {
       console.log("in: ORIGIN");
       inspectRegs(this.context);
     }
 
     const outerContext = this.context;
-
     let isDetached = false;
+
     const hook = Interceptor.attach(target.address, {
       onEnter(args) {
         if (this.context.eax.equals(this.context.edx)) {
@@ -319,11 +263,10 @@ function mysteryHookStrategy({ address, name, target, handler }) {
         }
 
         hook.detach();
-        isDetached = true;
         Interceptor.flush();
+        isDetached = true;
 
         console.log("onLeave: " + name);
-
         DEBUG_LOGS && console.log(hexdump(this.edx, { header: false, ansi: false, length: 0x100 }));
 
         const text = handler.call(this, this.edx) ?? null;
@@ -339,100 +282,6 @@ function mysteryHookStrategy({ address, name, target, handler }) {
         DEBUG_LOGS && console.warn("Timeout: detached hook for " + name);
       }
     }, 10);
-  });
-}
-
-/**
- * Hooks an address as the origin, then temporarily hooks a target address
- * whenever the origin is accessed.
- * @param {Hook & {name: string} & {address: NativePointer}}
- */
-function nestedHooksStrategy({ address, name, target, handler }) {
-  Breakpoint.add(address, function () {
-    if (hooksStatus[name].enabled === false) {
-      logDim("skipped: " + name);
-      return false;
-    }
-    console.log("onEnter: " + name);
-    if (INSPECT_ARGS_REGS === true) {
-      console.log("in: ORIGIN");
-      inspectRegs(this.context);
-    }
-    // this.outerArgs = outerArgs;
-    hotAttach(target.address, function () {
-      if (INSPECT_ARGS_REGS === true) {
-        console.log("in: TARGET");
-        inspectRegs(this.context);
-      }
-      const text = handler(getTreasureAddress({ target, context: this.context }));
-      setHookCharacterCount(name, text);
-    });
-  });
-}
-
-/**
- * @param {Hook & {name: string} & {address: NativePointer}}
- */
-function nestedHooksOnLeaveStrategy({ address, name, target, handler }) {
-  Breakpoint.add(address, function () {
-    const hook = Interceptor.attach(target.address, {
-      onEnter(args) {
-        console.log("onEnter: " + name);
-        this.enterContext = this.context;
-      },
-      onLeave(retval) {
-        hook.detach();
-        Interceptor.flush();
-
-        console.log("onLeave: " + name);
-        // const text = handler(getTreasureAddress({ target, context: this.enterContext }));
-        const text = handler(this.enterContext.edx);
-        setHookCharacterCount(name, text);
-      },
-    });
-  });
-}
-
-/**
- * Combination of {@link nestedHooksStrategy} and {@link filterReturnsStrategy}.
- * @param {Hook & {name: string} & {address: NativePointer}}
- */
-function filterReturnsNestedHooksStrategy({ address, name, target, handler }) {
-  Breakpoint.add(address, function () {
-    const returnAddress = this.context.rsp.readPointer();
-    // console.warn("filtering: " + returnAddress);
-
-    if (returnAddresses.has(returnAddress.toInt32())) {
-      DEBUG_LOGS && console.warn("passedFilter: " + name);
-
-      if (hooksStatus[name].enabled === false) {
-        logDim("skipped: " + name);
-        return false;
-      }
-
-      console.log("onEnter: " + name);
-
-      if (INSPECT_ARGS_REGS === true) {
-        console.log("in: ORIGIN");
-        inspectRegs(this.context);
-      }
-
-      // const outerContext = this.context;
-
-      hotAttach(target.address, function () {
-        if (INSPECT_ARGS_REGS === true) {
-          console.log("in: TARGET");
-          inspectRegs(this.context);
-        }
-
-        // this.outerContext = outerContext;
-
-        const text = handler(getTreasureAddress({ target, context: this.context }));
-        setHookCharacterCount(name, text);
-      });
-    } else {
-      // ...
-    }
   });
 }
 
@@ -560,13 +409,6 @@ function attachHook(params) {
   if (target?.strategy) {
     DEBUG_LOGS && console.log(`[${name}] using custom strategy`);
     target.strategy(args);
-  } else if (origins && target) {
-    DEBUG_LOGS &&
-      console.log(`[${name}] filtered with return addresses and targeting [${target.name}]`);
-    filterReturnsNestedHooksStrategy(args);
-  } else if (origins) {
-    DEBUG_LOGS && console.log(`[${name}] filtered with return addresses`);
-    filterReturnsStrategy(args);
   } else if (target) {
     DEBUG_LOGS && console.log(`[${name}] targeting [${target.name}]`);
     nestedHooksStrategy(args);
@@ -575,6 +417,37 @@ function attachHook(params) {
   }
 
   return true;
+}
+
+// last resort
+function activateYeehaw() {
+  const { name, pattern } = targetHooks.MYSTERY;
+  const address = getPatternAddress(name, pattern);
+
+  const previousTexts = new Set();
+
+  Interceptor.attach(address, {
+    onEnter() {
+      if (this.context.eax.equals(this.context.edx)) {
+        this.shouldSkip = true;
+        return null;
+      }
+      this.edx = this.context.edx;
+    },
+    onLeave() {
+      if (this.shouldSkip) {
+        return null;
+      }
+      const text = readString(this.edx);
+
+      if (previousTexts.has(text)) {
+        return null;
+      }
+      previousTexts.add(text);
+
+      genericHandler(text);
+    },
+  });
 }
 
 //#endregion
@@ -850,7 +723,7 @@ const encodingKeys = {
   },
 };
 
-// encodingKeys is for human readability, while encodingKeys2 is for actual use
+// encodingKeys is for human readability, while encodingKeys2 is for actual use.
 // keys as numbers avoids needing to convert hex to strings in readString()
 const encodingKeys2 = new Map();
 for (const category in encodingKeys) {
@@ -956,6 +829,7 @@ function readString(address) {
 
 /** @param {string} text */
 function genericHandler(text) {
+  console.warn(text);
   texts1.add(text);
 
   clearTimeout(timer1);
@@ -1071,14 +945,16 @@ function MenuOptionDescriptionHandler(address) {
 }
 
 trans.replace((/**@type {string}*/ s) => {
-  // if (s === previous || s === "") {
-  //   return null;
-  // }
-  // previous = s;
+  if (s === previous || s === "") {
+    return null;
+  }
+  previous = s;
 
   // s = s.replace(/@r/g, "\n"); // 0x40 0x72
+  s = s.replace(/\$\([^)]+\)/g, "▢"); // $(t_dpad) -> 方向キー
+  s = s.trim();
 
-  return s.trim();
+  return s;
 });
 
 //#endregion
@@ -1272,7 +1148,7 @@ function createCallPattern(relativeOffset) {
 }
 
 /**
- * @param {Instruction} ins
+ * @param {Instruction} ins Call instruction
  * @returns {NativePointer}
  */
 function getCallRelativeOffset(ins) {
@@ -1312,7 +1188,6 @@ function startTrace() {
   const traceAddress = getPatternAddress(traceTarget.name, traceTarget.pattern);
   traceTarget.address = traceAddress;
   const previousTexts = new Set();
-  const previousAddresses = new Set();
 
   Interceptor.attach(traceAddress, {
     onEnter(args) {
@@ -1343,25 +1218,22 @@ function startTrace() {
       const result = [];
 
       for (let i = 0; i < callstack.length; i++) {
-        let color = "";
         const returnAddress = callstack[i];
         const callInsAddress = returnAddress.sub(0x5); // not quite right but good enough
 
-        // Highlight if the call instruction is from a hooked function
-        if (hookedAddresses.has(callInsAddress.toUInt32())) {
-          color = colors.BgBlue;
-        }
-
         const ins = Instruction.parse(callInsAddress);
         const offset = getCallRelativeOffset(ins);
-        const returnAddressString = returnAddress.toString();
         const relations = ` ${i + 1}. ${callInsAddress.toString()}`;
 
         if (offset.isNull()) {
           result.push(relations);
         } else {
+          // Highlight if the call instruction is from a hooked function
+          const color = hookedAddresses.has(callInsAddress.toUInt32()) ? colors.BgBlue : "";
           const pattern = createCallPattern(offset);
-          result.push(`${color}${relations} -> ${returnAddressString} - ${pattern}${colors.Reset}`);
+          result.push(
+            `${color}${relations} -> ${returnAddress.toString()} - ${pattern}${colors.Reset}`
+          );
         }
       }
 
@@ -1392,7 +1264,7 @@ function start() {
   }
 
   validateHooks();
-  setupHooks();
+  SETTINGS.YEEHAWMode ? activateYeehaw() : setupHooks();
   // uiStart();
 }
 
