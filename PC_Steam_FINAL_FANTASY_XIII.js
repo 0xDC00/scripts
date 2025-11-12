@@ -96,6 +96,7 @@ const bottomTexts = new Set();
 const deepTexts = new Set();
 
 let previous = "";
+let menuOptionDescriptionPrevious = NULL;
 
 //#endregion
 
@@ -906,7 +907,6 @@ function mainHandler(address) {
   return text;
 }
 
-let menuOptionDescriptionPrevious = NULL;
 /** @type {HookHandler} */
 function menuOptionDescriptionHandler(address) {
   /** @type {NativePointer} */
