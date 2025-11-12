@@ -73,7 +73,7 @@ function getPatternAddress({
     try {
         results = scanRanges({ ranges: ranges, pattern: pattern });
     } catch (err) {
-        throw new Error(`Error ocurred with [${name}]: ${err.message}`, {
+        throw new Error(`Error occurred with [${name}]: ${err.message}`, {
             cause: err,
         });
     }
