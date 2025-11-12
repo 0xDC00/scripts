@@ -71,7 +71,7 @@ const DEBUG_LOGS = false;
 const INSPECT_ARGS_REGS = false;
 
 const SETTINGS = {
-  singleSentence: true,
+  // singleSentence: true,
   YEEHAWMode: false,
   // enableHooksName: true,
   // enableHooksTips: true,
@@ -728,20 +728,13 @@ const encodingKeys = {
 const encodingKeys2 = new Map();
 for (const category in encodingKeys) {
   for (const [key, value] of Object.entries(encodingKeys[category])) {
-    let newKey;
+    let newKey = -1;
     if (key.includes("_")) {
       const [hex1, hex2] = key.split("_");
       newKey = parseInt(hex1, 16) + parseInt(hex2, 16);
     } else {
       newKey = parseInt(key, 16);
     }
-    encodingKeys2.set(newKey, value);
-  }
-}
-for (const category in encodingKeys) {
-  for (const [key, value] of Object.entries(encodingKeys[category])) {
-    const [hex1, hex2] = key.split("_");
-    const newKey = parseInt(hex1, 16) + parseInt(hex2, 16);
     encodingKeys2.set(newKey, value);
   }
 }
