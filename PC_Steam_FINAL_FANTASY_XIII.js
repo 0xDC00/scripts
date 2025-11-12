@@ -1264,7 +1264,15 @@ function start() {
   }
 
   validateHooks();
-  SETTINGS.YEEHAWMode ? activateYeehaw() : setupHooks();
+
+  // SETTINGS.YEEHAWMode ? activateYeehaw() : {setupHooks();
+  if (SETTINGS.YEEHAWMode === true) {
+    activateYeehaw();
+  } else {
+    setupHooks();
+    console.warn("Enable YEEHAWMode in the script for a hook that gets more text.\n");
+  }
+
   // uiStart();
 }
 
