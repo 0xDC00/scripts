@@ -13,7 +13,7 @@ setHookEE({
 
 function handler(args) {
         // return if not dialogue buffer
-        if(this.context.t0(Uint32Array)[0] != 0x49F8B0) return;
+        if(this.context.t0(b => new Uint32Array(b))[0] != 0x49F8B0) return;
 
         let s = this.context.t0(asPsxPtr).readShiftJisString();
         
