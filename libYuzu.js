@@ -24,6 +24,63 @@ const DoJitPtr = getDoJitAddress();
 const buildRegs = globalThis.ARM === true ? createFunction_buildRegs32() : createFunction_buildRegs();
 const operations = Object.create(null);
 let _operations = Object.create(null);
+let aslrOffset = 0;
+
+isVirtual === true && tryGetAslrOffset();
+
+function tryGetAslrOffset() {
+    const { address: LoadFromMetadataAddress, offset: argsOffset } = (() => {
+        // MingW
+        {
+            const LoadFromMetadataSig = "4? 57 4? 56 4? 55 4? 54 55 57 56 53 4? 81 ec ?? ?? ?? ?? 8b 84 ?? ?? ?? ?? ?? 4? 89 cf 4? 89 d1 4? 89 d3 4? 89 c4 4? 89 cd 89 44";
+            const results = Memory.scanSync(__e.base, __e.size, LoadFromMetadataSig);
+            if (results.length !== 0) {
+                results.length > 1 && console.warn(results.length, "signature matches found?");
+
+                const address = results[0].address;
+                console.warn("MingW LoadFromMetadata", address);
+                return { address: address, offset: 0 };
+            }
+        }
+        // MSVC
+        {
+            const LoadFromMetadataSig = "33 ?? 4? 89 ?? ?? 4? 8b ?? e8 ?? ?? ?? ?? 4? 89 ?? ?? 4? 8b ?? ?? 4? 8d";
+            const results = Memory.scanSync(__e.base, __e.size, LoadFromMetadataSig);
+            if (results.length !== 0) {
+                results.length > 1 && console.warn(results.length, "signature matches found?");
+
+                const lookbackSize = 0x100;
+                const subAddress = results[0].address.sub(lookbackSize);
+                const beginSubSig = "cc 4? 89 ?? ?? ?? 4? 89";
+                const subs = Memory.scanSync(subAddress, lookbackSize, beginSubSig);
+
+                if (subs.length !== 0) {
+                    const address = subs[subs.length - 1].address.add(1);
+                    console.warn("MSVC LoadFromMetadata", address);
+                    return { address: address, offset: 1 };
+                }
+            }
+        }
+    })();
+
+    if (LoadFromMetadataAddress.isNull()) {
+        console.log("Couldn't find LoadFromMetadata");
+        return;
+    }
+
+    const tempHook = Interceptor.attach(LoadFromMetadataAddress, {
+        onEnter(args) {
+            const offset = args[4 + argsOffset];
+            console.warn("Offset applied:", offset);
+            aslrOffset = offset.toUInt32();
+        },
+        onLeave() {
+            // tempHook.detach();
+        },
+    });
+}
+
+
 //let EmitX64_vftable;
 /*
 https://github.com/merryhime/dynarmic/blob/e6f9b08d495449e4ca28882c0cb4f12d83fd4549/src/dynarmic/backend/x64/emit_x64.cpp
@@ -58,6 +115,7 @@ Interceptor.attach(DoJitPtr, {
         //EmitX64_result = args[1]; // rdx
         const descriptor = args[idxDescriptor]; // r8
         const entrypoint = args[idxEntrypoint]; // r9
+
         //const entrypoint_far = args[4];
         //const size = args[5];
 
@@ -121,10 +179,32 @@ function getDoJitAddress() {
         }
     }
     else {
+        // Windows MinGW GCC
+        //	e8 f9 fc ff ff 48 8b 6e 20 4c 8b 7e 28 4c 89 2b 4c 89 73 08 48 8b 3f 4c 39 fd 0f 84 8e 01 00 00 
+        const RegisterBlockSig2 = "e8 ?? ?? ?? ?? 4? 8b ?? ?? 4? 8b ?? ?? 4? 89 ?? 4? 89 ?? ?? 4? 8b ?? 4? 39";
+        const RegisterBlockMatches = Memory.scanSync(__e.base, __e.size, RegisterBlockSig2);
+
+        if (RegisterBlockMatches.length > 1) {
+            console.warn(RegisterBlockMatches.length, "signature matches found?");
+        }
+
+        const RegisterBlock2 = RegisterBlockMatches[0];
+        if (RegisterBlock2) {
+            console.warn("MingW RegisterBlock", RegisterBlock2.address);
+            const beginSubSig1 = "41 5? 41 5? 41 5?";
+            const lookbackSize = 0x100;
+            const address = RegisterBlock2.address.sub(lookbackSize);
+            const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
+            if (subs.length !== 0) {
+                return subs[subs.length - 1].address;
+            }
+        }
+
         // Windows MSVC x64 2019 (v996-) + 2022 (v997+)
         const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
         const RegisterBlock = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
         if (RegisterBlock) {
+            console.warn("MSVC RegisterBlock", RegisterBlock.address);
             const beginSubSig1 = 'CC 40 5? 5? 5?';
             const lookbackSize = 0x400;
             const address = RegisterBlock.address.sub(lookbackSize);
@@ -138,6 +218,7 @@ function getDoJitAddress() {
         const PatchSig1 = '4????? 4????? 4????? FF?? ?? 4????? ?? 4????? 75 ?? 4????? ?? 4????? ?? 4?';
         const Patch = Memory.scanSync(__e.base, __e.size, PatchSig1)[0];
         if (Patch) {
+            console.warn("Patch");
             const beginSubSig1 = '4883EC ?? 48';
             const lookbackSize = 0x80;
             const address = Patch.address.sub(lookbackSize);
