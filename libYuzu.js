@@ -28,55 +28,150 @@ let aslrOffset = 0;
 
 isVirtual === true && tryGetAslrOffset();
 
-function tryGetAslrOffset() {
-    const { address: LoadFromMetadataAddress, offset: argsOffset } = (() => {
-        // MingW
-        {
-            const LoadFromMetadataSig = "4? 57 4? 56 4? 55 4? 54 55 57 56 53 4? 81 ec ?? ?? ?? ?? 8b 84 ?? ?? ?? ?? ?? 4? 89 cf 4? 89 d1 4? 89 d3 4? 89 c4 4? 89 cd 89 44";
-            const results = Memory.scanSync(__e.base, __e.size, LoadFromMetadataSig);
-            if (results.length !== 0) {
-                results.length > 1 && console.warn(results.length, "signature matches found?");
+// function tryGetAslrOffset() {
+//     /** @type {{address: NativePointer, offset: number}} */
+//     const { address: LoadFromMetadataAddress, offset: argsOffset } = (() => {
+//         // MingW
+//         {
+//             const LoadFromMetadataSig = "4? 57 4? 56 4? 55 4? 54 55 57 56 53 4? 81 ec ?? ?? ?? ?? 8b 84 ?? ?? ?? ?? ?? 4? 89 cf 4? 89 d1 4? 89 d3 4? 89 c4 4? 89 cd 89 44";
+//             const results = Memory.scanSync(__e.base, __e.size, LoadFromMetadataSig);
+//             if (results.length !== 0) {
+//                 results.length > 1 && console.warn(results.length, "signature matches found?");
 
-                const address = results[0].address;
-                console.warn("MingW LoadFromMetadata", address);
-                return { address: address, offset: 0 };
+//                 const address = results[0].address;
+//                 console.warn("MingW LoadFromMetadata", address);
+//                 return { address: address, offset: 0 };
+//             }
+//         }
+//         // MSVC
+//         {
+//             const LoadFromMetadataSig = "33 ?? 4? 89 ?? ?? 4? 8b ?? e8 ?? ?? ?? ?? 4? 89 ?? ?? 4? 8b ?? ?? 4? 8d";
+//             const results = Memory.scanSync(__e.base, __e.size, LoadFromMetadataSig);
+//             if (results.length !== 0) {
+//                 results.length > 1 && console.warn(results.length, "signature matches found?");
+
+//                 const lookbackSize = 0x100;
+//                 const subAddress = results[0].address.sub(lookbackSize);
+//                 const beginSubSig = "cc 4? 89 ?? ?? ?? 4? 89";
+//                 const subs = Memory.scanSync(subAddress, lookbackSize, beginSubSig);
+
+//                 if (subs.length !== 0) {
+//                     const address = subs[subs.length - 1].address.add(1);
+//                     console.warn("MSVC LoadFromMetadata", address);
+//                     return { address: address, offset: 1 };
+//                 }
+//             }
+//         }
+//     })();
+
+//     if (LoadFromMetadataAddress.isNull()) {
+//         console.log("Couldn't find LoadFromMetadata");
+//         return;
+//     } 
+//     // else if (LoadFromMetadataAddress.compare(0xfff000)) {
+//         // console.log("Invalid LoadFromMetadata address");
+//         // return;
+//     // }
+
+//     const tempHook = Interceptor.attach(LoadFromMetadataAddress, {
+//         onEnter(args) {
+//             const offset = args[4 + argsOffset];
+//             console.warn("Offset applied:", offset);
+//             aslrOffset = offset.toUInt32();
+//         },
+//         onLeave() {
+//             // tempHook.detach();
+//         },
+//     });
+// }
+
+function getInitializeAddress() {
+    let InitializeStartAddress = NULL;
+    let CreateProcessParameterArg = 1;
+
+    MingW: {
+        // const InitializeSig = "4? 5? 4? 5? 4? 5? 4? 5? 5? 5? 5? 5? 4? 81 e? ?? ?? ?? ?? 0f 11 ?? ?? ?? ?? ?? ?? f3 4? 0f 6f ?? 4? 89";
+        const InitializeSig = "6F 30 4? 89 CB 4? 89 D6 4? 8D ?? ?? ?? 01 00 00 4? 89 8C ?? ?? ?? ?? ?? E8";
+        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
+        if (InitializeSigResults.length === 0) {
+            console.warn("Couldn't find MingW Initialize");
+        } else {
+            const InitializeAddress = InitializeSigResults[0].address;
+            console.warn("MingW KPRocess Initialize:", InitializeAddress);
+            const lookbackSize = 0x50;
+            const subAddress = InitializeAddress.sub(lookbackSize);
+            const subResults = Memory.scanSync(subAddress, lookbackSize, "4? 5? 4? 5?");
+            if (subResults.length === 0) {
+                console.warn("Couldn't find MingW Initialize start");
+            } else {
+                InitializeStartAddress = subResults[subResults.length - 1].address;
+                CreateProcessParameterArg = 1;
+                return { InitializeStartAddress, CreateProcessParameterArg };
             }
         }
-        // MSVC
-        {
-            const LoadFromMetadataSig = "33 ?? 4? 89 ?? ?? 4? 8b ?? e8 ?? ?? ?? ?? 4? 89 ?? ?? 4? 8b ?? ?? 4? 8d";
-            const results = Memory.scanSync(__e.base, __e.size, LoadFromMetadataSig);
-            if (results.length !== 0) {
-                results.length > 1 && console.warn(results.length, "signature matches found?");
-
-                const lookbackSize = 0x100;
-                const subAddress = results[0].address.sub(lookbackSize);
-                const beginSubSig = "cc 4? 89 ?? ?? ?? 4? 89";
-                const subs = Memory.scanSync(subAddress, lookbackSize, beginSubSig);
-
-                if (subs.length !== 0) {
-                    const address = subs[subs.length - 1].address.add(1);
-                    console.warn("MSVC LoadFromMetadata", address);
-                    return { address: address, offset: 1 };
-                }
-            }
-        }
-    })();
-
-    if (LoadFromMetadataAddress.isNull()) {
-        console.log("Couldn't find LoadFromMetadata");
-        return;
     }
 
-    const tempHook = Interceptor.attach(LoadFromMetadataAddress, {
+    MSVC: {
+        const InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?";
+        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
+        if (InitializeSigResults.length === 0) {
+            console.warn("Couldn't find MSVC Initialize");
+        } else {
+            const InitializeAddress = InitializeSigResults[0].address;
+            console.warn("MSVC KPRocess Initialize:", InitializeAddress);
+
+            const lookbackSize = 0x400;
+            const subAddress = InitializeAddress.sub(lookbackSize);
+            const subResults = Memory.scanSync(subAddress, lookbackSize, "cc cc cc");
+            if (subResults.length === 0) {
+                console.warn("Couldn't find MSVC Initialize start");
+            } else {
+                let purgatoryAddress = subResults[subResults.length - 1].address;
+                while (true) {
+                    if (purgatoryAddress.readU8() === 0xcc) {
+                        purgatoryAddress = purgatoryAddress.add(1);
+                    } else {
+                        break;
+                    }
+                }
+                InitializeStartAddress = purgatoryAddress;
+                CreateProcessParameterArg = 2;
+                return { InitializeStartAddress, CreateProcessParameterArg };
+            }
+        }
+    }
+
+    throw new Error("Couldn't find Initialize");
+}
+
+function tryGetAslrOffset() {
+    const IS_32 = globalThis.ARM === true;
+    const veryBaseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
+    const { InitializeStartAddress, CreateProcessParameterArg } = getInitializeAddress();
+
+    if (InitializeStartAddress.isNull()) {
+        throw new Error("Couldn't find Initialize start");
+    }
+    console.warn("Final KPRocess Initialize start:", InitializeStartAddress);
+
+    Interceptor.attach(InitializeStartAddress, {
         onEnter(args) {
-            const offset = args[4 + argsOffset];
-            console.warn("Offset applied:", offset);
-            aslrOffset = offset.toUInt32();
-        },
-        onLeave() {
-            // tempHook.detach();
-        },
+            // const selectedArg = args[1]; // MingW
+            // const selectedArg = args[2]; // MSVC
+            const selectedArg = args[CreateProcessParameterArg];
+            
+            // Application
+            const results = Memory.scanSync(selectedArg, 0x15, "41 70 70 6c 69 63 61 74 69 6f 6e 00");
+            if (results.length !== 0) {
+                const address = results[0].address.add(0x18);
+                console.warn(address.readPointer());
+                console.warn(veryBaseAddress);
+                console.warn(address.readPointer().sub(veryBaseAddress));
+                aslrOffset = address.readPointer().sub(veryBaseAddress).toUInt32();
+            } else {
+                throw new Error("Missing string?");
+            }
+        }
     });
 }
 
@@ -119,7 +214,27 @@ Interceptor.attach(DoJitPtr, {
         //const entrypoint_far = args[4];
         //const size = args[5];
 
-        const em_address = descriptor.readU64().and(0xFFFFFFFF).toNumber();
+        const em_address = descriptor.readU64().and(0xFFFFFFFF).sub(aslrOffset).toNumber();
+        // console.warn(descriptor, em_address.toString(16));
+        // console.warn(entrypoint);
+        // for (let i  = 0; i < 4; i++) {
+        //     // try{
+        //         // console.warn(`1arg[${i}]: ${args[i]}`);
+        //     // } catch(e) {
+        //         // 
+        //     // }
+        //     try{
+        //         console.warn(`2arg[${i}]: ${args[i].readU32().toString(16)}`);
+        //     } catch(e) {
+                
+        //     }
+        //     try{
+        //         console.warn(`4arg[${i}]: ${args[i].readU64().toString(16)}`);
+        //     } catch(e) {
+                
+        //     }
+        // }
+
         const op = operations[em_address];
         if (op !== undefined && entrypoint.isNull() === false) {
             console.log('Attach:', ptr(em_address), entrypoint);
