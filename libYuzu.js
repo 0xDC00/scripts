@@ -89,6 +89,7 @@ function getInitializeAddress() {
     let InitializeStartAddress = NULL;
     let CreateProcessParameterArg = 1;
 
+    console.log("Looking for MingW Initialize...");
     MingW: {
         // const InitializeSig = "4? 5? 4? 5? 4? 5? 4? 5? 5? 5? 5? 5? 4? 81 e? ?? ?? ?? ?? 0f 11 ?? ?? ?? ?? ?? ?? f3 4? 0f 6f ?? 4? 89";
         const InitializeSig = "6F 30 4? 89 CB 4? 89 D6 4? 8D ?? ?? ?? 01 00 00 4? 89 8C ?? ?? ?? ?? ?? E8";
@@ -111,8 +112,10 @@ function getInitializeAddress() {
         }
     }
 
+    console.log("Looking for MSVC Initialize...");
     MSVC: {
-        const InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?";
+        // const InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?";
+        const InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c"
         const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
             console.warn("Couldn't find MSVC Initialize");
@@ -144,30 +147,41 @@ function getInitializeAddress() {
     throw new Error("Couldn't find Initialize");
 }
 
+/*
+struct CreateProcessParameter {
+    std::array<char, 12> name;  0x0,  12 bytes
+    u32 version;                0xc,  4 bytes
+    u64 program_id;             0x10, 8 bytes
+    u64 code_address;           0x18, 8 bytes
+    s32 code_num_pages;
+    CreateProcessFlag flags;
+    Handle reslimit;
+    s32 system_resource_num_pages;
+};
+*/
 function tryGetAslrOffset() {
-    const IS_32 = globalThis.ARM === true;
-    const veryBaseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
     const { InitializeStartAddress, CreateProcessParameterArg } = getInitializeAddress();
-
     if (InitializeStartAddress.isNull()) {
         throw new Error("Couldn't find Initialize start");
     }
-    console.warn("Final KPRocess Initialize start:", InitializeStartAddress);
 
     Interceptor.attach(InitializeStartAddress, {
         onEnter(args) {
-            // const selectedArg = args[1]; // MingW
-            // const selectedArg = args[2]; // MSVC
-            const selectedArg = args[CreateProcessParameterArg];
-            
-            // Application
-            const results = Memory.scanSync(selectedArg, 0x15, "41 70 70 6c 69 63 61 74 69 6f 6e 00");
+            // 1 for MingW, 2 for MSVC
+            const CreateProcessParameter = args[CreateProcessParameterArg];
+
+            const textBytes = "41 70 70 6c 69 63 61 74 69 6f 6e 00"; // Application
+            const results = Memory.scanSync(CreateProcessParameter, 0x15, textBytes);
             if (results.length !== 0) {
-                const address = results[0].address.add(0x18);
-                console.warn(address.readPointer());
-                console.warn(veryBaseAddress);
-                console.warn(address.readPointer().sub(veryBaseAddress));
-                aslrOffset = address.readPointer().sub(veryBaseAddress).toUInt32();
+                // codeAddress already has applied offset
+                const codeAddress = results[0].address.add(0x18).readPointer();
+
+                const IS_32 = globalThis.ARM === true;
+                const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
+                const aslrOffsetHex = codeAddress.sub(baseAddress);
+
+                console.warn("ASLR Offset:", aslrOffsetHex);
+                aslrOffset = aslrOffsetHex.toUInt32();
             } else {
                 throw new Error("Missing string?");
             }
@@ -211,29 +225,7 @@ Interceptor.attach(DoJitPtr, {
         const descriptor = args[idxDescriptor]; // r8
         const entrypoint = args[idxEntrypoint]; // r9
 
-        //const entrypoint_far = args[4];
-        //const size = args[5];
-
         const em_address = descriptor.readU64().and(0xFFFFFFFF).sub(aslrOffset).toNumber();
-        // console.warn(descriptor, em_address.toString(16));
-        // console.warn(entrypoint);
-        // for (let i  = 0; i < 4; i++) {
-        //     // try{
-        //         // console.warn(`1arg[${i}]: ${args[i]}`);
-        //     // } catch(e) {
-        //         // 
-        //     // }
-        //     try{
-        //         console.warn(`2arg[${i}]: ${args[i].readU32().toString(16)}`);
-        //     } catch(e) {
-                
-        //     }
-        //     try{
-        //         console.warn(`4arg[${i}]: ${args[i].readU64().toString(16)}`);
-        //     } catch(e) {
-                
-        //     }
-        // }
 
         const op = operations[em_address];
         if (op !== undefined && entrypoint.isNull() === false) {
