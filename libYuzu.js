@@ -64,7 +64,8 @@ function getInitializeAddress() {
                              //41 57 48 8D 6C 24 F9 48 81 EC D8 00 00 00 4D 8B E8 4C 8B FA 48 8B D9 48 8D 45 6F 48 89 45 A7 48 8D 4D A7 E8 DB 06 00 00 // eden 0.0.3
                              //41 57 48 8D 6C 24 F9 48 81 EC E8 00 00 00 4D 8B E8 4C 8B F2 4C 8B F9 48 8D 45 6F 48 89 45 9F 48 8D 4D 9F E8 FB DD FF FF // eden 0.0.3 nightly
                              //41 57 48 8d ?? 24 ?? 48 81 ec ?? 00 00 00 4? 8b ?8 4c 8b ?? ?? 8b ?? 48 8d 45 ?? 48 89 45 ?? 48 8d 4d // sig of yuzu + yuzu + eden + eden + eden + eden
-        const InitializeSig = "4? 57 4? 8D 6C 24 ?? 4? 81 EC ?? 00 00 00 ?? 8B ?8 4C 8B F? 4? 8B ?9 48 8D 45";
+        // FALSE PATTERN       41 57 48 8D 6C 24 E1 48 81 EC B8 00 00 00 4D 8B F8 4C 8B F2 4C 8B E9 48 8D 45 A7 48 89 45 A7 48 8D 45 A7 48 89 45 AF 48 // FALSE PATTERN
+        const InitializeSig = "4? 57 4? 8D 6C 24 ?? 4? 81 EC ?? 00 00 00 ?? 8B ?8 4C 8B F? 4? 8B ?9 48 8D 45 ?? 48 89 45 ?? 48 8D 4D";
         const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
             // console.log("Couldn't find MSVC Initialize");
@@ -75,7 +76,7 @@ function getInitializeAddress() {
             }
             const InitializeAddress = InitializeSigResults[0].address;
             console.warn("MSVC KPRocess Initialize:", InitializeAddress);
-            const lookbackSize = 0x400;
+            const lookbackSize = 0x50;
             const subAddress = InitializeAddress.sub(lookbackSize);
             const subResults = Memory.scanSync(subAddress, lookbackSize, "cc cc cc");
             if (subResults.length === 0) {
