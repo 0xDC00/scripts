@@ -95,7 +95,7 @@ function getInitializeAddress() {
         const InitializeSig = "6F 30 4? 89 CB 4? 89 D6 4? 8D ?? ?? ?? 01 00 00 4? 89 8C ?? ?? ?? ?? ?? E8";
         const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
-            console.warn("Couldn't find MingW Initialize");
+            // console.log("Couldn't find MingW Initialize");
         } else {
             const InitializeAddress = InitializeSigResults[0].address;
             console.warn("MingW KPRocess Initialize:", InitializeAddress);
@@ -112,17 +112,26 @@ function getInitializeAddress() {
         }
     }
 
-    console.log("Looking for MSVC Initialize...");
+    console.log("Looking for MSVC Initialize (TEST)...");
     MSVC: {
-        // const InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?";
-        const InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c"
+                             //41 57 48 8D 6C 24 E9 48 81 EC E0 00 00 00 4D 8B E8 4C 8B F2 48 8B F9 48 8D 45 77 48 89 45 CF 48 8D 4D CF E8 EB 05 00 00 // yuzu 1616
+                             //41 57 48 8D 6C 24 F1 48 81 EC F0 00 00 00 49 8B F8 4C 8B F2 48 8B D9 48 8D 45 6F 48 89 45 E7 48 8D 4D E7 E8 1B 07 00 00 // yuzu 1734
+                             //41 57 48 8d 6c 24 f1 48 81 ec e0 00 00 00 4d 8b e8 4c 8b f2 48 8b d9 48 8d 45 6f 48 89 45 5f 48 8d 4d 5f e8 c5 c6 ff ff // eden
+                             //41 57 48 8d 6c 24 e9 48 81 ec e0 00 00 00 4d 8b e8 4c 8b f2 48 8b f9 48 8d 45 77 48 89 45 cf 48 8d 4d cf e8 eb 05 00 00 // eden
+                             //41 57 48 8D 6C 24 F9 48 81 EC D8 00 00 00 4D 8B E8 4C 8B FA 48 8B D9 48 8D 45 6F 48 89 45 A7 48 8D 4D A7 E8 DB 06 00 00 // eden 0.0.3
+                             //41 57 48 8D 6C 24 F9 48 81 EC E8 00 00 00 4D 8B E8 4C 8B F2 4C 8B F9 48 8D 45 6F 48 89 45 9F 48 8D 4D 9F E8 FB DD FF FF // eden 0.0.3 nightly
+                             //41 57 48 8d ?? 24 ?? 48 81 ec ?? 00 00 00 4? 8b ?8 4c 8b ?? ?? 8b ?? 48 8d 45 ?? 48 89 45 ?? 48 8d 4d // sig of yuzu + yuzu + eden + eden + eden + eden
+        const InitializeSig = "4? 57 4? 8D 6C 24 ?? 4? 81 EC ?? 00 00 00 ?? 8B ?8 4C 8B F? 4? 8B ?9 48 8D 45";
         const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
-            console.warn("Couldn't find MSVC Initialize");
+            // console.log("Couldn't find MSVC Initialize");
         } else {
+            if (InitializeSigResults.length > 1) {
+                console.warn(InitializeSigResults.length, "signature matches found?");
+                console.warn(JSON.stringify(InitializeSigResults, null, 2));
+            }
             const InitializeAddress = InitializeSigResults[0].address;
             console.warn("MSVC KPRocess Initialize:", InitializeAddress);
-
             const lookbackSize = 0x400;
             const subAddress = InitializeAddress.sub(lookbackSize);
             const subResults = Memory.scanSync(subAddress, lookbackSize, "cc cc cc");
@@ -144,7 +153,41 @@ function getInitializeAddress() {
         }
     }
 
-    throw new Error("Couldn't find Initialize");
+    console.log("Looking for MSVC Initialize...");
+    // doesnt support 1616
+    MSVC: {
+        //    InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?";
+        const InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?"
+        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
+        if (InitializeSigResults.length === 0) {
+            // console.log("Couldn't find MSVC Initialize");
+        } else {
+            InitializeSigResults.length > 1 && console.warn(InitializeSigResults.length, "signature matches found?");
+            const InitializeAddress = InitializeSigResults[0].address;
+            console.warn("MSVC KPRocess Initialize:", InitializeAddress);
+            const lookbackSize = 0x400;
+            const subAddress = InitializeAddress.sub(lookbackSize);
+            const subResults = Memory.scanSync(subAddress, lookbackSize, "cc cc cc");
+            if (subResults.length === 0) {
+                console.warn("Couldn't find MSVC Initialize start");
+            } else {
+                let purgatoryAddress = subResults[subResults.length - 1].address;
+                while (true) {
+                    if (purgatoryAddress.readU8() === 0xcc) {
+                        purgatoryAddress = purgatoryAddress.add(1);
+                    } else {
+                        break;
+                    }
+                }
+                InitializeStartAddress = purgatoryAddress;
+                CreateProcessParameterArg = 2;
+                return { InitializeStartAddress, CreateProcessParameterArg };
+            }
+        }
+    }
+
+    // throw new Error("Couldn't find Initialize");
+    return { InitializeStartAddress, CreateProcessParameterArg };
 }
 
 /*
@@ -162,7 +205,9 @@ struct CreateProcessParameter {
 function tryGetAslrOffset() {
     const { InitializeStartAddress, CreateProcessParameterArg } = getInitializeAddress();
     if (InitializeStartAddress.isNull()) {
-        throw new Error("Couldn't find Initialize start");
+        // throw new Error("Couldn't find Initialize start");
+        console.log("Couldn't find Initialize, using default ASLR offset 0");
+        return;
     }
 
     Interceptor.attach(InitializeStartAddress, {
@@ -290,14 +335,12 @@ function getDoJitAddress() {
         //	e8 f9 fc ff ff 48 8b 6e 20 4c 8b 7e 28 4c 89 2b 4c 89 73 08 48 8b 3f 4c 39 fd 0f 84 8e 01 00 00 
         const RegisterBlockSig2 = "e8 ?? ?? ?? ?? 4? 8b ?? ?? 4? 8b ?? ?? 4? 89 ?? 4? 89 ?? ?? 4? 8b ?? 4? 39";
         const RegisterBlockMatches = Memory.scanSync(__e.base, __e.size, RegisterBlockSig2);
-
         if (RegisterBlockMatches.length > 1) {
             console.warn(RegisterBlockMatches.length, "signature matches found?");
         }
-
         const RegisterBlock2 = RegisterBlockMatches[0];
         if (RegisterBlock2) {
-            console.warn("MingW RegisterBlock", RegisterBlock2.address);
+            console.warn("MingW RegisterBlock:", RegisterBlock2.address);
             const beginSubSig1 = "41 5? 41 5? 41 5?";
             const lookbackSize = 0x100;
             const address = RegisterBlock2.address.sub(lookbackSize);
@@ -311,7 +354,7 @@ function getDoJitAddress() {
         const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
         const RegisterBlock = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
         if (RegisterBlock) {
-            console.warn("MSVC RegisterBlock", RegisterBlock.address);
+            console.warn("MSVC RegisterBlock:", RegisterBlock.address);
             const beginSubSig1 = 'CC 40 5? 5? 5?';
             const lookbackSize = 0x400;
             const address = RegisterBlock.address.sub(lookbackSize);
@@ -325,15 +368,16 @@ function getDoJitAddress() {
         const PatchSig1 = '4????? 4????? 4????? FF?? ?? 4????? ?? 4????? 75 ?? 4????? ?? 4????? ?? 4?';
         const Patch = Memory.scanSync(__e.base, __e.size, PatchSig1)[0];
         if (Patch) {
-            console.warn("Patch");
-            const beginSubSig1 = '4883EC ?? 48';
-            const lookbackSize = 0x80;
+            console.warn("Patch", Patch.address);
+            // const beginSubSig1 = '4883EC ?? 48';
+            const beginSubSig1 = 'CC 4? 8?';
+            const lookbackSize = 0x90;
             const address = Patch.address.sub(lookbackSize);
             const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
             if (subs.length !== 0) {
                 idxDescriptor = 1;
                 idxEntrypoint = 2;
-                return subs[subs.length - 1].address;
+                return subs[subs.length - 1].address.add(1);
             }
         }
 
@@ -342,6 +386,7 @@ function getDoJitAddress() {
         // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
         const symbols = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::RegisterBlock');
         if (symbols.length !== 0) {
+            console.warn("RegisterBlock symbol:", symbols[0]);
             return symbols[0];
         }
 
@@ -349,6 +394,7 @@ function getDoJitAddress() {
         // ?Patch@EmitX64@X64@Backend@Dynarmic@@IEAAXAEBVLocationDescriptor@IR@4@PEBX@Z
         const patchs = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::Patch');
         if (patchs.length !== 0) {
+            console.warn("Patch symbol: ", patchs[0]);
             idxDescriptor = 1;
             idxEntrypoint = 2;
             return patchs[0];
