@@ -28,63 +28,6 @@ let aslrOffset = 0;
 
 isVirtual === true && tryGetAslrOffset();
 
-// function tryGetAslrOffset() {
-//     /** @type {{address: NativePointer, offset: number}} */
-//     const { address: LoadFromMetadataAddress, offset: argsOffset } = (() => {
-//         // MingW
-//         {
-//             const LoadFromMetadataSig = "4? 57 4? 56 4? 55 4? 54 55 57 56 53 4? 81 ec ?? ?? ?? ?? 8b 84 ?? ?? ?? ?? ?? 4? 89 cf 4? 89 d1 4? 89 d3 4? 89 c4 4? 89 cd 89 44";
-//             const results = Memory.scanSync(__e.base, __e.size, LoadFromMetadataSig);
-//             if (results.length !== 0) {
-//                 results.length > 1 && console.warn(results.length, "signature matches found?");
-
-//                 const address = results[0].address;
-//                 console.warn("MingW LoadFromMetadata", address);
-//                 return { address: address, offset: 0 };
-//             }
-//         }
-//         // MSVC
-//         {
-//             const LoadFromMetadataSig = "33 ?? 4? 89 ?? ?? 4? 8b ?? e8 ?? ?? ?? ?? 4? 89 ?? ?? 4? 8b ?? ?? 4? 8d";
-//             const results = Memory.scanSync(__e.base, __e.size, LoadFromMetadataSig);
-//             if (results.length !== 0) {
-//                 results.length > 1 && console.warn(results.length, "signature matches found?");
-
-//                 const lookbackSize = 0x100;
-//                 const subAddress = results[0].address.sub(lookbackSize);
-//                 const beginSubSig = "cc 4? 89 ?? ?? ?? 4? 89";
-//                 const subs = Memory.scanSync(subAddress, lookbackSize, beginSubSig);
-
-//                 if (subs.length !== 0) {
-//                     const address = subs[subs.length - 1].address.add(1);
-//                     console.warn("MSVC LoadFromMetadata", address);
-//                     return { address: address, offset: 1 };
-//                 }
-//             }
-//         }
-//     })();
-
-//     if (LoadFromMetadataAddress.isNull()) {
-//         console.log("Couldn't find LoadFromMetadata");
-//         return;
-//     } 
-//     // else if (LoadFromMetadataAddress.compare(0xfff000)) {
-//         // console.log("Invalid LoadFromMetadata address");
-//         // return;
-//     // }
-
-//     const tempHook = Interceptor.attach(LoadFromMetadataAddress, {
-//         onEnter(args) {
-//             const offset = args[4 + argsOffset];
-//             console.warn("Offset applied:", offset);
-//             aslrOffset = offset.toUInt32();
-//         },
-//         onLeave() {
-//             // tempHook.detach();
-//         },
-//     });
-// }
-
 function getInitializeAddress() {
     let InitializeStartAddress = NULL;
     let CreateProcessParameterArg = 1;
