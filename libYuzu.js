@@ -147,6 +147,8 @@ struct CreateProcessParameter {
 };
 */
 function tryGetAslrOffset() {
+    aslrOffset = sessionStorage.getItem("YUZU_ASLR_OFFSET") ?? aslrOffset;
+
     const { InitializeStartAddress, CreateProcessParameterArg } = getInitializeAddress();
     if (InitializeStartAddress.isNull()) {
         // throw new Error("Couldn't find Initialize start");
@@ -171,6 +173,7 @@ function tryGetAslrOffset() {
 
                 console.warn("ASLR Offset:", aslrOffsetHex);
                 aslrOffset = aslrOffsetHex.toUInt32();
+                sessionStorage.setItem("YUZU_ASLR_OFFSET", aslrOffset);
             } else {
                 throw new Error("Missing string?");
             }
