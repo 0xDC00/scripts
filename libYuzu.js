@@ -24,6 +24,7 @@ const DoJitPtr = getDoJitAddress();
 const buildRegs = globalThis.ARM === true ? createFunction_buildRegs32() : createFunction_buildRegs();
 const operations = Object.create(null);
 let _operations = Object.create(null);
+const IS_32 = globalThis.ARM === true;
 let aslrOffset = 0;
 
 isVirtual === true && tryGetAslrOffset();
@@ -32,31 +33,9 @@ function getInitializeAddress() {
     let InitializeStartAddress = NULL;
     let CreateProcessParameterArg = 1;
 
-    console.log("Looking for MingW Initialize...");
-    MingW: {
-        // const InitializeSig = "4? 5? 4? 5? 4? 5? 4? 5? 5? 5? 5? 5? 4? 81 e? ?? ?? ?? ?? 0f 11 ?? ?? ?? ?? ?? ?? f3 4? 0f 6f ?? 4? 89";
-        const InitializeSig = "6F 30 4? 89 CB 4? 89 D6 4? 8D ?? ?? ?? 01 00 00 4? 89 8C ?? ?? ?? ?? ?? E8";
-        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
-        if (InitializeSigResults.length === 0) {
-            // console.log("Couldn't find MingW Initialize");
-        } else {
-            const InitializeAddress = InitializeSigResults[0].address;
-            console.warn("MingW KPRocess Initialize:", InitializeAddress);
-            const lookbackSize = 0x50;
-            const subAddress = InitializeAddress.sub(lookbackSize);
-            const subResults = Memory.scanSync(subAddress, lookbackSize, "4? 5? 4? 5?");
-            if (subResults.length === 0) {
-                console.warn("Couldn't find MingW Initialize start");
-            } else {
-                InitializeStartAddress = subResults[subResults.length - 1].address;
-                CreateProcessParameterArg = 1;
-                return { InitializeStartAddress, CreateProcessParameterArg };
-            }
-        }
-    }
-
+    
     console.log("Looking for MSVC Initialize (TEST)...");
-    MSVC: {
+    MSVC2: {
                              //41 57 48 8D 6C 24 E9 48 81 EC E0 00 00 00 4D 8B E8 4C 8B F2 48 8B F9 48 8D 45 77 48 89 45 CF 48 8D 4D CF E8 EB 05 00 00 // yuzu 1616
                              //41 57 48 8D 6C 24 F1 48 81 EC F0 00 00 00 49 8B F8 4C 8B F2 48 8B D9 48 8D 45 6F 48 89 45 E7 48 8D 4D E7 E8 1B 07 00 00 // yuzu 1734
                              //41 57 48 8d 6c 24 f1 48 81 ec e0 00 00 00 4d 8b e8 4c 8b f2 48 8b d9 48 8d 45 6f 48 89 45 5f 48 8d 4d 5f e8 c5 c6 ff ff // eden
@@ -130,6 +109,56 @@ function getInitializeAddress() {
         }
     }
 
+    console.log("Looking for MingW GCC Initialize...");
+    MingW: {
+        // const InitializeSig = "4? 5? 4? 5? 4? 5? 4? 5? 5? 5? 5? 5? 4? 81 e? ?? ?? ?? ?? 0f 11 ?? ?? ?? ?? ?? ?? f3 4? 0f 6f ?? 4? 89";
+        const InitializeSig = "6F 30 4? 89 CB 4? 89 D6 4? 8D ?? ?? ?? 01 00 00 4? 89 8C ?? ?? ?? ?? ?? E8";
+        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
+        if (InitializeSigResults.length === 0) {
+            // console.log("Couldn't find MingW Initialize");
+        } else {
+            const InitializeAddress = InitializeSigResults[0].address;
+            console.warn("MingW KPRocess Initialize:", InitializeAddress);
+            const lookbackSize = 0x50;
+            const subAddress = InitializeAddress.sub(lookbackSize);
+            const subResults = Memory.scanSync(subAddress, lookbackSize, "4? 5? 4? 5?");
+            if (subResults.length === 0) {
+                console.warn("Couldn't find MingW Initialize start");
+            } else {
+                InitializeStartAddress = subResults[subResults.length - 1].address;
+                CreateProcessParameterArg = 1;
+                return { InitializeStartAddress, CreateProcessParameterArg };
+            }
+        }
+    }
+
+
+    console.log("Looking for MingW Clang initialize...");
+    MingWClang: {
+        const InitializeSig = "BD 01 08 01 00";
+        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
+        if (InitializeSigResults.length === 0) {
+            // console.log("Couldn't find MingW Clang Initialize");
+        } else {
+            // InitializeSigResults.length > 1 && console.warn(InitializeSigResults.length, "signature matches found?");
+            // if (InitializeSigResults.length > 1) {
+                // console.warn(JSON.stringify(InitializeSigResults, null, 2));
+            // }
+            const InitializeAddress = InitializeSigResults[0].address;
+            console.warn("MingW Clang KPRocess Initialize:", InitializeAddress);
+            const lookbackSize = 0x100;
+            const subAddress = InitializeAddress.sub(lookbackSize);
+            const subResults = Memory.scanSync(subAddress, lookbackSize, "4? 5? 4? 5? 4?");
+            if (subResults.length === 0) {
+                console.warn("Couldn't find MingW Clang Initialize start");
+            } else {
+                InitializeStartAddress = subResults[subResults.length - 1].address;
+                CreateProcessParameterArg = 1;
+                return { InitializeStartAddress, CreateProcessParameterArg };
+            }
+        }
+    }
+
     // throw new Error("Couldn't find Initialize");
     return { InitializeStartAddress, CreateProcessParameterArg };
 }
@@ -167,7 +196,6 @@ function tryGetAslrOffset() {
                 // codeAddress already has applied offset
                 const codeAddress = results[0].address.add(0x18).readPointer();
 
-                const IS_32 = globalThis.ARM === true;
                 const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
                 const aslrOffsetHex = codeAddress.sub(baseAddress);
 
@@ -278,6 +306,27 @@ function getDoJitAddress() {
         }
     }
     else {
+        // Windows MingW Clang
+        // 41 57 41 56 56 57 53 48 83 ec 50 4d 89 ce 4c 89 c3 48 89 d7 48 89 ce 4c 8b bc 24 a0 00 00 00 48 8b 02 48 8d 4c 24 20 ff 50 18
+        // e8 ba 94 2f 00 48 89 f9 48 89 da 4d 89 f0 e8 54 00 00 00 4c 8936 4c 897e08 4883c718 48 8b03 48 89 44 24 20 48 8b 06 48 89 44 24 28 48 8b 46 08 48 89 44 24 30 48 8d 4c 24 40 4c 8d 44 24 20 48 89 fa e8 de 97 4a 00 // clang 0.0.4-rc3
+        // e8 ?? ?? ?? ?? 4? 89 f9 4? 89 da 4? 89 f0 e8 ?? ?? ?? ?? 4? 8936 4? 897e08 4?83c7?? 4? 8b03 4? 89 44 ?? ?? 4? 8b 06 4? 89 44 ?? ?? 4? 8b 46 08 4? 89 44 ?? ?? 4? 8d ?? ?4 40 4? 8d ?? ?4 20 4? 89 fa e8 // cland 0.0.4-rc3 frida
+        const RegisterBlockSig3 = "e8 ?? ?? ?? ?? 4? 89 ?? 4? 89 ?? 4? 89 ?? e8 ?? ?? ?? ?? 4? 8936 4? 89???? ???????? 4? 8b?? 4? 89 44";
+        const RegisterBlockMatches3 = Memory.scanSync(__e.base, __e.size, RegisterBlockSig3);
+        if (RegisterBlockMatches3.length > 1) {
+            console.warn(RegisterBlockMatches3.length, "signature matches found?");
+        }
+        const RegisterBlock3 = RegisterBlockMatches3[0];
+        if (RegisterBlock3) {
+            console.warn("MingW Clang RegisterBlock:", RegisterBlock3.address);
+            const beginSubSig1 = "41 5? 41 5? 5?";
+            const lookbackSize = 0x50;
+            const address = RegisterBlock3.address.sub(lookbackSize);
+            const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
+            if (subs.length !== 0) {
+                return subs[subs.length - 1].address;
+            }
+        }
+
         // Windows MinGW GCC
         //	e8 f9 fc ff ff 48 8b 6e 20 4c 8b 7e 28 4c 89 2b 4c 89 73 08 48 8b 3f 4c 39 fd 0f 84 8e 01 00 00 
         const RegisterBlockSig2 = "e8 ?? ?? ?? ?? 4? 8b ?? ?? 4? 8b ?? ?? 4? 89 ?? 4? 89 ?? ?? 4? 8b ?? 4? 39";
@@ -298,6 +347,8 @@ function getDoJitAddress() {
         }
 
         // Windows MSVC x64 2019 (v996-) + 2022 (v997+)
+        //        clang            e8 ba 94 2f 00 48 89 f9 48 89 da 4d 89 f0 e8 54 00 00 00 4c 8936 4c 897e08 4883c718 48 8b03 48 89 44 24 20 48 8b 06 48 89 44 24 28 48 8b 46 08 48 89 44 24 30 48 8d 4c 24 40 4c 8d 44 24 20 48 89 fa e8 de 97 4a 00
+        //        clang            e8 ?? ?? ?? ?? 4? 89 ?? 48 89 ?? 4? 89 ?? e8 ?? ?? ?? ?? 4c 8936 4c 89???? ???????? 4? 8b?? 48 89 44 24 20 48 8b 06 48 89 44 24 28 48 8b 46 08 48 89 44 24 30 48 8d 4c 24 40 4c 8d 44 24 20 48 89 fa e8 de 97 4a 00
         const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
         const RegisterBlock = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
         if (RegisterBlock) {
@@ -472,7 +523,6 @@ function setHook(object, dfVer) {
     }
 
     //console.log(JSON.stringify(object, null, 2));
-    const IS_32 = globalThis.ARM === true;
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             if (key.startsWith('H')) {
