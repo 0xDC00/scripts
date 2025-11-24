@@ -664,10 +664,15 @@ function asPsxPtr(bytes) {
     return eeContext.mem.add(ptr(new Uint32Array(bytes)[0]));
 }
 
+function asRawPtr(bytes) {
+    return ptr(new Uint32Array(bytes)[0]);
+}
+
 module.exports = exports = {
     setHookEE,
     setHookIOP,
     asPsxPtr,
+    asRawPtr,
 };
 
 // #endregion
