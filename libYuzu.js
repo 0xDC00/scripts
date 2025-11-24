@@ -35,7 +35,7 @@ function getInitializeAddress() {
 
     if (Process.platform !== 'windows') {
         console.log("Looking for Linux Initialize...");
-        const address = DebugSymbol.findFunctionsNamed("_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterESt4spanIKjLm18446744073709551615EEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSC_17ProcessAddressTagEEE")[0];
+        const address = DebugSymbol.findFunctionsNamed("_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterESt4spanIKjLm18446744073709551615EEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSC_17ProcessAddressTagEEE")[0]; // linux x64
         if (address && address.isNull() === false) {
             console.warn("Linux KProcess Initialize:", address);
             InitializeStartAddress = address;
@@ -191,7 +191,7 @@ function tryGetAslrOffset() {
     const { InitializeStartAddress, CreateProcessParameterArg } = getInitializeAddress();
     if (InitializeStartAddress.isNull()) {
         // throw new Error("Couldn't find Initialize start");
-        console.log("Couldn't find Initialize, using default ASLR offset 0");
+        console.log("Couldn't find Initialize, using fallback offset", aslrOffset);
         return;
     }
 
@@ -357,8 +357,6 @@ function getDoJitAddress() {
         }
 
         // Windows MSVC x64 2019 (v996-) + 2022 (v997+)
-        //        clang            e8 ba 94 2f 00 48 89 f9 48 89 da 4d 89 f0 e8 54 00 00 00 4c 8936 4c 897e08 4883c718 48 8b03 48 89 44 24 20 48 8b 06 48 89 44 24 28 48 8b 46 08 48 89 44 24 30 48 8d 4c 24 40 4c 8d 44 24 20 48 89 fa e8 de 97 4a 00
-        //        clang            e8 ?? ?? ?? ?? 4? 89 ?? 48 89 ?? 4? 89 ?? e8 ?? ?? ?? ?? 4c 8936 4c 89???? ???????? 4? 8b?? 48 89 44 24 20 48 8b 06 48 89 44 24 28 48 8b 46 08 48 89 44 24 30 48 8d 4c 24 40 4c 8d 44 24 20 48 89 fa e8 de 97 4a 00
         const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
         const RegisterBlock = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
         if (RegisterBlock) {
