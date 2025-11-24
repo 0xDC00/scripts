@@ -27,13 +27,23 @@ let _operations = Object.create(null);
 const IS_32 = globalThis.ARM === true;
 let aslrOffset = 0;
 
-isVirtual === true && tryGetAslrOffset();
+tryGetAslrOffset();
 
 function getInitializeAddress() {
     let InitializeStartAddress = NULL;
     let CreateProcessParameterArg = 1;
 
-    
+    if (Process.platform !== 'windows') {
+        console.log("Looking for Linux Initialize...");
+        const address = DebugSymbol.findFunctionsNamed("_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterESt4spanIKjLm18446744073709551615EEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSC_17ProcessAddressTagEEE")[0];
+        if (address && address.isNull() === false) {
+            console.warn("Linux KProcess Initialize:", address);
+            InitializeStartAddress = address;
+            CreateProcessParameterArg = 1;
+        }
+        return { InitializeStartAddress, CreateProcessParameterArg };            
+    }
+
     console.log("Looking for MSVC Initialize (TEST)...");
     MSVC2: {
                              //41 57 48 8D 6C 24 E9 48 81 EC E0 00 00 00 4D 8B E8 4C 8B F2 48 8B F9 48 8D 45 77 48 89 45 CF 48 8D 4D CF E8 EB 05 00 00 // yuzu 1616
