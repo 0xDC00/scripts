@@ -1,5 +1,5 @@
 // @name         PCSX2 JIT Hooker
-// @version      2.2.0 -> 2.3.261
+// @version      2.2.0 -> 2.3.313
 // @author       logantgt, Mansive, based on work from [DC] and koukdw
 // @description  windows, linux, mac (x64)
 
@@ -73,7 +73,7 @@ function getPatternAddress({
     try {
         results = scanRanges({ ranges: ranges, pattern: pattern });
     } catch (err) {
-        throw new Error(`Error ocurred with [${name}]: ${err.message}`, {
+        throw new Error(`Error occurred with [${name}]: ${err.message}`, {
             cause: err,
         });
     }
@@ -209,8 +209,9 @@ function setupAddressesThroughPattern() {
     addresses.recAddBreakpoint = getFunctionAddress({
         name: "recAddBreakpoint",
         lookbackSize: 0x500,
-        pattern: "48 83 05 ???????? 50 EB 14 48 8D 0D ???????? 4C 8D 44 24 ?? ?? 89 FA E8",
+        pattern: "48 83 05 ???????? ?? EB 14 48 8D 0D ???????? 4C 8D 44 24 ?? ?? 89 ?? E8",
         //       "48 83 05 4E54460D 50 EB 14 48 8D 0D 3D54460D 4C 8D 44 24 28 48 89 FA E8 98170000" v2.2.0
+        //       "48 83 05 BAB34F0D 70 EB 14 48 8D 0D A9B34F0D 4C 8D 44 24 20 48 89 C2 E8 C41E0000" v2.3.313
     });
 
     {
@@ -663,10 +664,15 @@ function asPsxPtr(bytes) {
     return eeContext.mem.add(ptr(new Uint32Array(bytes)[0]));
 }
 
+function asRawPtr(bytes) {
+    return ptr(new Uint32Array(bytes)[0]);
+}
+
 module.exports = exports = {
     setHookEE,
     setHookIOP,
     asPsxPtr,
+    asRawPtr,
 };
 
 // #endregion

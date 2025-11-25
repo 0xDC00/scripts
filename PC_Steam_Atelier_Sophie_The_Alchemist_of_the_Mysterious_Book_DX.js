@@ -456,6 +456,7 @@ ui.description = /*html*/ `Configure text output and which hooks are enabled.
 <br>Press <code>Ctrl + A</code> after clicking on a hooks box to enable all hooks in it.
 <br>Check Agent's console output to see each text's corresponding hook.`;
 
+//prettier-ignore
 ui.options = [
   {
     id: "singleSentence",
@@ -505,30 +506,12 @@ ui.options = [
       { value: "EncyclopediaHelpInfo", text: "EncyclopediaHelpInfo" },
       { value: "EncyclopediaHelpName", text: "EncyclopediaHelpName" },
       { value: "EncyclopediaItemName", text: "EncyclopediaItemName" },
-      {
-        value: "EncyclopediaRecipeCategory",
-        text: "EncyclopediaRecipeCategory",
-      },
-      {
-        value: "EncyclopediaRecipeCompleteName",
-        text: "EncyclopediaRecipeCompleteName",
-      },
-      {
-        value: "EncyclopediaRecipeCondition",
-        text: "EncyclopediaRecipeCondition",
-      },
-      {
-        value: "EncyclopediaRecipeIncompleteName",
-        text: "EncyclopediaRecipeIncompleteName",
-      },
-      {
-        value: "EncyclopediaRecipeMaterial1",
-        text: "EncyclopediaRecipeMaterial1",
-      },
-      {
-        value: "EncyclopediaRecipeMaterial2",
-        text: "EncyclopediaRecipeMaterial2",
-      },
+      { value: "EncyclopediaRecipeCategory", text: "EncyclopediaRecipeCategory" },
+      { value: "EncyclopediaRecipeCompleteName", text: "EncyclopediaRecipeCompleteName" },
+      { value: "EncyclopediaRecipeCondition", text: "EncyclopediaRecipeCondition" },
+      { value: "EncyclopediaRecipeIncompleteName", text: "EncyclopediaRecipeIncompleteName" },
+      { value: "EncyclopediaRecipeMaterial1", text: "EncyclopediaRecipeMaterial1" },
+      { value: "EncyclopediaRecipeMaterial2", text: "EncyclopediaRecipeMaterial2" },
       { value: "EncyclopediaTraitInfo", text: "EncyclopediaTraitInfo" },
       { value: "EncyclopediaTraitName", text: "EncyclopediaTraitName" },
       { value: "EventInfo", text: "EventInfo" },
@@ -561,10 +544,7 @@ ui.options = [
       { value: "StatusAbilityInfo", text: "StatusAbilityInfo" },
       { value: "StatusSkillInfo", text: "StatusSkillInfo" },
       { value: "StatusSkillName", text: "StatusSkillName" },
-      {
-        value: "SynthesisTransferTraitInfo",
-        text: "SynthesisTransferTraitInfo",
-      },
+      { value: "SynthesisTransferTraitInfo", text: "SynthesisTransferTraitInfo" },
       { value: "TownMapAreaName", text: "TownMapAreaName" },
       { value: "WorldMapAreaName", text: "WorldMapAreaName" },
     ],
@@ -599,27 +579,15 @@ ui.options = [
     help: "Texts that occur in the overworld, such as enemy skill names and area banners.",
     multiple: true,
     options: [
-      {
-        value: "NotificationBanner",
-        text: "NotificationBanner",
-        selected: true,
-      },
+      { value: "NotificationBanner", text: "NotificationBanner", selected: true },
       { value: "AreaNameBanner", text: "AreaNameBanner", selected: true },
       { value: "SideDialogue", text: "SideDialogue", selected: true },
       { value: "BattleEnemyName", text: "BattleEnemyName", selected: true },
       { value: "BattleSkillInfo1", text: "BattleSkillInfo1", selected: true },
       { value: "BattleSkillInfo2", text: "BattleSkillInfo2", selected: true },
       { value: "BattleAction", text: "BattleAction", selected: true },
-      {
-        value: "BattleActionSpecial",
-        text: "BattleActionSpecial",
-        selected: true,
-      },
-      {
-        value: "BattleActionEnemySpecial",
-        text: "BattleActionEnemySpecial",
-        selected: true,
-      },
+      { value: "BattleActionSpecial", text: "BattleActionSpecial", selected: true },
+      { value: "BattleActionEnemySpecial", text: "BattleActionEnemySpecial", selected: true },
       { value: "SkillObtained", text: "SkillObtained", selected: true },
     ],
   },
@@ -649,11 +617,7 @@ ui.options = [
       { value: "StatusAbilityInfo", text: "StatusAbilityInfo", selected: true },
       { value: "ItemName", text: "ItemName", selected: true },
       { value: "RecipeName", text: "RecipeName", selected: true },
-      {
-        value: "RecipeObtainedName",
-        text: "RecipeObtainedName",
-        selected: true,
-      },
+      { value: "RecipeObtainedName", text: "RecipeObtainedName", selected: true },
       { value: "RecipeMaterial1", text: "RecipeMaterial1", selected: true },
       { value: "RecipeMaterial2", text: "RecipeMaterial2", selected: true },
       { value: "MaterialQuality", text: "MaterialQuality", selected: true },
@@ -661,37 +625,13 @@ ui.options = [
       { value: "MaterialTrait", text: "MaterialTrait", selected: true },
       { value: "MaterialCategory", text: "MaterialCategory", selected: true },
       { value: "RelatedRecipe", text: "RelatedRecipe", selected: true },
-      {
-        value: "SynthesisTransferTraitInfo",
-        text: "SynthesisTransferTraitInfo",
-        selected: true,
-      },
-      {
-        value: "CraftTransferTraitInfo",
-        text: "CraftTransferTraitInfo",
-        selected: true,
-      },
+      { value: "SynthesisTransferTraitInfo", text: "SynthesisTransferTraitInfo", selected: true },
+      { value: "CraftTransferTraitInfo", text: "CraftTransferTraitInfo", selected: true },
       { value: "CraftRecipeName", text: "CraftRecipeName", selected: true },
-      {
-        value: "CraftRecipeMaterial1",
-        text: "CraftRecipeMaterial1",
-        selected: true,
-      },
-      {
-        value: "CraftRecipeMaterial2",
-        text: "CraftRecipeMaterial2",
-        selected: true,
-      },
-      {
-        value: "DMakerMaterialCategory",
-        text: "DMakerMaterialCategory",
-        selected: true,
-      },
-      {
-        value: "DMakerMaterialTrait",
-        text: "DMakerMaterialTrait",
-        selected: true,
-      },
+      { value: "CraftRecipeMaterial1", text: "CraftRecipeMaterial1", selected: true },
+      { value: "CraftRecipeMaterial2", text: "CraftRecipeMaterial2", selected: true },
+      { value: "DMakerMaterialCategory", text: "DMakerMaterialCategory", selected: true },
+      { value: "DMakerMaterialTrait", text: "DMakerMaterialTrait", selected: true },
     ],
   },
   {
@@ -701,101 +641,25 @@ ui.options = [
     help: "Encyclopedia texts.",
     multiple: true,
     options: [
-      {
-        value: "EncyclopediaItemName",
-        text: "EncyclopediaItemName",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaFacilityName",
-        text: "EncyclopediaFacilityName",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaFieldName",
-        text: "EncyclopediaFieldName",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaEnemyName",
-        text: "EncyclopediaEnemyName",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaDialogue",
-        text: "EncyclopediaDialogue",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaEffectName",
-        text: "EncyclopediaEffectName",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaEffectInfo",
-        text: "EncyclopediaEffectInfo",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaTraitName",
-        text: "EncyclopediaTraitName",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaTraitInfo",
-        text: "EncyclopediaTraitInfo",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaHelpName",
-        text: "EncyclopediaHelpName",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaHelpInfo",
-        text: "EncyclopediaHelpInfo",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaRecipeCompleteName",
-        text: "EncyclopediaRecipeCompleteName",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaRecipeIncompleteName",
-        text: "EncyclopediaRecipeIncompleteName",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaRecipeCondition",
-        text: "EncyclopediaRecipeCondition",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaRecipeCategory",
-        text: "EncyclopediaRecipeCategory",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaRecipeMaterial1",
-        text: "EncyclopediaRecipeMaterial1",
-        selected: true,
-      },
-      {
-        value: "EncyclopediaRecipeMaterial2",
-        text: "EncyclopediaRecipeMaterial2",
-        selected: true,
-      },
-      {
-        value: "ExtraSoundRoomName",
-        text: "ExtraSoundRoomName",
-        selected: true,
-      },
-      {
-        value: "ExtraSoundRoomInfo",
-        text: "ExtraSoundRoomInfo",
-        selected: true,
-      },
+      { value: "EncyclopediaItemName", text: "EncyclopediaItemName", selected: true },
+      { value: "EncyclopediaFacilityName", text: "EncyclopediaFacilityName", selected: true },
+      { value: "EncyclopediaFieldName", text: "EncyclopediaFieldName", selected: true },
+      { value: "EncyclopediaEnemyName", text: "EncyclopediaEnemyName", selected: true },
+      { value: "EncyclopediaDialogue", text: "EncyclopediaDialogue", selected: true },
+      { value: "EncyclopediaEffectName", text: "EncyclopediaEffectName", selected: true },
+      { value: "EncyclopediaEffectInfo", text: "EncyclopediaEffectInfo", selected: true },
+      { value: "EncyclopediaTraitName", text: "EncyclopediaTraitName", selected: true },
+      { value: "EncyclopediaTraitInfo", text: "EncyclopediaTraitInfo", selected: true },
+      { value: "EncyclopediaHelpName", text: "EncyclopediaHelpName", selected: true },
+      { value: "EncyclopediaHelpInfo", text: "EncyclopediaHelpInfo", selected: true },
+      { value: "EncyclopediaRecipeCompleteName", text: "EncyclopediaRecipeCompleteName", selected: true },
+      { value: "EncyclopediaRecipeIncompleteName", text: "EncyclopediaRecipeIncompleteName", selected: true },
+      { value: "EncyclopediaRecipeCondition", text: "EncyclopediaRecipeCondition", selected: true },
+      { value: "EncyclopediaRecipeCategory", text: "EncyclopediaRecipeCategory", selected: true },
+      { value: "EncyclopediaRecipeMaterial1", text: "EncyclopediaRecipeMaterial1", selected: true },
+      { value: "EncyclopediaRecipeMaterial2", text: "EncyclopediaRecipeMaterial2", selected: true },
+      { value: "ExtraSoundRoomName", text: "ExtraSoundRoomName", selected: true },
+      { value: "ExtraSoundRoomInfo", text: "ExtraSoundRoomInfo", selected: true },
     ],
   },
 ];
