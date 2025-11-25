@@ -34,26 +34,34 @@ function getInitializeAddress() {
     let CreateProcessParameterArg = 1;
 
     if (Process.platform !== 'windows') {
-        console.log("Looking for Linux Initialize...");
-        const address = DebugSymbol.findFunctionsNamed("_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterESt4spanIKjLm18446744073709551615EEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSC_17ProcessAddressTagEEE")[0]; // linux x64
-        if (address && address.isNull() === false) {
-            console.warn("Linux KProcess Initialize:", address);
+        let addresses;
+        if (Process.arch === 'arm64') {
+            // ignore
+        } else {
+            console.log("Looking for Unix Initialize...");
+            addresses = DebugSymbol.findFunctionsNamed("_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterESt4spanIKjLm18446744073709551615EEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSC_17ProcessAddressTagEEE");
+        }
+
+        if (addresses?.length !== 0) {
+            const address = addresses[0];
+            console.warn("Unix KProcess Initialize:", address);
             InitializeStartAddress = address;
             CreateProcessParameterArg = 1;
         }
-        return { InitializeStartAddress, CreateProcessParameterArg };            
+
+        return { InitializeStartAddress, CreateProcessParameterArg };
     }
 
     console.log("Looking for MSVC Initialize (TEST)...");
     MSVC2: {
-                             //41 57 48 8D 6C 24 E9 48 81 EC E0 00 00 00 4D 8B E8 4C 8B F2 48 8B F9 48 8D 45 77 48 89 45 CF 48 8D 4D CF E8 EB 05 00 00 // yuzu 1616
-                             //41 57 48 8D 6C 24 F1 48 81 EC F0 00 00 00 49 8B F8 4C 8B F2 48 8B D9 48 8D 45 6F 48 89 45 E7 48 8D 4D E7 E8 1B 07 00 00 // yuzu 1734
-                             //41 57 48 8d 6c 24 f1 48 81 ec e0 00 00 00 4d 8b e8 4c 8b f2 48 8b d9 48 8d 45 6f 48 89 45 5f 48 8d 4d 5f e8 c5 c6 ff ff // eden
-                             //41 57 48 8d 6c 24 e9 48 81 ec e0 00 00 00 4d 8b e8 4c 8b f2 48 8b f9 48 8d 45 77 48 89 45 cf 48 8d 4d cf e8 eb 05 00 00 // eden
-                             //41 57 48 8D 6C 24 F9 48 81 EC D8 00 00 00 4D 8B E8 4C 8B FA 48 8B D9 48 8D 45 6F 48 89 45 A7 48 8D 4D A7 E8 DB 06 00 00 // eden 0.0.3
-                             //41 57 48 8D 6C 24 F9 48 81 EC E8 00 00 00 4D 8B E8 4C 8B F2 4C 8B F9 48 8D 45 6F 48 89 45 9F 48 8D 4D 9F E8 FB DD FF FF // eden 0.0.3 nightly
-                             //41 57 48 8d ?? 24 ?? 48 81 ec ?? 00 00 00 4? 8b ?8 4c 8b ?? ?? 8b ?? 48 8d 45 ?? 48 89 45 ?? 48 8d 4d // sig of yuzu + yuzu + eden + eden + eden + eden
-        // FALSE PATTERN       41 57 48 8D 6C 24 E1 48 81 EC B8 00 00 00 4D 8B F8 4C 8B F2 4C 8B E9 48 8D 45 A7 48 89 45 A7 48 8D 45 A7 48 89 45 AF 48 // FALSE PATTERN
+        //                     41 57 48 8D 6C 24 E9 48 81 EC E0 00 00 00 4D 8B E8 4C 8B F2 48 8B F9 48 8D 45 77 48 89 45 CF 48 8D 4D CF E8 EB 05 00 00  // yuzu 1616
+        //                     41 57 48 8D 6C 24 F1 48 81 EC F0 00 00 00 49 8B F8 4C 8B F2 48 8B D9 48 8D 45 6F 48 89 45 E7 48 8D 4D E7 E8 1B 07 00 00  // yuzu 1734
+        //                     41 57 48 8d 6c 24 f1 48 81 ec e0 00 00 00 4d 8b e8 4c 8b f2 48 8b d9 48 8d 45 6f 48 89 45 5f 48 8d 4d 5f e8 c5 c6 ff ff  // eden
+        //                     41 57 48 8d 6c 24 e9 48 81 ec e0 00 00 00 4d 8b e8 4c 8b f2 48 8b f9 48 8d 45 77 48 89 45 cf 48 8d 4d cf e8 eb 05 00 00  // eden
+        //                     41 57 48 8D 6C 24 F9 48 81 EC D8 00 00 00 4D 8B E8 4C 8B FA 48 8B D9 48 8D 45 6F 48 89 45 A7 48 8D 4D A7 E8 DB 06 00 00  // eden 0.0.3
+        //                     41 57 48 8D 6C 24 F9 48 81 EC E8 00 00 00 4D 8B E8 4C 8B F2 4C 8B F9 48 8D 45 6F 48 89 45 9F 48 8D 4D 9F E8 FB DD FF FF  // eden 0.0.3 nightly
+        //                     41 57 48 8d ?? 24 ?? 48 81 ec ?? 00 00 00 4? 8b ?8 4c 8b ?? ?? 8b ?? 48 8d 45 ?? 48 89 45 ?? 48 8d 4d                    // sig of yuzu + yuzu + eden + eden + eden + eden
+        // FALSE PATTERN       41 57 48 8D 6C 24 E1 48 81 EC B8 00 00 00 4D 8B F8 4C 8B F2 4C 8B E9 48 8D 45 A7 48 89 45 A7 48 8D 45 A7 48 89 45 AF 48  // FALSE PATTERN
         const InitializeSig = "4? 57 4? 8D 6C 24 ?? 4? 81 EC ?? 00 00 00 ?? 8B ?8 4C 8B F? 4? 8B ?9 48 8D 45 ?? 48 89 45 ?? 48 8D 4D";
         const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
@@ -89,7 +97,6 @@ function getInitializeAddress() {
     console.log("Looking for MSVC Initialize...");
     // doesnt support 1616
     MSVC: {
-        //    InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?";
         const InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?"
         const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
@@ -123,8 +130,14 @@ function getInitializeAddress() {
     MingW: {
         // const InitializeSig = "4? 5? 4? 5? 4? 5? 4? 5? 5? 5? 5? 5? 4? 81 e? ?? ?? ?? ?? 0f 11 ?? ?? ?? ?? ?? ?? f3 4? 0f 6f ?? 4? 89";
         const InitializeSig = "6F 30 4? 89 CB 4? 89 D6 4? 8D ?? ?? ?? 01 00 00 4? 89 8C ?? ?? ?? ?? ?? E8";
-        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
-        if (InitializeSigResults.length === 0) {
+        const InitializeSigResults = (() => {
+            try {
+                const results = Memory.scanSync(__e.base, __e.size, InitializeSig)
+            } catch (e) {
+                console.log("MingW GCC Initialize scan error:", e);
+            }
+        })();
+        if (!InitializeSigResults || InitializeSigResults.length === 0) {
             // console.log("Couldn't find MingW Initialize");
         } else {
             const InitializeAddress = InitializeSigResults[0].address;
@@ -145,7 +158,7 @@ function getInitializeAddress() {
 
     console.log("Looking for MingW Clang initialize...");
     MingWClang: {
-        const InitializeSig = "BD 01 08 01 00";
+        const InitializeSig = "BD 01 08 01 00"; // what
         const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
             // console.log("Couldn't find MingW Clang Initialize");
@@ -279,7 +292,7 @@ function jitAttach(em_address, entrypoint, op) {
     Breakpoint.add(entrypoint, function () {
         //thiz.context.sp = 0;
         const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
-        //console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
+        // console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
         op.call(thiz, regs);
     });
 
@@ -309,9 +322,9 @@ function getDoJitAddress() {
             'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)' // macOS x64 (demangle)
         ];
         for (const name of names) {
-            const addresss = DebugSymbol.findFunctionsNamed(name);
-            if (addresss.length !== 0) {
-                return addresss[0];
+            const addresses = DebugSymbol.findFunctionsNamed(name);
+            if (addresses.length !== 0) {
+                return addresses[0];
             }
         }
     }
