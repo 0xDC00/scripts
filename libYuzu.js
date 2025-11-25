@@ -35,7 +35,7 @@ To use Dynarmic:
 
 const isFastMem = true;
 
-const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
+const isVirtual = arch === 'x64' && Process.platform === 'windows';
 let idxDescriptor = isVirtual === true ? 2 : 1;
 let idxEntrypoint = idxDescriptor + 1;
 const DoJitPtr = getDoJitAddress();
@@ -53,7 +53,7 @@ function getInitializeAddress() {
 
     if (Process.platform !== 'windows') {
         let addresses;
-        if (Process.arch === 'arm64') {
+        if (arch === 'arm64') {
             console.log("Looking for Arm64 Initialize...");
             addresses = DebugSymbol.findFunctionsNamed("_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterENSt6__ndk14spanIKjLm18446744073709551615EEEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSD_17ProcessAddressTagEEE");
         } else {
@@ -241,6 +241,10 @@ function tryGetAslrOffset() {
                 const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
                 const aslrOffsetHex = codeAddress.sub(baseAddress);
 
+                if (aslrOffsetHex.compare(ptr(0x80000000)) > 0) {
+                    console.error("Code address too high, are you on NCE?", codeAddress);
+                }
+
                 console.warn("ASLR Offset:", aslrOffsetHex);
                 aslrOffset = aslrOffsetHex.toUInt32();
                 sessionStorage.setItem("YUZU_ASLR_OFFSET", aslrOffset);
@@ -338,7 +342,7 @@ function jitAttach(em_address, entrypoint, op) {
     Breakpoint.add(entrypoint, function () {
         //thiz.context.sp = 0;
         const regs = buildRegs(this.context, thiz); // x0 x1 x2 ...
-        // console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
+        console.log(JSON.stringify(thiz, (_, value) => { return typeof value === 'number' ? '0x' + value.toString(16) : value; }, 2));
         op.call(thiz, regs);
     });
 
@@ -524,7 +528,8 @@ function createFunctionBody_findBaseAndRegs() {
                 }
             };`;
     // body += `console.log(JSON.stringify(context, null, 2));`;
-    body += `console.warn(JSON.stringify(regs + " " + base, null, 2));`;
+
+    // body += `console.warn(JSON.stringify(regs + " " + base, null, 2));`;
 
     return body;
 }
@@ -618,9 +623,8 @@ function createFunction_buildRegs32() {
         // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
         body += 'const regs = context.r15;';
     } else if (arch === 'arm64') {
-        throw new Error(`32-bit games aren't supported yet`);
         body += 'const base = context.x25;';
-        body += 'const regs = context.x28;';
+        body += 'const regs = context.x28.add(24);'; // 6 u32
     }
 
     /* pagetable */
@@ -641,6 +645,7 @@ function createFunction_buildRegs32() {
     }
     body += '];';
 
+    // probably incorrect on arm64?
     //body += 'thiz.context.pc = regs.add(60).readU32();'; // r15 0x3c 60
     //body += 'thiz.context.sp = regs.add(52).readU32();'; // r13 0x34 52; useless?
     body += 'thiz.returnAddress = regs.add(56).readU32();'; // r14 0x38 56; lr
