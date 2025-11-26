@@ -30,6 +30,15 @@ let aslrOffset = 0;
 tryGetAslrOffset();
 
 function getInitializeAddress() {
+    function scanAttempt(address, size, pattern) {
+        try {
+            return Memory.scanSync(address, size, pattern);
+        } catch (e) {
+            console.log("Scan error:", e);
+        }
+        return [];
+    }
+
     let InitializeStartAddress = NULL;
     let CreateProcessParameterArg = 1;
 
@@ -63,7 +72,7 @@ function getInitializeAddress() {
         //                     41 57 48 8d ?? 24 ?? 48 81 ec ?? 00 00 00 4? 8b ?8 4c 8b ?? ?? 8b ?? 48 8d 45 ?? 48 89 45 ?? 48 8d 4d                    // sig of yuzu + yuzu + eden + eden + eden + eden
         // FALSE PATTERN       41 57 48 8D 6C 24 E1 48 81 EC B8 00 00 00 4D 8B F8 4C 8B F2 4C 8B E9 48 8D 45 A7 48 89 45 A7 48 8D 45 A7 48 89 45 AF 48  // FALSE PATTERN
         const InitializeSig = "4? 57 4? 8D 6C 24 ?? 4? 81 EC ?? 00 00 00 ?? 8B ?8 4C 8B F? 4? 8B ?9 48 8D 45 ?? 48 89 45 ?? 48 8D 4D";
-        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
+        const InitializeSigResults = scanAttempt(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
             // console.log("Couldn't find MSVC Initialize");
         } else {
@@ -75,7 +84,7 @@ function getInitializeAddress() {
             console.warn("MSVC KPRocess Initialize:", InitializeAddress);
             const lookbackSize = 0x50;
             const subAddress = InitializeAddress.sub(lookbackSize);
-            const subResults = Memory.scanSync(subAddress, lookbackSize, "cc cc cc");
+            const subResults = scanAttempt(subAddress, lookbackSize, "cc cc cc");
             if (subResults.length === 0) {
                 console.warn("Couldn't find MSVC Initialize start");
             } else {
@@ -98,7 +107,7 @@ function getInitializeAddress() {
     // doesnt support 1616
     MSVC: {
         const InitializeSig = "4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?"
-        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
+        const InitializeSigResults = scanAttempt(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
             // console.log("Couldn't find MSVC Initialize");
         } else {
@@ -107,7 +116,7 @@ function getInitializeAddress() {
             console.warn("MSVC KPRocess Initialize:", InitializeAddress);
             const lookbackSize = 0x400;
             const subAddress = InitializeAddress.sub(lookbackSize);
-            const subResults = Memory.scanSync(subAddress, lookbackSize, "cc cc cc");
+            const subResults = scanAttempt(subAddress, lookbackSize, "cc cc cc");
             if (subResults.length === 0) {
                 console.warn("Couldn't find MSVC Initialize start");
             } else {
@@ -130,13 +139,7 @@ function getInitializeAddress() {
     MingW: {
         // const InitializeSig = "4? 5? 4? 5? 4? 5? 4? 5? 5? 5? 5? 5? 4? 81 e? ?? ?? ?? ?? 0f 11 ?? ?? ?? ?? ?? ?? f3 4? 0f 6f ?? 4? 89";
         const InitializeSig = "6F 30 4? 89 CB 4? 89 D6 4? 8D ?? ?? ?? 01 00 00 4? 89 8C ?? ?? ?? ?? ?? E8";
-        const InitializeSigResults = (() => {
-            try {
-                const results = Memory.scanSync(__e.base, __e.size, InitializeSig)
-            } catch (e) {
-                console.log("MingW GCC Initialize scan error:", e);
-            }
-        })();
+        const InitializeSigResults = scanAttempt(__e.base, __e.size, InitializeSig);
         if (!InitializeSigResults || InitializeSigResults.length === 0) {
             // console.log("Couldn't find MingW Initialize");
         } else {
@@ -144,7 +147,7 @@ function getInitializeAddress() {
             console.warn("MingW KPRocess Initialize:", InitializeAddress);
             const lookbackSize = 0x50;
             const subAddress = InitializeAddress.sub(lookbackSize);
-            const subResults = Memory.scanSync(subAddress, lookbackSize, "4? 5? 4? 5?");
+            const subResults = scanAttempt(subAddress, lookbackSize, "4? 5? 4? 5?");
             if (subResults.length === 0) {
                 console.warn("Couldn't find MingW Initialize start");
             } else {
@@ -159,7 +162,7 @@ function getInitializeAddress() {
     console.log("Looking for MingW Clang initialize...");
     MingWClang: {
         const InitializeSig = "BD 01 08 01 00"; // what
-        const InitializeSigResults = Memory.scanSync(__e.base, __e.size, InitializeSig);
+        const InitializeSigResults = scanAttempt(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
             // console.log("Couldn't find MingW Clang Initialize");
         } else {
@@ -171,7 +174,7 @@ function getInitializeAddress() {
             console.warn("MingW Clang KPRocess Initialize:", InitializeAddress);
             const lookbackSize = 0x100;
             const subAddress = InitializeAddress.sub(lookbackSize);
-            const subResults = Memory.scanSync(subAddress, lookbackSize, "4? 5? 4? 5? 4?");
+            const subResults = scanAttempt(subAddress, lookbackSize, "4? 5? 4? 5? 4?");
             if (subResults.length === 0) {
                 console.warn("Couldn't find MingW Clang Initialize start");
             } else {
