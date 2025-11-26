@@ -39,32 +39,26 @@ Interceptor.attach(DoJitPtr, {
         if (arch === 'x64') {
             em_address = descriptor.readU32();
         } else if (arch === 'arm64') {
-            em_address = descriptor.and(0xffffffff).toUInt32();
-        } 
+            // em_address = descriptor.and(0xffffffff).toUInt32();
+            em_address = descriptor.toUInt32();
+        }
+
         const op = operations[em_address];
 
         // x64 example
         // descriptor:       0xcf4e85ec30
         // em_address:       0x801de246    
-        // em_address (num): 2149442118    
         // entrypoint:       0x29879b99080 
 
-        // console.warn(`descriptor:       ${descriptor.toString()}
-                    // \rem_address:       ${ptr(em_address).toString()}
-                    // \rem_address (num): ${em_address}
-                    // \rentrypoint:       ${ptr(entrypoint.toString())}
-                    // `);
-        // console.warn(`descriptor:        ${descriptor.toString()}
-        //             \rem_address:        ${ptr(em_address).toString()}
-        //             \rentrypoint:        ${ptr(entrypoint.toString())}
-        //             `);        
-        // try {
-        //     console.warn(`descriptor.readU32:${descriptor.readU32().toString()}`);
-        // } catch (e) {}
-        // console.warn(hexdump(entrypoint, { header: false, ansi: false, length: 0x40 }));
+        // arm64 example
+        // descriptor:       0x180123d90
+        // em_address:       0x80123d90
+        // entrypoint:       0x70183263a0
 
-        // console.warn(descriptor, entrypoint);
-        // console.warn(hexdump(entrypoint, { header: false, ansi: false, length: 0x20 }),"\r\n");
+        // console.warn(`descriptor:       ${descriptor.toString()}
+        //             \rem_address:       ${ptr(em_address).toString()}
+        //             \rentrypoint:       ${ptr(entrypoint.toString())}
+        //             `);
 
         if (op !== undefined) {
             console.log('Attach:', ptr(em_address), entrypoint);
@@ -168,9 +162,7 @@ function getDoJitAddress() {
             const RelinkForDescriptorSig = "6c 05 c1 78 9f ?? ?? 31 ?1 ?? ?? 54 ?? 0? 00 91 ?f 0? ?? eb 61 ff ff 54 03 00 00 14 ?f 0? ?? eb ?1 ?? ?? 54 e8 03 40 f9 08 15 40 f9";
             const __e = Process.findModuleByName("libVita3K.so");
             const ranges = __e.enumerateRanges("r-x");
-            ranges.forEach(range => {
-                console.warn(JSON.stringify(range, null, 2));
-            });
+            ranges.forEach(range => console.warn(JSON.stringify(range, null, 2)));
             const address = getPatternAddress({
                 name: "RelinkForDescriptor",
                 pattern: RelinkForDescriptorSig,
@@ -290,3 +282,4 @@ function setHook(object) {
 module.exports = exports = {
     setHook
 }
+
