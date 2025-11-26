@@ -393,6 +393,8 @@ function getDoJitAddress() {
             if (addresses.length !== 0) {
                 return addresses[0];
             }
+        } else {
+            console.warn("Unknown architecture?:", arch)
         }
     }
     else {
