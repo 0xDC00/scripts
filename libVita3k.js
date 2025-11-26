@@ -54,17 +54,17 @@ Interceptor.attach(DoJitPtr, {
                     // \rem_address (num): ${em_address}
                     // \rentrypoint:       ${ptr(entrypoint.toString())}
                     // `);
-        console.warn(`descriptor:        ${descriptor.toString()}
-                    \rem_address:        ${ptr(em_address).toString()}
-                    \rentrypoint:        ${ptr(entrypoint.toString())}
-                    `);        
+        // console.warn(`descriptor:        ${descriptor.toString()}
+        //             \rem_address:        ${ptr(em_address).toString()}
+        //             \rentrypoint:        ${ptr(entrypoint.toString())}
+        //             `);        
         // try {
         //     console.warn(`descriptor.readU32:${descriptor.readU32().toString()}`);
         // } catch (e) {}
         // console.warn(hexdump(entrypoint, { header: false, ansi: false, length: 0x40 }));
 
         // console.warn(descriptor, entrypoint);
-        console.warn(hexdump(entrypoint, { header: false, ansi: false, length: 0x20 }),"\r\n");
+        // console.warn(hexdump(entrypoint, { header: false, ansi: false, length: 0x20 }),"\r\n");
 
         if (op !== undefined) {
             console.log('Attach:', ptr(em_address), entrypoint);
@@ -143,8 +143,6 @@ function getPatternAddress({
     const index = getFirst ? 0 : -1;
     const address = results.at(index).address;
 
-    console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
-
     return address;
 }
 
@@ -166,23 +164,25 @@ function getDoJitAddress() {
                 }
             }
         } else if (Process.arch === 'arm64') {
-            // android
-            console.warn("Looking for RelinkForDescriptor...");
+            // Android
             const RelinkForDescriptorSig = "6c 05 c1 78 9f ?? ?? 31 ?1 ?? ?? 54 ?? 0? 00 91 ?f 0? ?? eb 61 ff ff 54 03 00 00 14 ?f 0? ?? eb ?1 ?? ?? 54 e8 03 40 f9 08 15 40 f9";
             const __e = Process.findModuleByName("libVita3K.so");
             const ranges = __e.enumerateRanges("r-x");
             ranges.forEach(range => {
                 console.warn(JSON.stringify(range, null, 2));
             });
-            // const results = Memory.scanSync(__e.base, __e.size, RelinkForDescriptorSig);
-            const result = getPatternAddress({
+            const address = getPatternAddress({
                 name: "RelinkForDescriptor",
                 pattern: RelinkForDescriptorSig,
                 ranges: ranges,
             });
-
-            if (result.isNull() === false) {
-                return result;
+            if (address.isNull() === false) {
+                const lookbackSize = 0x80
+                const subAddress = address.sub(lookbackSize);
+                const subResults = Memory.scanSync(subAddress, lookbackSize, "f? ?? ?? a9 f? ?? ?? a9");
+                if (subResults.length !== 0) {
+                    return subResults.at(-1).address;
+                }
             }
         }
     } else {
@@ -264,7 +264,6 @@ function createFunction_buildRegs() {
 
 function setHook(object) {
     for (const key in object) {
-        console.warn(key.toString(16));
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
