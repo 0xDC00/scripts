@@ -292,7 +292,6 @@ Interceptor.attach(DoJitPtr, {
         const entrypoint = args[idxEntrypoint]; // r9
 
         let em_address;
-        let op;
 
         if (arch === 'x64') {
             em_address = descriptor.readU64().and(0xffffffff).sub(aslrOffset).toNumber();
@@ -300,7 +299,7 @@ Interceptor.attach(DoJitPtr, {
             em_address = descriptor.and(0xffffffff).sub(aslrOffset).toUInt32();
         } 
 
-        op = operations[em_address];
+        const op = operations[em_address];
 
         // x64 example
         // descriptor:       0x1c983e9f2e8
