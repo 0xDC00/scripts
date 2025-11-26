@@ -11,6 +11,7 @@ console.warn('[Compatibility]');
 console.warn('Vita3k 0.2.0 3742+');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
+const arch = Process.arch;
 const buildRegs = createFunction_buildRegs();
 const operations = Object.create(null);
 //let EmitX64_vftable, EmitX64_handle;
@@ -20,8 +21,7 @@ const operations = Object.create(null);
 // https://github.com/citra-emu/dynarmic/blob/af0d4a7c18ee90d544866a8cf24e6a0d48d3edc4/src/backend/x64/emit_x64.cpp#L267
 // EmitX64::BlockDescriptor EmitX64::RegisterBlock(const IR::LocationDescriptor& descriptor, CodePtr entrypoint, CodePtr entrypoint_far, size_t size)
 // EmitX64::BlockDescriptor EmitX64::RegisterBlock(const IR::LocationDescriptor& descriptor, CodePtr entrypoint, size_t size)
-
-const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
+const isVirtual = arch === 'x64' && Process.platform === 'windows';
 let idxDescriptor = isVirtual === true ? 2 : 1;
 let idxEntrypoint = idxDescriptor + 1;
 const DoJitPtr = getDoJitAddress();
@@ -34,8 +34,38 @@ Interceptor.attach(DoJitPtr, {
         //const entrypoint_far = args[4]; // rsp+28
         //const size = args[5]; // rsp+30
 
-        const em_address = descriptor.readU32();
+        let em_address;
+
+        if (arch === 'x64') {
+            em_address = descriptor.readU32();
+        } else if (arch === 'arm64') {
+            em_address = descriptor.and(0xffffffff).toUInt32();
+        } 
         const op = operations[em_address];
+
+        // x64 example
+        // descriptor:       0xcf4e85ec30
+        // em_address:       0x801de246    
+        // em_address (num): 2149442118    
+        // entrypoint:       0x29879b99080 
+
+        // console.warn(`descriptor:       ${descriptor.toString()}
+                    // \rem_address:       ${ptr(em_address).toString()}
+                    // \rem_address (num): ${em_address}
+                    // \rentrypoint:       ${ptr(entrypoint.toString())}
+                    // `);
+        console.warn(`descriptor:        ${descriptor.toString()}
+                    \rem_address:        ${ptr(em_address).toString()}
+                    \rentrypoint:        ${ptr(entrypoint.toString())}
+                    `);        
+        // try {
+        //     console.warn(`descriptor.readU32:${descriptor.readU32().toString()}`);
+        // } catch (e) {}
+        // console.warn(hexdump(entrypoint, { header: false, ansi: false, length: 0x40 }));
+
+        // console.warn(descriptor, entrypoint);
+        console.warn(hexdump(entrypoint, { header: false, ansi: false, length: 0x20 }),"\r\n");
+
         if (op !== undefined) {
             console.log('Attach:', ptr(em_address), entrypoint);
             jitAttach(em_address, entrypoint, op);
@@ -58,20 +88,101 @@ function jitAttach(em_address, entrypoint, op) {
     });
 }
 
+/**
+ * @param {Object} settings
+ * @param {RangeDetails[]} settings.ranges
+ * @param {string} settings.pattern
+ * @returns {MemoryScanMatch[]}
+ */
+function scanRanges({ ranges, pattern }) {
+    const allMatches = [];
+
+    for (const range of ranges) {
+        const rangeMatches = Memory.scanSync(range.base, range.size, pattern);
+
+        if (rangeMatches.length !== 0) {
+            allMatches.push(...rangeMatches);
+        }
+    }
+
+    return allMatches;
+}
+
+/**
+ * Scans a pattern in memory and returns a NativePointer.
+ * @param {Object} settings
+ * @param {string} settings.name
+ * @param {string} settings.pattern
+ * @param {RangeDetails[]} [settings.ranges]
+ * @param {boolean} [settings.getFirst]
+ * @returns {NativePointer}
+ */
+function getPatternAddress({
+    name,
+    pattern,
+    ranges = __ranges,
+    getFirst = true,
+}) {
+    /** @type {MemoryScanMatch[]} */
+    let results = null;
+
+    try {
+        results = scanRanges({ ranges: ranges, pattern: pattern });
+    } catch (err) {
+        throw new Error(`Error occurred with [${name}]: ${err.message}`, {
+            cause: err,
+        });
+    }
+
+    if (results.length === 0) {
+        throw new RangeError(`[${name}] not found!`);
+    } else if (results.length > 1) {
+        console.warn(`[${name}] has ${results.length} results`);
+    }
+
+    const index = getFirst ? 0 : -1;
+    const address = results.at(index).address;
+
+    console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
+
+    return address;
+}
+
 function getDoJitAddress() {
     if (Process.platform !== 'windows') {
-        // Unix
-        // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m.cold
-        const names = [
-            '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm', // linux 64 new
-            '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m', // linux x64
-            // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
-            'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, void const*, unsigned long)', // macOS x64 (demangle)
-        ];
-        for (const name of names) {
-            const addresss = DebugSymbol.findFunctionsNamed(name);
-            if (addresss.length !== 0) {
-                return addresss[0];
+        if (Process.arch === 'x64') {
+            // Unix
+            // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m.cold
+            const names = [
+                '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm', // linux 64 new
+                '_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m', // linux x64
+                // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
+                'Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, void const*, unsigned long)', // macOS x64 (demangle)
+            ];
+            for (const name of names) {
+                const addresss = DebugSymbol.findFunctionsNamed(name);
+                if (addresss.length !== 0) {
+                    return addresss[0];
+                }
+            }
+        } else if (Process.arch === 'arm64') {
+            // android
+            console.warn("Looking for RelinkForDescriptor...");
+            const RelinkForDescriptorSig = "6c 05 c1 78 9f ?? ?? 31 ?1 ?? ?? 54 ?? 0? 00 91 ?f 0? ?? eb 61 ff ff 54 03 00 00 14 ?f 0? ?? eb ?1 ?? ?? 54 e8 03 40 f9 08 15 40 f9";
+            const __e = Process.findModuleByName("libVita3K.so");
+            const ranges = __e.enumerateRanges("r-x");
+            ranges.forEach(range => {
+                console.warn(JSON.stringify(range, null, 2));
+            });
+            // const results = Memory.scanSync(__e.base, __e.size, RelinkForDescriptorSig);
+            const result = getPatternAddress({
+                name: "RelinkForDescriptor",
+                pattern: RelinkForDescriptorSig,
+                ranges: ranges,
+            });
+
+            if (result.isNull() === false) {
+                return result;
             }
         }
     } else {
@@ -110,12 +221,17 @@ function getDoJitAddress() {
 function createFunction_buildRegs() {
     let body = '';
 
-    /* fastmem */
-    // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
-    body += 'const base = context.r13;';
+    if (arch === 'x64') {
+        /* fastmem */
+        // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
+        body += 'const base = context.r13;';
 
-    // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
-    body += 'const regs = context.r15;';
+        // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
+        body += 'const regs = context.r15;';
+    } else if (arch === 'arm64') {
+        body += 'const base = context.x25;'
+        body += 'const regs = context.x28.add(24);'
+    }
 
     /* pagetable */
     // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L831
@@ -148,6 +264,7 @@ function createFunction_buildRegs() {
 
 function setHook(object) {
     for (const key in object) {
+        console.warn(key.toString(16));
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
