@@ -29,7 +29,7 @@ To use Dynarmic:
     2. Click on "Advanced settings"
     3. Click on "Debug"
     4. Click on "CPU backend"
-    5. Switch from "Native code execution (NCE)" to "Dynarmic (Slow)"
+    5. Switch from "Native code execution" to "Dynarmic"
 `);
 }
 
@@ -39,10 +39,10 @@ const isVirtual = arch === 'x64' && Process.platform === 'windows';
 let idxDescriptor = isVirtual === true ? 2 : 1;
 let idxEntrypoint = idxDescriptor + 1;
 const DoJitPtr = getDoJitAddress();
-const buildRegs = globalThis.ARM === true ? createFunction_buildRegs32() : createFunction_buildRegs();
+const IS_32 = globalThis.ARM === true;
+const buildRegs = IS_32 ? createFunction_buildRegs32() : createFunction_buildRegs();
 const operations = Object.create(null);
 let _operations = Object.create(null);
-const IS_32 = globalThis.ARM === true;
 let aslrOffset = 0;
 
 tryGetAslrOffset();
@@ -159,7 +159,7 @@ function getInitializeAddress() {
         // const InitializeSig = '4? 5? 4? 5? 4? 5? 4? 5? 5? 5? 5? 5? 4? 81 e? ?? ?? ?? ?? 0f 11 ?? ?? ?? ?? ?? ?? f3 4? 0f 6f ?? 4? 89';
         const InitializeSig = '6F 30 4? 89 CB 4? 89 D6 4? 8D ?? ?? ?? 01 00 00 4? 89 8C ?? ?? ?? ?? ?? E8';
         const InitializeSigResults = scanAttempt(__e.base, __e.size, InitializeSig);
-        if (!InitializeSigResults || InitializeSigResults.length === 0) {
+        if (InitializeSigResults.length === 0) {
             // console.log('Failed to find MingW Initialize');
         } else {
             const InitializeAddress = InitializeSigResults[0].address;
