@@ -107,21 +107,21 @@ function scanRanges({ ranges, pattern }) {
  * @param {Object} settings
  * @param {string} settings.name
  * @param {string} settings.pattern
- * @param {RangeDetails[]} [settings.ranges]
+ * @param {RangeDetails[]} settings.ranges
  * @param {boolean} [settings.getFirst]
  * @returns {NativePointer}
  */
 function getPatternAddress({
     name,
     pattern,
-    ranges = __ranges,
+    ranges,
     getFirst = true,
 }) {
     /** @type {MemoryScanMatch[]} */
     let results = null;
 
     try {
-        results = scanRanges({ ranges: ranges, pattern: pattern });
+        results = scanRanges({ ranges, pattern });
     } catch (err) {
         throw new Error(`Error occurred with [${name}]: ${err.message}`, {
             cause: err,
