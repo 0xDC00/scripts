@@ -159,19 +159,19 @@ function getDoJitAddress() {
             }
         } else if (Process.arch === 'arm64') {
             // Android
-            const RelinkForDescriptorSig = "6c 05 c1 78 9f ?? ?? 31 ?1 ?? ?? 54 ?? 0? 00 91 ?f 0? ?? eb 61 ff ff 54 03 00 00 14 ?f 0? ?? eb ?1 ?? ?? 54 e8 03 40 f9 08 15 40 f9";
-            const __e = Process.findModuleByName("libVita3K.so");
-            const ranges = __e.enumerateRanges("r-x");
-            ranges.forEach(range => console.warn(JSON.stringify(range, null, 2)));
+            const __e = Process.findModuleByName('libVita3K.so');
+            const ranges = __e.enumerateRanges('r-x');
+            // ranges.forEach(range => console.warn(JSON.stringify(range, null, 2)));
+            const RelinkForDescriptorSig = '6c 05 c1 78 9f ?? ?? 31 ?1 ?? ?? 54 ?? 0? 00 91 ?f 0? ?? eb 61 ff ff 54 03 00 00 14 ?f 0? ?? eb ?1 ?? ?? 54 e8 03 40 f9 08 15 40 f9';
             const address = getPatternAddress({
-                name: "RelinkForDescriptor",
+                name: 'RelinkForDescriptor',
                 pattern: RelinkForDescriptorSig,
                 ranges: ranges,
             });
             if (address.isNull() === false) {
                 const lookbackSize = 0x80
                 const subAddress = address.sub(lookbackSize);
-                const subResults = Memory.scanSync(subAddress, lookbackSize, "f? ?? ?? a9 f? ?? ?? a9");
+                const subResults = Memory.scanSync(subAddress, lookbackSize, 'f? ?? ?? a9 f? ?? ?? a9');
                 if (subResults.length !== 0) {
                     return subResults.at(-1).address;
                 }
