@@ -60,7 +60,7 @@ Interceptor.attach(DoJitPtr, {
         //             \rentrypoint:       ${ptr(entrypoint.toString())}
         //             `);
 
-        if (op !== undefined) {
+        if (op !== undefined && entrypoint.isNull() === false) {
             console.log('Attach:', ptr(em_address), entrypoint);
             jitAttach(em_address, entrypoint, op);
             sessionStorage.setItem('PSVita_' + Date.now(), {
@@ -169,7 +169,7 @@ function getDoJitAddress() {
                 ranges: ranges,
             });
             if (address.isNull() === false) {
-                const lookbackSize = 0x80
+                const lookbackSize = 0x80;
                 const subAddress = address.sub(lookbackSize);
                 const subResults = Memory.scanSync(subAddress, lookbackSize, 'f? ?? ?? a9 f? ?? ?? a9');
                 if (subResults.length !== 0) {
