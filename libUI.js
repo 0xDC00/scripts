@@ -1,5 +1,5 @@
 // @name         LibUI
-// @version      
+// @version
 // @author       blacktide082
 // @description  Easily add an information or configuration UI to your script.
 
@@ -15,6 +15,7 @@ class UI {
     #storageKey = module.parent.filename.slice(module.parent.path.length + 1).replace('.js', '');
     #title = 'UI';
     #options = [];
+    #userStyle = "";
     #config;
     #onchange = () => {};
 
@@ -41,6 +42,14 @@ class UI {
 
     set title(title) {
         this.#title = title;
+    }
+
+    get userStyle() {
+      return this.#userStyle;
+    }
+
+    set userStyle(userStyle) {
+      this.#userStyle = userStyle;
     }
 
     get config() {
@@ -129,7 +138,7 @@ class UI {
 
     async open(wait = 100) {
         return new Promise((resolve, reject) => {
-            loadHtml(getViewHtml());
+            loadHtml(getViewHtml(this.userStyle));
             // loadHtmlFromFile(__filename.replace('.js', '.html'));
 
             // give the page time to load
@@ -161,7 +170,7 @@ class UI {
     }
 }
 
-function getViewHtml() {
+function getViewHtml(userStyle) {
     return /*html*/`
 <html>
 <head>
@@ -179,6 +188,7 @@ function getViewHtml() {
     #options {
       margin-bottom: 2em;
     }
+    ${userStyle}
   </style>
 </head>
 <body>
