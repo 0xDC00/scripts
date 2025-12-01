@@ -13,6 +13,9 @@ if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
 
+
+const Is4BytesEncoding = globalThis.Is4BytesEncoding;
+
 /**
  * Mail: inbox, outbox, send
  * @param {NativePointer} address 
@@ -29,9 +32,19 @@ function readString(address, table, isOut) {
             continue;
         }
         if (c >= 0x80) {  // readChar
-            const charCode = address.readU16();
-            address = address.add(2);
-            s += mages_decode(charCode, table);
+            if (!Is4BytesEncoding)
+            {
+                const charCode = address.readU16();
+                address = address.add(2);
+
+                s += mages_decode(charCode, table);
+            }
+            else {
+                const charCode = address.readU32();
+                address = address.add(4);
+                
+                s += mages_decode(charCode, table);
+            }
         }
         else { // readControl
             address = address.add(1);
@@ -50,10 +63,18 @@ function readString(address, table, isOut) {
                         address = address.add(1);
                     }
                     else {
-                        const charCode = address.readU16();
-                        address = address.add(2);
+                        if (!Is4BytesEncoding)
+                        {
+                            const charCode = address.readU16();
+                            address = address.add(2);
 
-                        bottom += mages_decode(charCode, table);
+                            bottom += mages_decode(charCode, table);
+                        }
+                        else {
+                            const charCode = address.readU32();
+                            address = address.add(4);
+                            bottom += mages_decode(charCode, table);
+                        }
                     }
                 }
 
@@ -122,10 +143,19 @@ function readString(address, table, isOut) {
                                 address = address.add(1);
                             }
                             else { // rubi
-                                const charCode = address.readU16();
-                                address = address.add(2);
+                                if (!Is4BytesEncoding)
+                                {
+                                    const charCode = address.readU16();
+                                    address = address.add(2);
 
-                                rubi += mages_decode(charCode, table);
+                                    rubi += mages_decode(charCode, table);
+                                }
+                                else {
+                                    const charCode = address.readU32();
+                                    address = address.add(4);
+
+                                    rubi += mages_decode(charCode, table);
+                                }
                             }
                         } // end while
                     }
@@ -137,10 +167,19 @@ function readString(address, table, isOut) {
                         address = address.add(1);
                     }
                     else { // char (text)
-                        const charCode = address.readU16();
-                        address = address.add(2);
+                        if (!Is4BytesEncoding)
+                        {
+                            const charCode = address.readU16();
+                            address = address.add(2);
 
-                        c = mages_decode(charCode, table);
+                            c = mages_decode(charCode, table);
+                        }
+                        else {
+                            const charCode = address.readU32();
+                            address = address.add(4);
+
+                            c = mages_decode(charCode, table);
+                        }
                         bottom += c;
                         s += c;
                     }
@@ -149,6 +188,14 @@ function readString(address, table, isOut) {
                     console.log('rubi: ', rubi);
                     console.log('char: ', bottom);
                 }
+            }
+            else if (c === 0x20) {
+                s += "LastName";
+                address = address.add(1);
+            }
+            else if (c === 0x21) {
+                s += "FirstName";
+                address = address.add(1);
             }
             else {
                 // do nothing (one byte control)

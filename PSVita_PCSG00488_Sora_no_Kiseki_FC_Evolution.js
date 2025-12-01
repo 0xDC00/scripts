@@ -5,6 +5,11 @@
 // @description  Vita3k (v0.1.9 3520)
 // ==/UserScript==
 
+console.warn("This was one of my first scripts, so it might be a bit scuffed at times.\n");
+console.warn("Known issues:\n- Do not open the conversation log. The script makes the game run at ~3 FPS when it's on screen.");
+console.warn("- Opening the world map will make the game run at ~16 FPS.");
+console.warn("- A random line of text might get extracted on rare occasions.");
+
 const { setHook } = require("./libVita3k.js");
 
 const miscHandler = trans.send(handler, 200);
@@ -45,7 +50,7 @@ setHook({
     0x800B13E2: mainTextHandler.bind_(null, 5, 0, "main text"),
     0x800B1100: waitCommandHandler,
     0x800B10AE: waitCommandHandler,
-})
+});
 
 let gameOptions = ["表示する", "表示しない", "画面回転と同期", "北を上で固定", "45度単位", "フリー回転", "標準", "逆回転", "Evolution"];
 let excludeFromQuest = "【氏 名】  エステル・ブライト  ヨシュア・ブライト【所 属】  ロレント支部【ランク】 依頼達成数: 獲得ＢＰ :【履歴】";
@@ -302,8 +307,8 @@ function mainTextHandler(regs, index, offset, hookName) {
     // force open the gate after 4 sec of no text
     clearTimeout(timer);
     timer = setTimeout(() => {
-        gate = true
-    }, 4000)
+        gate = true;
+    }, 4000);
 }
 
 function readString(address, options) {
