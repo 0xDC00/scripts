@@ -155,9 +155,7 @@ function attachFast(name, pattern, register, handler) {
   Memory.scan(__e.base, __e.size, pattern, {
     onMatch(address) {
       hooksCount += 1;
-      console.log(
-        `\x1b[32m${hooksCount}:[${name}] Found hook ${address}\x1b[0m`
-      );
+      console.log(`\x1b[32m${hooksCount}:[${name}] Found hook ${address}\x1b[0m`);
 
       Interceptor.attach(address, function () {
         if (hooksStatus[name].enabled === false) {
@@ -186,10 +184,7 @@ function setHookCharacterCount(name, text) {
     return null;
   }
 
-  const cleanedText = text.replace(
-    /[。…、？！「」―ー・]|<[^>]+>|\r|\n|\u3000/gu,
-    ""
-  );
+  const cleanedText = text.replace(/[。…、？！「」―ー・]|<[^>]+>|\r|\n|\u3000/gu, "");
   hooksStatus[name].characters += cleanedText.length;
 }
 
@@ -670,16 +665,24 @@ ui.onchange = (id, current, previous) => {
 
     for (const hookName of previous) {
       if (current.includes(hookName) === false) {
+        const hookStatus = hooksStatus[hookName];
+        if (typeof hookStatus === "undefined") {
+          continue;
+        }
         console.log(`[${hookName}] has been disabled`);
-        hooksStatus[hookName].enabled = false;
+        hookStatus.enabled = false;
         hooksCount -= 1;
       }
     }
 
     for (const hookName of current) {
       if (previous.includes(hookName) === false) {
+        const hookStatus = hooksStatus[hookName];
+        if (typeof hookStatus === "undefined") {
+          continue;
+        }
         console.log(`[${hookName}] has been enabled`);
-        hooksStatus[hookName].enabled = true;
+        hookStatus.enabled = true;
         hooksCount += 1;
       }
     }
@@ -696,8 +699,7 @@ ui.onchange = (id, current, previous) => {
 
 // Update character count in intervals
 setInterval(() => {
-  ui.config.selectedHookCharacterCount =
-    hooksStatus[ui.config.selectedHook].characters;
+  ui.config.selectedHookCharacterCount = hooksStatus[ui.config.selectedHook].characters;
 }, 5000);
 
 ui.open()
