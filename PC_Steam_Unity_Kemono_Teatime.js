@@ -42,8 +42,11 @@ const BACKTRACE = false;
 const DEBUG_LOGS = true;
 
 const SETTINGS = {
-  fancyOutput: false, // works best for CJK languages
+  fancyOutput: true, // works best for CJK languages
   singleSentence: true, // should only be applicable when fancyOutput is false
+  noCharacterNames: false, // do not output character names
+  onlyDialogue: false, // only output dialogue text
+  filterSeenText: false, // filters out text that has already been sent during the game session
 };
 
 //#endregion
@@ -522,7 +525,7 @@ Mono.setHook("", "ART_ScriptEngineBackLogWindow", "Setup", -1, {
 // spammed on every frame when opening logs
 Mono.setHook("", "EventCharaName", "GetNameText", -1, {
   onLeave(retval) {
-    if (isBacklogOpen) {
+    if (isBacklogOpen || SETTINGS.noCharacterNames) {
       return null;
     }
 
@@ -575,6 +578,11 @@ const FoodMaterialData_DetailReturn = FoodMaterialData.DetailReturn;
 
 Mono.setHook("", "FoodandRecipiDetail", "SetDetail", -1, {
   onEnter() {
+    if (SETTINGS.onlyDialogue) {
+      logText("skipped: FoodandRecipiDetail.SetDetail");
+      return null;
+    }
+
     console.log("onEnter: FoodandRecipiDetail.SetDetail");
 
     this.hooks = [
@@ -655,6 +663,11 @@ Mono.setHook("", "CommentData", "TextReturn", -1, {
 let previous_objNum = -1;
 Mono.setHook("", "TeaRecipePrefab", "SetDetail", -1, {
   onEnter(args) {
+    if (SETTINGS.onlyDialogue) {
+      logText("skipped: TeaRecipePrefab.SetDetail");
+      return null;
+    }
+
     const thiz = args[0].wrap();
 
     if (thiz.objNum === previous_objNum) {
@@ -687,6 +700,11 @@ Mono.setHook("", "P06_material", "DetailTextSet", -1, {
 // args[1] -> character id; 0x0 = taruto, 0x1 = makaron
 Mono.setHook("", "CharaBoard", "DataSet", -1, {
   onEnter() {
+    if (SETTINGS.onlyDialogue) {
+      logText("skipped: CharaBoard.DataSet");
+      return null;
+    }
+
     console.log("onEnter: CharaBoard.DataSet");
 
     const texts = [];
@@ -700,6 +718,10 @@ Mono.setHook("", "CharaBoard", "DataSet", -1, {
     });
   },
   onLeave() {
+    if (SETTINGS.onlyDialogue) {
+      return null;
+    }
+
     this.hook.detach();
 
     /** @type {string[]} */
@@ -782,6 +804,11 @@ Mono.setHook("", "CharaBoard", "DataSet", -1, {
 // reward boxes, 3 of them
 Mono.setHook("", "P13_Reward", "SetItem", -1, {
   onEnter() {
+    if (SETTINGS.onlyDialogue) {
+      logText("skipped: P13_Reward.SetItem");
+      return null;
+    }
+
     console.log("onEnter: P13_Reward.SetItem");
 
     const texts = [];
@@ -795,6 +822,10 @@ Mono.setHook("", "P13_Reward", "SetItem", -1, {
     });
   },
   onLeave() {
+    if (SETTINGS.onlyDialogue) {
+      return null;
+    }
+
     this.hook.detach();
 
     /** @type {string[]} */
