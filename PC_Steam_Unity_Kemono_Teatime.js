@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Kemono Teatime (けものティータイム)
-// @version      Demo
+// @version      1.0.0
 // @author       Mansive
 // @description  Steam
 // * Studio Lalala
@@ -55,7 +55,7 @@ const SETTINGS = {
 //#region Backtrace
 
 if (BACKTRACE === true) {
-  // too much text
+  // system texts?
   // Mono.setHook("", "ART_TMProText", "SetText", -1, {
   //   onEnter(args) {
   //     console.log(JSON.stringify(args[1].readMonoString()));
@@ -64,25 +64,8 @@ if (BACKTRACE === true) {
   //   },
   // });
   //
-  // WORKING
-  // ART_ScriptEngineTalkWindow
-  // public void SetText(string text)
-  // Mono.setHook("", "ART_ScriptEngineTalkWindow", "SetText", -1, {
-  // onEnter(outerargs) {
-  // console.log("onEnter: talk window set text");
-  // public void SetText(string text, bool enableTag = false, bool direct = true, FontSettingID fontSettingID = FontSettingID.LENGTH)
-  // this.hook = SetText.attach("", "ART_TMProTextSystem", "SetText", 4, {
-  // onEnter(args) {
-  // const text = args[1].readMonoString();
-  // console.log(text);
-  // },
-  // });
-  // },
-  // onLeave(retval) {
-  // this.hook.detach();
-  // },
-  // });
 
+  // dialogue texts?
   Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
     onEnter(args) {
       const text = args[1].readMonoString();
@@ -286,11 +269,18 @@ function logText(text) {
   console.log(`${color.FgYellow}${JSON.stringify(text)}${color.Reset}`);
 }
 
+/** 
+ * Used for less important logs.
+ * @param {string} text
+ */
 function logDim(message) {
   console.log(`${color.Dim}${message}${color.Reset}`);
 }
 
-/** @param {string} text */
+/**
+ * Converts split lines of sentences into a single sentence.
+ * @param {string} text
+ */
 function toSingleSentence(text) {
   return SETTINGS.singleSentence ? text.replace(/([^。…？！）\n])\n(?!\n)/g, "$1") : text;
 }
