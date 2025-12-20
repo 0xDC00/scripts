@@ -41,7 +41,7 @@ const Mono = require("./libMono.js");
 const BACKTRACE = false;
 const DEBUG_LOGS = true;
 
-const OPTIONS = {
+const SETTINGS = {
   fancyOutput: false, // works best for CJK languages
   singleSentence: false, // should only be applicable when fancyOutput is false
 };
@@ -54,35 +54,40 @@ if (BACKTRACE === true) {
   // too much text
   Mono.setHook("", "ART_TMProText", "SetText", -1, {
     onEnter(args) {
-      args[0].wrap().console.log(args[1].readMonoString());
+      console.log(JSON.stringify(args[1].readMonoString()));
       const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
-      console.warn("callstack:", callstack.splice(0, 8));
+      console.log("callstack:", callstack.splice(0, 8), "\n");
     },
   });
+  //
   // WORKING
   // ART_ScriptEngineTalkWindow
   // public void SetText(string text)
   // Mono.setHook("", "ART_ScriptEngineTalkWindow", "SetText", -1, {
-  //   onEnter(outerargs) {
-  //     console.log("onEnter: talk window set text");
-  //     // public void SetText(string text, bool enableTag = false, bool direct = true, FontSettingID fontSettingID = FontSettingID.LENGTH)
-  //     this.hook = Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
-  //       onEnter(args) {
-  //         const text = args[1].readMonoString();
-  //         console.log(text);
-  //       },
-  //     });
-  //   },
-  //   onLeave(retval) {
-  //     this.hook.detach();
-  //   },
+  // onEnter(outerargs) {
+  // console.log("onEnter: talk window set text");
+  // public void SetText(string text, bool enableTag = false, bool direct = true, FontSettingID fontSettingID = FontSettingID.LENGTH)
+  // this.hook = SetText.attach("", "ART_TMProTextSystem", "SetText", 4, {
+  // onEnter(args) {
+  // const text = args[1].readMonoString();
+  // console.log(text);
+  // },
+  // });
+  // },
+  // onLeave(retval) {
+  // this.hook.detach();
+  // },
   // });
 
   // Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
   //   onEnter(args) {
-  //     console.log(args[1].readMonoString());
+  //     const text = args[1].readMonoString();
+  //     if (!text) {
+  //       return;
+  //     }
+  //     console.log(JSON.stringify(text));
   //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
-  //     console.warn("callstack:", callstack.splice(0, 8));
+  //     console.log("callstack:", callstack.splice(0, 8), "\n");
   //   },
   // });
   return;
@@ -410,7 +415,7 @@ const talkController = {
       const outputChoose = () => {
         const second = texts.pop();
         const first = texts.pop();
-        return OPTIONS.fancyOutput
+        return SETTINGS.fancyOutput
           ? chooseBubbles({ top: first, middle: this.customerText, bottom: second })
           : [first, this.customerText, second].join("\n\n");
       };
@@ -568,7 +573,7 @@ const FoodMaterialData_NameReturn = FoodMaterialData.NameReturn;
 const FoodMaterialData_DetailReturn = FoodMaterialData.DetailReturn;
 
 Mono.setHook("", "FoodandRecipiDetail", "SetDetail", -1, {
-  onEnter(args) {
+  onEnter() {
     console.log("onEnter: FoodandRecipiDetail.SetDetail");
 
     this.hooks = [
@@ -600,7 +605,7 @@ Mono.setHook("", "FoodandRecipiDetail", "SetDetail", -1, {
       }),
     ];
   },
-  onLeave(retval) {
+  onLeave() {
     this.hooks.forEach((hook) => {
       hook.detach();
     });
@@ -680,7 +685,7 @@ Mono.setHook("", "P06_material", "DetailTextSet", -1, {
 // P07_Character
 // args[1] -> character id; 0x0 = taruto, 0x1 = makaron
 Mono.setHook("", "CharaBoard", "DataSet", -1, {
-  onEnter(args) {
+  onEnter() {
     console.log("onEnter: CharaBoard.DataSet");
 
     const texts = [];
@@ -716,7 +721,7 @@ Mono.setHook("", "CharaBoard", "DataSet", -1, {
     // 　ｌ、～ヽ
     // 　じしｆ＿、）ノ`;
 
-    if (OPTIONS.fancyOutput) {
+    if (SETTINGS.fancyOutput) {
       // top
       // にゃ～
 
@@ -770,6 +775,73 @@ Mono.setHook("", "CharaBoard", "DataSet", -1, {
 
     const board = [chara.traits, chara.description, chara.preferences].join("\n\n");
     handler(board);
+  },
+});
+
+// reward boxes, 3 of them
+Mono.setHook("", "P13_Reward", "SetItem", -1, {
+  onEnter() {
+    console.log("onEnter: P13_Reward.SetItem");
+
+    const texts = [];
+    this.texts = texts;
+
+    this.hook = SetText.attach({
+      onEnter(args) {
+        const text = readString(args[1]);
+        texts.push(text);
+      },
+    });
+  },
+  onLeave() {
+    this.hook.detach();
+
+    /** @type {string[]} */
+    const texts = this.texts;
+
+    const firstReward = texts.splice(0, 2).join("\n");
+    const secondReward = texts.splice(0, 2).join("\n");
+    const thirdReward = texts.splice(0, 2).join("\n");
+
+    const rewards = [firstReward, secondReward, thirdReward].join("\n\n");
+    handler(rewards);
+  },
+});
+
+// character speaking when giving rewards
+let previous_RewardCommentData_TextReturn_text = "";
+Mono.setHook("", "RewardCommentData", "TextReturn", -1, {
+  onLeave(retval) {
+    console.log("onLeave: RewardCommentData.TextReturn");
+
+    const text = readString(retval);
+
+    if (previous_RewardCommentData_TextReturn_text === text) {
+      return null;
+    }
+    previous_RewardCommentData_TextReturn_text = text;
+
+    talkController.textHandler(text);
+  },
+});
+
+// public string DetailReturn(int id)
+let previous_NewsData_DetailReturn_Id = "";
+Mono.setHook("", "NewsData", "DetailReturn", -1, {
+  onEnter(args) {
+    this.NewsData_DetailReturn_Id = args[1].toUInt32();
+  },
+  onLeave(retval) {
+    console.log("onLeave: NewsData.DetailReturn");
+
+    // news stories are huge strings, avoid reading them by just comparing their ids
+    if (this.NewsData_DetailReturn_Id === previous_NewsData_DetailReturn_Id) {
+      return null;
+    }
+    previous_NewsData_DetailReturn_Id = this.NewsData_DetailReturn_Id;
+
+    const text = readString(retval);
+    handler(text);
   },
 });
 
