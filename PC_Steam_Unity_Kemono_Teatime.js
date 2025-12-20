@@ -960,10 +960,13 @@ ui.onchange = (id, current, previous) => {
   if (SETTINGS[id] !== undefined) {
     SETTINGS[id] = current;
   } else {
-    throw new Error(`UI: Unknown setting ${id}`);
+    console.error(`UI: Unknown setting ${id}`);
+    // throw new Error(`Unknown setting ${id}`); // doesn't actually throw???
   }
 };
 
-ui.open().catch((err) => {
-  console.error("Failed to open UI:", err.stack);
-});
+ui.open()
+  .then()
+  .catch((err) => {
+    console.error("Failed to open UI:", err.stack);
+  });
