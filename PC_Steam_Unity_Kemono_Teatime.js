@@ -931,13 +931,13 @@ ui.options = [
   {
     id: "noCharacterNames",
     type: "checkbox",
-    label: "No Character Names",
+    label: "Character Names",
     defaultValue: SETTINGS.noCharacterNames,
   },
   {
     id: "onlyDialogue",
     type: "checkbox",
-    label: "Only Dialogue Text",
+    label: "Only Dialogue",
     defaultValue: SETTINGS.onlyDialogue,
   },
   {
