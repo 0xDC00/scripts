@@ -40,6 +40,7 @@ const ui = require("./libUI.js");
 const Mono = require("./libMono.js");
 
 const BACKTRACE = false;
+const untestedHookMessage = "This hook isn't tested, tell me if it works or not!";
 
 const SETTINGS = {
   fancyOutput: true, // works best for CJK languages
@@ -882,6 +883,74 @@ Mono.setHook("", "RadioDetailData", "DetailReturn", -1, {
     handler(text);
   },
 });
+
+//#region Untested Hooks
+
+// Leisure_Notice.DatalSet - 48 89 5C 24 08        - mov [rsp+08],rbx
+Mono.setHook("", "Leisure_Notice", "DatalSet", -1, {
+  onEnter() {
+    console.log("onEnter: Leisure_Notice.DatalSet");
+    console.warn(untestedHookMessage);
+
+    this.hook = SetText.attach({
+      onEnter(args) {
+        const text = readString(args[1]);
+        handler(text);
+      },
+    });
+  },
+  onLeave() {
+    this.hook.detach();
+  },
+})
+
+// FurnitureData
+Mono.setHook("", "FurnitureData", "NameReturn", -1, {
+  onLeave(retval) {
+    console.log("onLeave: FurnitureData.NameReturn");
+    console.warn(untestedHookMessage);
+
+    const text = readString(retval);
+    handler(text);
+  },
+});
+
+// FurnitureData
+Mono.setHook("", "FurnitureData", "DetailReturn", -1, {
+  onLeave(retval) {
+    console.log("onLeave: FurnitureData.DetailReturn");
+    console.warn(untestedHookMessage);
+
+    const text = toSingleSentence(readString(retval));
+    handler(text);
+  },
+});
+
+// OtherData
+Mono.setHook("", "OtherData", "NameReturn", -1, {
+  onLeave(retval) {
+    console.log("onLeave: OtherData.DetailReturn");
+    console.warn(untestedHookMessage);
+
+    const text = readString(retval);
+    handler(text);
+  },
+});
+
+
+// OtherData
+Mono.setHook("", "OtherData", "DetailReturn", -1, {
+  onLeave(retval) {
+    console.log("onLeave: OtherData.DetailReturn");
+    console.warn(untestedHookMessage);
+
+    const text = toSingleSentence(readString(retval));
+    handler(text);
+  },
+});
+
+
+//#endregion
 
 //#endregion
 
