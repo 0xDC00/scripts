@@ -43,7 +43,7 @@ const DEBUG_LOGS = true;
 
 const SETTINGS = {
   fancyOutput: false, // works best for CJK languages
-  singleSentence: false, // should only be applicable when fancyOutput is false
+  singleSentence: true, // should only be applicable when fancyOutput is false
 };
 
 //#endregion
@@ -52,13 +52,13 @@ const SETTINGS = {
 
 if (BACKTRACE === true) {
   // too much text
-  Mono.setHook("", "ART_TMProText", "SetText", -1, {
-    onEnter(args) {
-      console.log(JSON.stringify(args[1].readMonoString()));
-      const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
-      console.log("callstack:", callstack.splice(0, 8), "\n");
-    },
-  });
+  // Mono.setHook("", "ART_TMProText", "SetText", -1, {
+  //   onEnter(args) {
+  //     console.log(JSON.stringify(args[1].readMonoString()));
+  //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
+  //     console.log("callstack:", callstack.splice(0, 8), "\n");
+  //   },
+  // });
   //
   // WORKING
   // ART_ScriptEngineTalkWindow
@@ -79,17 +79,17 @@ if (BACKTRACE === true) {
   // },
   // });
 
-  // Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
-  //   onEnter(args) {
-  //     const text = args[1].readMonoString();
-  //     if (!text) {
-  //       return;
-  //     }
-  //     console.log(JSON.stringify(text));
-  //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
-  //     console.log("callstack:", callstack.splice(0, 8), "\n");
-  //   },
-  // });
+  Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
+    onEnter(args) {
+      const text = args[1].readMonoString();
+      if (!text) {
+        return;
+      }
+      console.log(JSON.stringify(text));
+      const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
+      console.log("callstack:", callstack.splice(0, 8), "\n");
+    },
+  });
   return;
 }
 
@@ -280,6 +280,11 @@ function createTextContainer({
 /** @param {string} text */
 function logText(text) {
   console.log(`${color.FgYellow}${JSON.stringify(text)}${color.Reset}`);
+}
+
+/** @param {string} text */
+function toSingleSentence(text) {
+  return SETTINGS.singleSentence ? text.replace(/([^。…？！）\n])\n(?!\n)/g, "$1") : text;
 }
 
 //#endregion
@@ -494,7 +499,7 @@ Mono.setHook("", "Talk", "Text", -1, {
   onLeave(retval) {
     console.log("onLeave: Talk.Text");
 
-    const text = readString(retval).trimStart();
+    const text = toSingleSentence(readString(retval).trimStart());
     setTimeout(() => talkController.textHandler(text), 5); // make text appear after name
   },
 });
@@ -502,7 +507,6 @@ Mono.setHook("", "Talk", "Text", -1, {
 Mono.setHook("", "ART_ScriptEngineBackLogWindow", "Setup", -1, {
   onEnter() {
     // console.log("onEnter: ART_ScriptEngineBackLogWindow.Setup");
-
     isBacklogOpen = true;
 
     clearTimeout(backlogTimer);
@@ -546,10 +550,7 @@ Mono.setHook("", "ChooseData", "TextReturn", -1, {
     }
     previous_ChooseData_TextReturn_text = customerText;
 
-    talkController.customerTextHandler(customerText);
-
-    // ○
-    // ◯
+    talkController.customerTextHandler(toSingleSentence(customerText));
   },
 });
 
@@ -639,7 +640,7 @@ Mono.setHook("", "CommentData", "TextReturn", -1, {
       return null;
     }
 
-    const text = readString(retval);
+    const text = toSingleSentence(readString(retval));
     positionDeepHandler(text);
   },
 });
@@ -673,7 +674,7 @@ Mono.setHook("", "P06_material", "DetailTextSet", -1, {
   onEnter(args) {
     console.log("onEnter: P06_material.DetailTextSet");
 
-    const text = readString(args[1]);
+    const text = toSingleSentence(readString(args[1]));
     if (text === "???") {
       return null;
     }
@@ -766,7 +767,7 @@ Mono.setHook("", "CharaBoard", "DataSet", -1, {
     } else {
       chara.traits = traits.join("\n");
 
-      chara.description = description;
+      chara.description = toSingleSentence(description);
 
       chara.preferences = preferencesName
         .map((name, index) => `${name}　${preferencesInfo[index]}`)
@@ -821,7 +822,7 @@ Mono.setHook("", "RewardCommentData", "TextReturn", -1, {
     }
     previous_RewardCommentData_TextReturn_text = text;
 
-    talkController.textHandler(text);
+    talkController.textHandler(toSingleSentence(text));
   },
 });
 
@@ -840,7 +841,18 @@ Mono.setHook("", "NewsData", "DetailReturn", -1, {
     }
     previous_NewsData_DetailReturn_Id = this.NewsData_DetailReturn_Id;
 
-    const text = readString(retval);
+    // const text = toSingleSentence(readString(retval));
+    const text = toSingleSentence(readString(retval));
+    handler(text);
+  },
+});
+
+// Leisure_Radio
+Mono.setHook("", "RadioDetailData", "DetailReturn", -1, {
+  onLeave(retval) {
+    console.log("onLeave: RadioDetailData.DetailReturn");
+
+    const text = toSingleSentence(readString(retval));
     handler(text);
   },
 });
