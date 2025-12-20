@@ -44,10 +44,6 @@ class UI {
         this.#title = title;
     }
 
-    get userStyle() {
-      return this.#userStyle;
-    }
-
     set userStyle(userStyle) {
       this.#userStyle = userStyle;
     }
@@ -138,7 +134,7 @@ class UI {
 
     async open(wait = 100) {
         return new Promise((resolve, reject) => {
-            loadHtml(getViewHtml(this.userStyle));
+            loadHtml(getViewHtml(this.#userStyle));
             // loadHtmlFromFile(__filename.replace('.js', '.html'));
 
             // give the page time to load
