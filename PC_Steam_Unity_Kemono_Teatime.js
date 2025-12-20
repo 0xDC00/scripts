@@ -36,10 +36,10 @@
 
 //#region Config
 
+const ui = require("./libUI.js");
 const Mono = require("./libMono.js");
 
 const BACKTRACE = false;
-const DEBUG_LOGS = true;
 
 const SETTINGS = {
   fancyOutput: true, // works best for CJK languages
@@ -47,6 +47,7 @@ const SETTINGS = {
   noCharacterNames: false, // do not output character names
   onlyDialogue: false, // only output dialogue text
   filterSeenText: false, // filters out text that has already been sent during the game session
+  debugLogs: true,
 };
 
 //#endregion
@@ -285,6 +286,10 @@ function logText(text) {
   console.log(`${color.FgYellow}${JSON.stringify(text)}${color.Reset}`);
 }
 
+function logDim(message) {
+  console.log(`${color.Dim}${message}${color.Reset}`);
+}
+
 /** @param {string} text */
 function toSingleSentence(text) {
   return SETTINGS.singleSentence ? text.replace(/([^。…？！）\n])\n(?!\n)/g, "$1") : text;
@@ -311,7 +316,7 @@ const deepTexts = new Set();
 function readString(address) {
   const text = address.readMonoString();
 
-  DEBUG_LOGS && logText(text);
+  SETTINGS.debugLogs && logText(text);
 
   return text;
 }
@@ -579,7 +584,7 @@ const FoodMaterialData_DetailReturn = FoodMaterialData.DetailReturn;
 Mono.setHook("", "FoodandRecipiDetail", "SetDetail", -1, {
   onEnter() {
     if (SETTINGS.onlyDialogue) {
-      logText("skipped: FoodandRecipiDetail.SetDetail");
+      logDim("skipped: FoodandRecipiDetail.SetDetail");
       return null;
     }
 
@@ -664,7 +669,7 @@ let previous_objNum = -1;
 Mono.setHook("", "TeaRecipePrefab", "SetDetail", -1, {
   onEnter(args) {
     if (SETTINGS.onlyDialogue) {
-      logText("skipped: TeaRecipePrefab.SetDetail");
+      logDim("skipped: TeaRecipePrefab.SetDetail");
       return null;
     }
 
@@ -678,7 +683,7 @@ Mono.setHook("", "TeaRecipePrefab", "SetDetail", -1, {
     console.log("onEnter: TeaRecipePrefab.SetDetail");
 
     const result = thiz.nameString.value + "\n" + thiz.detailString.value;
-    DEBUG_LOGS && logText(result);
+    SETTINGS.debugLogs && logText(result);
     handler(result);
   },
 });
@@ -701,7 +706,7 @@ Mono.setHook("", "P06_material", "DetailTextSet", -1, {
 Mono.setHook("", "CharaBoard", "DataSet", -1, {
   onEnter() {
     if (SETTINGS.onlyDialogue) {
-      logText("skipped: CharaBoard.DataSet");
+      logDim("skipped: CharaBoard.DataSet");
       return null;
     }
 
@@ -805,7 +810,7 @@ Mono.setHook("", "CharaBoard", "DataSet", -1, {
 Mono.setHook("", "P13_Reward", "SetItem", -1, {
   onEnter() {
     if (SETTINGS.onlyDialogue) {
-      logText("skipped: P13_Reward.SetItem");
+      logDim("skipped: P13_Reward.SetItem");
       return null;
     }
 
@@ -897,10 +902,84 @@ trans.replace((s) => {
   }
   previous = s;
 
-  DEBUG_LOGS && console.warn(JSON.stringify(s));
+  SETTINGS.debugLogs && console.warn(JSON.stringify(s));
 
   return s
     .replace(/<\/?color[^\>]*>/g, "")
     .replace(/^\r?\n/g, "")
     .trimEnd();
+});
+
+//#region UI Configuration
+
+ui.title = "Kemono Teatime";
+ui.description = /*html*/ `Configure text output and which hooks are enabled.
+<br>Check Agent's console output to see each text's corresponding hook.`;
+ui.options = [
+  {
+    id: "fancyOutput",
+    type: "checkbox",
+    label: "Fancy Portraits",
+    defaultValue: SETTINGS.fancyOutput,
+  },
+  {
+    id: "singleSentence",
+    type: "checkbox",
+    label: "Single Sentence",
+    defaultValue: SETTINGS.singleSentence,
+  },
+  {
+    id: "noCharacterNames",
+    type: "checkbox",
+    label: "No Character Names",
+    defaultValue: SETTINGS.noCharacterNames,
+  },
+  {
+    id: "onlyDialogue",
+    type: "checkbox",
+    label: "Only Dialogue Text",
+    defaultValue: SETTINGS.onlyDialogue,
+  },
+  {
+    id: "filterSeenText",
+    type: "checkbox",
+    label: "Filter Seen Text",
+    defaultValue: SETTINGS.filterSeenText,
+  },
+  {
+    id: "debugLogs",
+    type: "checkbox",
+    label: "Show Debug Logs",
+    defaultValue: SETTINGS.debugLogs,
+  },
+];
+
+ui.onchange = (id, current, previous) => {
+  logDim(`UI: ${id} set to ${current}`);
+  switch (id) {
+    case "fancyOutput":
+      SETTINGS.fancyOutput = current;
+      break;
+    case "singleSentence":
+      SETTINGS.singleSentence = current;
+      break;
+    case "noCharacterNames":
+      SETTINGS.noCharacterNames = current;
+      break;
+    case "onlyDialogue":
+      SETTINGS.onlyDialogue = current;
+      break;
+    case "filterSeenText":
+      SETTINGS.filterSeenText = current;
+      break;
+    case "debugLogs":
+      SETTINGS.debugLogs = current;
+      break;
+    default:
+      throw new Error(`UI: Unknown setting ${id}`);
+  }
+};
+
+ui.open().catch((err) => {
+  console.error("Failed to open UI:", err.stack);
 });
