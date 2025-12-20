@@ -168,7 +168,7 @@ function getPatternAddress(name, pattern) {
   try {
     results = Memory.scanSync(__e.base, __e.size, pattern);
   } catch (err) {
-    throw new Error(`Error ocurred with [${name}]: ${err.message}`, {
+    throw new Error(`Error occurred with [${name}]: ${err.message}`, {
       cause: err,
     });
   }

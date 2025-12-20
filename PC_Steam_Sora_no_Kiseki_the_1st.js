@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Sora no Kiseki the 1st / 空の軌跡 the 1st
-// @version      Demo (and full release?)
+// @version      1.04.2
 // @author       Tom (tomrock645)
 // @description  Steam
 // * developer   Nihon Falcom
@@ -450,7 +450,7 @@ let hasFirstQuartzHalf = false;
 
 let quartzDescription2 = '';
 (function () { // Second half
-    const quartzDescription2Sig = 'e8 ?? ?? ?? ?? c6 85 80 7e 03 00 00 8d 47 ff 83 f8 02 76';
+    const quartzDescription2Sig = 'e8 ?? ?? ?? ?? ?? 01 9c ?? 00 08 00 00 c6 85 c0 96 03';
     var results = Memory.scanSync(__e.base, __e.size, quartzDescription2Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -826,26 +826,48 @@ let itemDescription = '';
 })();
 
 
-(function () {
-    const enemyNameSig = 'e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b';
-    var results = Memory.scanSync(__e.base, __e.size, enemyNameSig);
+(function () { // Memo
+    const enemyName1Sig = 'e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b';
+    var results = Memory.scanSync(__e.base, __e.size, enemyName1Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[enemyNamePattern] Hook not found!');
+        console.error('[enemyName1Pattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[enemyNamePattern] Found hook', address);
+    console.log('[enemyName1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: enemyName");
+        // console.warn("in: enemyName1");
 
         const enemyNameAddress = this.context.rdx;
         let enemyName = enemyNameAddress.readUtf8String();
         thirdHandler(enemyName + "\n");
     });
 })(); 
+
+
+(function () { // In battles
+    const enemyName2Sig = 'e8 ?? ?? ?? ?? ?? 8b d0 ?? 8b cf e8 ?? ?? ?? ?? ?? 8b 9d';
+    var results = Memory.scanSync(__e.base, __e.size, enemyName2Sig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[enemyName2Pattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address.add(0xb);
+    console.log('[enemyName2Pattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: enemyName2");
+
+        const enemyNameAddress = this.context.rdx;
+        let enemyName = enemyNameAddress.readUtf8String();
+        thirdHandler(enemyName + "\n");
+    });
+})();
 
 
 (function () {
@@ -870,6 +892,30 @@ let itemDescription = '';
         thirdHandler(enemyMemo);
     });
 })(); 
+
+
+(function () {
+    const enemyDescriptionSig = 'e8 ?? ?? ?? ?? eb ?? ?? 8d 15 ?? ?? ?? ?? ?? 8b cf e8 ?? ?? ?? ?? eb ?? 83';
+    var results = Memory.scanSync(__e.base, __e.size, enemyDescriptionSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[enemyDescriptionPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[enemyDescriptionPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: enemyDescription");
+
+        const enemyDescriptionAddress = this.context.rdx;
+        let enemyDescription = enemyDescriptionAddress.readUtf8String();
+        enemyDescription = cleanText(enemyDescription);
+
+        thirdHandler(enemyDescription);
+    });
+})();
 
 
 (function () {

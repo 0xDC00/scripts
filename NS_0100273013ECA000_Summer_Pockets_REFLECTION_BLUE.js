@@ -12,7 +12,9 @@ const gameVer = "1.0.0";
 const { setHook } = require("./libYuzu.js");
 
 const texts = new Set();
+const textsRecent = new Set();
 let timer = null;
+let timer2 = null;
 let open = true;
 let delayed = false;
 let inMenu = false;
@@ -33,7 +35,11 @@ setHook(
 );
 
 function bracketsMatch(text) {
-  return (text.at(0) === "「" && text.at(-1) === "」") || (text.at(0) === "『" && text.at(-1) === "』") || (text.at(0) === "（" && text.at(-1) === "）");
+  return (
+    (text.at(0) === "「" && text.at(-1) === "」") ||
+    (text.at(0) === "『" && text.at(-1) === "』") ||
+    (text.at(0) === "（" && text.at(-1) === "）")
+  );
 }
 
 function resetOpenTimer() {
@@ -43,6 +49,13 @@ function resetOpenTimer() {
   timer = setTimeout(() => {
     open = true;
     texts.clear();
+  }, 200);
+}
+
+function resetTextsRecent() {
+  clearTimeout(timer2);
+  timer2 = setTimeout(() => {
+    textsRecent.clear();
   }, 200);
 }
 
@@ -57,24 +70,13 @@ function omniHandler(regs, index, offset, hookname) {
   // console.log("onEnter: " + hookname);
   // console.log(hexdump(address.add(offset), { header: false, ansi: false, length: 0x50 }));
 
+  /** @type {string} */
   let s = address.readUtf16String();
 
   if (s === previous) {
     return null;
   }
   previous = s;
-
-  if (s === "レコードを獲得しました！") {
-    isRecord = true;
-    return null;
-  } else if (isRecord === true && recordPassed === false) {
-    recordPassed = true;
-  } else if (isRecord === true && recordPassed === true) {
-    return null;
-  } else {
-    isRecord = false;
-    recordPassed = false;
-  }
 
   let isDialogue = false;
   if (s.length > (s = s.replace(/^[^@]+@/, "")).length) {
@@ -87,6 +89,12 @@ function omniHandler(regs, index, offset, hookname) {
     return null;
   }
 
+  resetTextsRecent();
+  if (textsRecent.has(s) === true) {
+    return null;
+  }
+  textsRecent.add(s);
+
   if (delayed === true) {
     s = (previousImmediate + s).trim();
     if (bracketsMatch(s) === true) {
@@ -95,11 +103,14 @@ function omniHandler(regs, index, offset, hookname) {
   }
   previousImmediate = s;
 
+  s = s.replace(/\$[\p{Alphabetic}\p{Script=Cham}\p{N}]+/gu, "");
+
   if (isDialogue === true && bracketsMatch(s) === false) {
+    console.warn("comparing:", s);
     delayed = true;
   }
 
-  texts.add(s.replace(/\$[\p{Alphabetic}\p{Script=Cham}\p{N}]+/gu, ""));
+  texts.add(s);
 
   clearTimeout(timer);
   timer = setTimeout(() => {
