@@ -956,27 +956,11 @@ ui.options = [
 
 ui.onchange = (id, current, previous) => {
   logDim(`UI: ${id} set to ${current}`);
-  switch (id) {
-    case "fancyOutput":
-      SETTINGS.fancyOutput = current;
-      break;
-    case "singleSentence":
-      SETTINGS.singleSentence = current;
-      break;
-    case "noCharacterNames":
-      SETTINGS.noCharacterNames = current;
-      break;
-    case "onlyDialogue":
-      SETTINGS.onlyDialogue = current;
-      break;
-    case "filterSeenText":
-      SETTINGS.filterSeenText = current;
-      break;
-    case "debugLogs":
-      SETTINGS.debugLogs = current;
-      break;
-    default:
-      throw new Error(`UI: Unknown setting ${id}`);
+
+  if (SETTINGS[id] !== undefined) {
+    SETTINGS[id] = current;
+  } else {
+    throw new Error(`UI: Unknown setting ${id}`);
   }
 };
 
