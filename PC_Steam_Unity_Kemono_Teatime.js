@@ -48,6 +48,7 @@ const SETTINGS = {
   noCharacterNames: false, // do not output character names
   onlyDialogue: false, // only output dialogue text
   filterSeenText: false, // filters out text that has already been sent during the game session
+  splashScreen: false, // show cute splash screen, no ui option for this yet
   debugLogs: false,
 };
 
@@ -1077,7 +1078,7 @@ ui.options = [
   {
     id: "debugLogs",
     type: "checkbox",
-    label: "Show Debug Logs",
+    label: "Debug Logs",
     defaultValue: SETTINGS.debugLogs,
   },
 ];
@@ -1096,7 +1097,7 @@ ui.onchange = (id, current, previous) => {
 //#region UI CSS
 
 // https://github.com/Mansive/teatime
-ui.userStyle = /*css*/ `#title,
+let userStyle = /*css*/ `#title,
 #description {
   display: none;
 }
@@ -1695,6 +1696,19 @@ body::before {
   outline: 2px solid black;
   outline-offset: 0.5rem;
 }`;
+
+if (!SETTINGS.splashScreen) {
+  userStyle += /* css */ `
+:root::after,
+:root::before,
+body::after,
+.container::after,
+.container::before {
+  display: none;
+}`;
+}
+
+ui.userStyle = userStyle;
 
 //#endregion
 
