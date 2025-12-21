@@ -51,6 +51,9 @@ const SETTINGS = {
   debugLogs: false,
 };
 
+console.warn(`This script has untested hooks.
+If you notice strange behavior, please report it in the Discord or the script's pull request!`)
+
 //#endregion
 
 //#region Backtrace
@@ -920,27 +923,28 @@ Mono.setHook("", "FurnitureData", "DetailReturn", -1, {
   },
 });
 
-// OtherData
-Mono.setHook("", "OtherData", "NameReturn", -1, {
-  onLeave(retval) {
-    console.log("onLeave: OtherData.DetailReturn");
-    console.warn(untestedHookMessage);
+// OtherData hooks need to be nested inside another hook to work properly
+// // OtherData
+// Mono.setHook("", "OtherData", "NameReturn", -1, {
+//   onLeave(retval) {
+//     console.log("onLeave: OtherData.NameReturn");
+//     console.warn(untestedHookMessage);
 
-    const text = readString(retval);
-    handler(text);
-  },
-});
+//     const text = readString(retval);
+//     handler(text);
+//   },
+// });
 
-// OtherData
-Mono.setHook("", "OtherData", "DetailReturn", -1, {
-  onLeave(retval) {
-    console.log("onLeave: OtherData.DetailReturn");
-    console.warn(untestedHookMessage);
+// // OtherData
+// Mono.setHook("", "OtherData", "DetailReturn", -1, {
+//   onLeave(retval) {
+//     console.log("onLeave: OtherData.DetailReturn");
+//     console.warn(untestedHookMessage);
 
-    const text = toSingleSentence(readString(retval));
-    handler(text);
-  },
-});
+//     const text = toSingleSentence(readString(retval));
+//     handler(text);
+//   },
+// });
 
 
 //#endregion
