@@ -1502,6 +1502,8 @@ body::before {
 .form-check:hover {
   background-color: #ffdf94;
   border-radius: 0.5rem;
+  outline: dashed 2px #f7be94;
+  outline-offset: 3px;
 }
 
 .form-check-label {
@@ -1627,11 +1629,10 @@ body::before {
 
 //#endregion
 
-//#endregion
-
-console.warn("OPENING...");
 ui.open()
   .then()
   .catch((err) => {
     console.error("Failed to open UI:", err.stack);
   });
+
+//#endregion
