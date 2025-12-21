@@ -1515,7 +1515,8 @@ body::before {
   width: 20px;
   height: 20px;
   background-color: var(--checkbox-inner-color);
-  margin: 4px;
+  margin: 4px 0px 4px 8px;
+
   position: relative;
   box-shadow:
     /* left, right, top edges and corners*/
