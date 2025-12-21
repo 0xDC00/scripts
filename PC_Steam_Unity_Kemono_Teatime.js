@@ -298,6 +298,7 @@ let timer3 = null;
 let isBacklogOpen = false;
 let backlogTimer = -1;
 
+const seenText = new Set();
 const texts1 = new Set();
 
 const topTexts = new Set();
@@ -1013,6 +1014,8 @@ Mono.setHook("", "FurnitureData", "DetailReturn", -1, {
 
 //#endregion
 
+//#region trans.replace
+
 let previous = "";
 trans.replace((s) => {
   if (s === previous) {
@@ -1022,11 +1025,21 @@ trans.replace((s) => {
 
   SETTINGS.debugLogs && console.warn(JSON.stringify(s));
 
+  if (SETTINGS.filterSeenText) {
+    if (seenText.has(s)) {
+      logDim("Filtered seen text: " + JSON.stringify(s));
+      return null;
+    }
+    seenText.add(s);
+  }
+
   return s
     .replace(/<\/?color[^\>]*>/g, "")
     .replace(/^\r?\n/g, "")
     .trimEnd();
 });
+
+//#endregion
 
 //#region UI Configuration
 
