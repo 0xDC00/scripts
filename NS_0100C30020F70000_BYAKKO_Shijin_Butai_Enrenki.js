@@ -2,7 +2,7 @@
 // @name         [0100C30020F70000] BYAKKO ~Shijin Butai Enrenki~ (BYAKKO ～四神部隊炎恋記～)
 // @version      1.0.0
 // @author       Mansive
-// @description  Ryujinx
+// @description  Yuzu, Ryujinx
 // * Otomate
 // * Idea Factory Co., Ltd.
 // ==/UserScript==
@@ -30,10 +30,15 @@ function orderedHandler() {
 setHook(
   {
     "1.0.0": {
-      "H5c40a2d473e706d0": mainHandler.bind_(null, 0, 0x5e, "text"),
-      "H43e2e446a6cec981": mainHandler.bind_(null, 1, 0, "choices"),
-      "Hafe13686e934c977": topHandler.bind_(null, 0, 0, "dict word"),
-      "H6fcd859aa0cb4d8c": bottomHandler.bind_(null, 0, 0, "dict meaning"),
+      // "H5c40a2d473e706d0": mainHandler.bind_(null, 0, 0x5e, "text"),
+      // "H43e2e446a6cec981": mainHandler.bind_(null, 1, 0, "choices"),
+      // "Hafe13686e934c977": topHandler.bind_(null, 0, 0, "dict word"),
+      // "H6fcd859aa0cb4d8c": bottomHandler.bind_(null, 0, 0, "dict meaning"),
+      [0x80059030 - 0x80004000]: mainHandler.bind_(null, 1, 0x20, "text"),
+      [0x800352e4 - 0x80004000]: mainHandler.bind_(null, 0, 0, "text NVL"),
+      [0x8005f2dc - 0x80004000]: topHandler.bind_(null, 0, 0, "dict word"),
+      [0x8005f300 - 0x80004000]: bottomHandler.bind_(null, 0, 0, "dict meaning"),
+      [0x8004f920 - 0x80004000]: mainHandler.bind_(null, 1, 0, "choices"),
     },
   }[(globalThis.gameVer = globalThis.gameVer ?? gameVer)]
 );
@@ -42,6 +47,8 @@ function handler(regs, index, offset, hookname) {
   console.log("onEnter: " + hookname);
 
   const address = regs[index].value;
+  // console.log(hexdump(address, { header: false, ansi: false, length: 0x60 }));
+
   const text = address.add(offset).readUtf8String();
 
   return text;
@@ -56,5 +63,12 @@ function bottomHandler() {
 }
 
 trans.replace((s) => {
-  return s !== previous ? ((previous = s), s.replace(/#n\u3000?/g, "")) : null;
+  return s !== previous
+    ? ((previous = s),
+      s
+        .replace(/#n\u3000?/g, "")
+        .replace(/#Ruby\[([^,]+),[^\]]+\]/g, "$1")
+        .replace(/#Color[^\]]+\]/g, "")
+        .trim())
+    : null;
 });

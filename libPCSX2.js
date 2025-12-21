@@ -73,7 +73,7 @@ function getPatternAddress({
     try {
         results = scanRanges({ ranges: ranges, pattern: pattern });
     } catch (err) {
-        throw new Error(`Error ocurred with [${name}]: ${err.message}`, {
+        throw new Error(`Error occurred with [${name}]: ${err.message}`, {
             cause: err,
         });
     }
@@ -664,10 +664,15 @@ function asPsxPtr(bytes) {
     return eeContext.mem.add(ptr(new Uint32Array(bytes)[0]));
 }
 
+function asRawPtr(bytes) {
+    return ptr(new Uint32Array(bytes)[0]);
+}
+
 module.exports = exports = {
     setHookEE,
     setHookIOP,
     asPsxPtr,
+    asRawPtr,
 };
 
 // #endregion
