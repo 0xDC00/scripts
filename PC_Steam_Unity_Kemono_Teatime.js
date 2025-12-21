@@ -51,9 +51,6 @@ const SETTINGS = {
   debugLogs: false,
 };
 
-console.warn(`This script has untested hooks.
-If you notice strange behavior, please report it in the Discord or the script's pull request!`);
-
 //#endregion
 
 //#region Backtrace
@@ -1702,7 +1699,13 @@ body::before {
 //#endregion
 
 ui.open()
-  .then()
+  .then(() => {
+    console.warn(`
+This script has untested hooks.
+If you notice strange behavior, please report it in the Discord or the script's pull request!
+Splash screen can only be disabled by editing the script directly.
+`);
+  })
   .catch((err) => {
     console.error("Failed to open UI:", err.stack);
   });
