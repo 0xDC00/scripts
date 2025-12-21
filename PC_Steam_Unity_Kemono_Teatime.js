@@ -1058,7 +1058,7 @@ input[type="checkbox"]:hover {
   --splash-stripe-color1: #cb8a70;
   --splash-stripe-color2: #c67c63;
   --splash-animation-duration: 1.3s;
-  --splash-animation-delay: 1.8s;
+  --splash-animation-delay: 1.5s;
   --splash-max-width: 800px;
   --splash-width: min(100vw, var(--splash-max-width));
   --splash-stripe-width: calc(var(--splash-width) * 0.03);
