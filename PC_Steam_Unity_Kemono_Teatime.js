@@ -629,6 +629,65 @@ Mono.setHook("", "FoodandRecipiDetail", "SetDetail", -1, {
   },
 });
 
+// PurchaseDetail
+// public void SetData(int id)
+// spammy
+let previous_PurchaseDetail_SetData_id = -1;
+Mono.setHook("", "PurchaseDetail", "SetData", -1, {
+  onEnter(args) {
+    if (SETTINGS.onlyDialogue) {
+      // logDim("skipped: PurchaseDetail.SetData");
+      return null;
+    }
+
+    const id = args[1].toUInt32();
+    if (id === previous_PurchaseDetail_SetData_id) {
+      return null;
+    }
+    previous_PurchaseDetail_SetData_id = id;
+
+    console.log("onEnter: PurchaseDetail.SetData");
+
+    this.hooks = [
+      // SweetsData_NameReturn.attach({
+      //   onLeave(retval) {
+      //     console.log("onLeave: SweetsData.NameReturn");
+
+      //     const text = readString(retval);
+      //     positionTopHandler(text, true);
+      //   },
+      // }),
+      FoodMaterialData_NameReturn.attach({
+        onLeave(retval) {
+          console.log("onLeave: FoodMaterialData.NameReturn");
+
+          const text = readString(retval);
+          positionMiddleHandler(text);
+        },
+      }),
+      FoodMaterialData_DetailReturn.attach({
+        onLeave(retval) {
+          console.log("onLeave: FoodMaterialData.DetailReturn");
+
+          topTexts.clear();
+
+          const text = readString(retval);
+          positionBottomHandler(text);
+        },
+      }),
+    ];
+  },
+  onLeave() {
+    if (SETTINGS.onlyDialogue) {
+      return null;
+    }
+
+    this.hooks?.forEach((hook) => {
+      hook.detach();
+    });
+  },
+});
+
 let previous_CommentData_TextReturn_Id = Number.MAX_SAFE_INTEGER;
 Mono.setHook("", "CommentData", "TextReturn", -1, {
   onEnter(args) {
