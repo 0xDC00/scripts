@@ -631,7 +631,7 @@ Mono.setHook("", "FoodandRecipiDetail", "SetDetail", -1, {
 
 // PurchaseDetail
 // public void SetData(int id)
-// spammy
+// spammed on every frame
 let previous_PurchaseDetail_SetData_id = -1;
 Mono.setHook("", "PurchaseDetail", "SetData", -1, {
   onEnter(args) {
@@ -741,7 +741,7 @@ Mono.setHook("", "TeaRecipePrefab", "SetDetail", -1, {
 
     const result = thiz.nameString.value + "\n" + thiz.detailString.value;
     SETTINGS.debugLogs && logText(result);
-    handler(result);
+    positionMiddleHandler(result);
   },
 });
 
