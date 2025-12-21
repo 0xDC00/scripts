@@ -48,7 +48,7 @@ const SETTINGS = {
   noCharacterNames: false, // do not output character names
   onlyDialogue: false, // only output dialogue text
   filterSeenText: false, // filters out text that has already been sent during the game session
-  debugLogs: true,
+  debugLogs: false,
 };
 
 //#endregion
