@@ -52,7 +52,7 @@ const SETTINGS = {
 };
 
 console.warn(`This script has untested hooks.
-If you notice strange behavior, please report it in the Discord or the script's pull request!`)
+If you notice strange behavior, please report it in the Discord or the script's pull request!`);
 
 //#endregion
 
@@ -60,27 +60,26 @@ If you notice strange behavior, please report it in the Discord or the script's 
 
 if (BACKTRACE === true) {
   // system texts?
-  // Mono.setHook("", "ART_TMProText", "SetText", -1, {
-  //   onEnter(args) {
-  //     console.log(JSON.stringify(args[1].readMonoString()));
-  //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
-  //     console.log("callstack:", callstack.splice(0, 8), "\n");
-  //   },
-  // });
-  //
-
-  // dialogue texts?
-  Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
+  Mono.setHook("", "ART_TMProText", "SetText", -1, {
     onEnter(args) {
-      const text = args[1].readMonoString();
-      if (!text) {
-        return;
-      }
-      console.log(JSON.stringify(text));
+      console.log(JSON.stringify(args[1].readMonoString()));
       const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
       console.log("callstack:", callstack.splice(0, 8), "\n");
     },
   });
+
+  // // dialogue texts?
+  // Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
+  //   onEnter(args) {
+  //     const text = args[1].readMonoString();
+  //     if (!text) {
+  //       return;
+  //     }
+  //     console.log(JSON.stringify(text));
+  //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
+  //     console.log("callstack:", callstack.splice(0, 8), "\n");
+  //   },
+  // });
   return;
 }
 
@@ -273,7 +272,7 @@ function logText(text) {
   console.log(`${color.FgYellow}${JSON.stringify(text)}${color.Reset}`);
 }
 
-/** 
+/**
  * Used for less important logs.
  * @param {string} text
  */
@@ -422,9 +421,10 @@ const talkController = {
       const outputChoose = () => {
         const second = texts.pop();
         const first = texts.pop();
-        return SETTINGS.fancyOutput
-          ? chooseBubbles({ top: first, middle: this.customerText, bottom: second })
-          : [first, this.customerText, second].join("\n\n");
+        // return SETTINGS.fancyOutput
+        //   ? chooseBubbles({ top: first, middle: this.customerText, bottom: second })
+        //   : [first, this.customerText, second].join("\n\n");
+        return [first, this.customerText, second].join("\n\n");
       };
 
       const outputNormal = () => {
@@ -569,7 +569,7 @@ Mono.setHook("", "ChooseData", "TextReturn", -1, {
 
 const SweetsData = Mono.use("", "SweetsData");
 const SweetsData_NameReturn = SweetsData.NameReturn;
-// const SweetsData_DetailReturn = SweetsData.DetailReturn;
+// const SweetsData_DetailReturn = SweetsData.DetailReturn; // unused?
 
 const FoodMaterialData = Mono.use("", "FoodMaterialData");
 const FoodMaterialData_NameReturn = FoodMaterialData.NameReturn;
@@ -614,7 +614,11 @@ Mono.setHook("", "FoodandRecipiDetail", "SetDetail", -1, {
     ];
   },
   onLeave() {
-    this.hooks.forEach((hook) => {
+    if (SETTINGS.onlyDialogue) {
+      return null;
+    }
+
+    this.hooks?.forEach((hook) => {
       hook.detach();
     });
 
@@ -899,7 +903,7 @@ Mono.setHook("", "Leisure_Notice", "DatalSet", -1, {
   onLeave() {
     this.hook.detach();
   },
-})
+});
 
 // FurnitureData
 Mono.setHook("", "FurnitureData", "NameReturn", -1, {
@@ -945,7 +949,6 @@ Mono.setHook("", "FurnitureData", "DetailReturn", -1, {
 //     handler(text);
 //   },
 // });
-
 
 //#endregion
 
