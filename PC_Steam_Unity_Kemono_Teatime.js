@@ -734,12 +734,6 @@ Mono.setHook("", "CharaBoard", "DataSet", -1, {
       preferences: "",
     };
 
-    // const portrait = `
-    // 　／ｌ、
-    // （ﾟ、　。７
-    // 　ｌ、～ヽ
-    // 　じしｆ＿、）ノ`;
-
     if (SETTINGS.fancyOutput) {
       // top
       // にゃ～
@@ -936,7 +930,6 @@ Mono.setHook("", "OtherData", "NameReturn", -1, {
     handler(text);
   },
 });
-
 
 // OtherData
 Mono.setHook("", "OtherData", "DetailReturn", -1, {
