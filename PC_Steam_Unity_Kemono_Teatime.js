@@ -1500,10 +1500,10 @@ body::before {
 }
 
 .form-check:hover {
-  background-color: #ffdf94;
+  background-color: #ffd8a5;
   border-radius: 0.5rem;
-  outline: dashed 2px #f7be94;
-  outline-offset: 3px;
+  outline: 2px solid #f7be94;
+  outline-offset: -2px;
 }
 
 .form-check-label {
