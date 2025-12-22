@@ -550,7 +550,7 @@ function setHook(object, dfVer) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             if (key.startsWith('H')) {
-                console.error('Skip: ' + key + ', this hashCode is not implementd, try Ryujinx.');
+                console.error('Skip: ' + key + ', this hashCode is not implemented, try Ryujinx.');
                 continue;
             }
             const element = object[key];
