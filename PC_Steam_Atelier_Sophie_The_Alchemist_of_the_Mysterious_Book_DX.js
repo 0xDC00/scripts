@@ -24,6 +24,12 @@ let previous = "";
 const texts1 = new Set();
 const texts2 = new Set();
 
+const statusSkillNames = [];
+let statusSkillInfoId = 0;
+const statusAbilityNames = [];
+let statusAbilityInfoId = 0;
+const battleSkillNames = [];
+
 let topText = "";
 let middleText = "";
 const bottomTexts = new Set();
@@ -44,8 +50,10 @@ const hooks = [
   ["AreaNameBanner", "E8 1EBA1900", "rdx", mainHandler2],
   ["SideDialogue", "E8 53730B00", "rdx", mainHandler2],
   ["BattleEnemyName", "E8 0D67FBFF", "rdx", mainHandler2],
-  ["BattleSkillInfo1", "E8 7B1DF4FF", "rdx", scrollHandler], // first skill on menu open
-  ["BattleSkillInfo2", "E8 0163FBFF", "rbx", scrollHandler], // rbx; scrolling through menu
+  ["BattleSkillOpen", "E8 238DFFFF", "rax", battleSkillOpenHandler],
+  ["BattleSkillName", "E8 042EFBFF", "rdx", battleSkillNameHandler],
+  ["BattleSkillInfo1", "E8 7B1DF4FF", "rdx", battleSkillInfoHandler1], // first skill on menu open
+  ["BattleSkillInfo2", "E8 0163FBFF", "rbx", battleSkillInfoHandler2], // rbx; scrolling through menu
   ["BattleAction", "E8 8A3CF4FF", "rdx", mainHandler2],
   ["BattleActionSpecial", "E8 413AF4FF", "rdx", mainHandler2],
   ["BattleActionEnemySpecial", "E8 AC0B3600", "rax", mainHandler2],
@@ -66,9 +74,14 @@ const hooks = [
   ["RumorKnownInfo", "E8 BAE22200", "rdx", questRumorInfoHandler],
   ["RumorUnknownInfo", "E8 25E32200", "rdx", questRumorInfoHandler],
   ["EventObjective", "E8 C66A2800", "rdx", scrollHandler3],
-  ["StatusSkillName", "E8 A5E6F6FF", "rdx", mainHandler2],
-  ["StatusSkillInfo", "E8 50EAF6FF", "rdx", scrollHandler],
-  ["StatusAbilityInfo", "E8 E3E9F6FF", "rdx", scrollHandler],
+  ["StatusSkillOpen", "E8 8F0E0000 48 8B CB", "rax", statusOpenHandler],
+  ["StatusSkillName", "E8 A5E6F6FF", "rdx", statusSkillNameHandler],
+  ["StatusSkillInfoId", "E8 31F9F5FF", "rax", statusSkillInfoIdHandler],
+  ["StatusSkillInfo", "E8 50EAF6FF", "rdx", statusSkillInfoHandler],
+  ["StatusAbilityOpen", "E8 C00F0100", "rax", statusOpenHandler],
+  ["StatusAbilityName", "E8 51F1F5FF", "rax", statusAbilityNameHandler],
+  ["StatusAbilityInfoId", "48 8B CB E8 F7370000", "rcx", statusAbilityInfoIdHandler],
+  ["StatusAbilityInfo", "E8 E3E9F6FF", "rdx", statusAbilityInfoHandler],
   ["ItemName", "E8 AA760900", "rdx", scrollHandler],
   ["RecipeName", "E8 D4E8F5FF", "rdx", scrollHandler],
   ["RecipeObtainedName", "E8 18792100", "rdx", scrollHandler2],
@@ -155,9 +168,7 @@ function attachFast(name, pattern, register, handler) {
   Memory.scan(__e.base, __e.size, pattern, {
     onMatch(address) {
       hooksCount += 1;
-      console.log(
-        `\x1b[32m${hooksCount}:[${name}] Found hook ${address}\x1b[0m`
-      );
+      console.log(`\x1b[32m${hooksCount}:[${name}] Found hook ${address}\x1b[0m`);
 
       Interceptor.attach(address, function () {
         if (hooksStatus[name].enabled === false) {
@@ -182,14 +193,11 @@ function attachFast(name, pattern, register, handler) {
 //#region Miscellaneous
 
 function setHookCharacterCount(name, text) {
-  if (text === null) {
+  if (!text) {
     return null;
   }
 
-  const cleanedText = text.replace(
-    /[。…、？！「」―ー・]|<[^>]+>|\r|\n|\u3000/gu,
-    ""
-  );
+  const cleanedText = text.replace(/[。…、？！「」―ー・]|<[^>]+>|\r|\n|\u3000/gu, "");
   hooksStatus[name].characters += cleanedText.length;
 }
 
@@ -304,6 +312,45 @@ function choiceHandler(regs, index, name) {
   return text;
 }
 
+function battleSkillOpenHandler(regs, index, name) {
+  battleSkillNames.length = 0;
+}
+
+function battleSkillNameHandler(regs, index, name) {
+  const address = regs[index];
+  const text = address.readUtf8String();
+  battleSkillNames.push(text);
+}
+
+function battleSkillInfoHandler1(regs, index, name) {
+  bottomTexts.clear();
+
+  const address = regs[index];
+  const skillName = battleSkillNames[0];
+  const skillInfo = address.readUtf8String();
+  const text = (skillName ? skillName + "\r\n" : "") + skillInfo;
+
+  middleText = text;
+
+  orderedHandler();
+  return text;
+}
+
+function battleSkillInfoHandler2(regs, index, name) {
+  bottomTexts.clear();
+
+  const address = regs[index];
+  const id = regs.rbp.toUInt32();
+  const skillName = battleSkillNames[id];
+  const skillInfo = address.readUtf8String();
+  const text = (skillName ? skillName + "\r\n" : "") + skillInfo;
+
+  middleText = text;
+
+  orderedHandler();
+  return text;
+}
+
 function mainMenuDialogueHandler(regs, index, name) {
   const address = regs[index];
   let text = address.readUtf8String();
@@ -342,6 +389,66 @@ function questRumorInfoHandler(regs, index, name) {
     // convert to single line if next line doesn't start with whitespace
     text = text.replace(/\n([^\u3000])/gu, "$1");
   }
+
+  middleText = text;
+
+  orderedHandler();
+  return text;
+}
+
+function statusOpenHandler(regs, index, name) {
+  statusSkillNames.length = 0;
+  statusSkillInfoId = 0;
+  statusAbilityNames.length = 0;
+  statusAbilityInfoId = 0;
+}
+
+function statusSkillNameHandler(regs, index, name) {
+  const address = regs[index];
+  const text = address.readUtf8String();
+  statusSkillNames.push(text);
+}
+
+function statusSkillInfoIdHandler(regs, index, name) {
+  /** @type {NativePointer} */
+  const address = regs[index];
+  statusSkillInfoId = address.toUInt32();
+}
+
+function statusSkillInfoHandler(regs, index, name) {
+  bottomTexts.clear();
+
+  const address = regs[index];
+  const skillName = statusSkillNames[statusSkillInfoId];
+  const skillInfo = address.readUtf8String();
+  const text = (skillName ? skillName + "\r\n" : "") + skillInfo;
+
+  middleText = text;
+
+  orderedHandler();
+  return text;
+}
+
+function statusAbilityNameHandler(regs, index, name) {
+  const address = regs[index];
+  const text = address.readPointer().readUtf8String();
+  statusAbilityNames.push(text);
+}
+
+function statusAbilityInfoIdHandler(regs, index, name) {
+  /** @type {NativePointer} */
+  const address = regs[index];
+  statusAbilityInfoId = address.toUInt32();
+}
+
+function statusAbilityInfoHandler(regs, index, name) {
+  bottomTexts.clear();
+
+  const address = regs[index];
+  const abilityName = statusAbilityNames[statusAbilityInfoId];
+  const abilityInfo = address.readUtf8String();
+  const text = (abilityName ? abilityName + "\r\n" : "") + abilityInfo;
+  console.warn(statusAbilityInfoId);
 
   middleText = text;
 
@@ -454,7 +561,8 @@ ui.title = "Atelier Sophie";
 ui.description = /*html*/ `Configure text output and which hooks are enabled.
 <br>Hold the <code>Ctrl</code> key while clicking on hooks to toggle them individually.
 <br>Press <code>Ctrl + A</code> after clicking on a hooks box to enable all hooks in it.
-<br>Check Agent's console output to see each text's corresponding hook.`;
+<br>Check Agent's console output to see each text's corresponding hook.
+<br>Some hooks are unable to be disabled.`;
 
 //prettier-ignore
 ui.options = [
@@ -481,72 +589,79 @@ ui.options = [
     label: "Display character count from...",
     help: "Select a hook to display its character count.",
     options: [
-      { value: "AreaNameBanner", text: "AreaNameBanner" },
-      { value: "BattleAction", text: "BattleAction" },
-      { value: "BattleActionEnemySpecial", text: "BattleActionEnemySpecial" },
-      { value: "BattleActionSpecial", text: "BattleActionSpecial" },
-      { value: "BattleEnemyName", text: "BattleEnemyName" },
-      { value: "BattleSkillInfo1", text: "BattleSkillInfo1" },
-      { value: "BattleSkillInfo2", text: "BattleSkillInfo2" },
-      { value: "Choice", text: "Choice" },
-      { value: "CraftRecipeMaterial1", text: "CraftRecipeMaterial1" },
-      { value: "CraftRecipeMaterial2", text: "CraftRecipeMaterial2" },
-      { value: "CraftRecipeName", text: "CraftRecipeName" },
-      { value: "CraftTransferTraitInfo", text: "CraftTransferTraitInfo" },
-      { value: "DMakerMaterialCategory", text: "DMakerMaterialCategory" },
-      { value: "DMakerMaterialTrait", text: "DMakerMaterialTrait" },
-      { value: "DialogueName", text: "DialogueName" },
-      { value: "DialogueText", text: "DialogueText" },
-      { value: "EncyclopediaDialogue", text: "EncyclopediaDialogue" },
-      { value: "EncyclopediaEffectInfo", text: "EncyclopediaEffectInfo" },
-      { value: "EncyclopediaEffectName", text: "EncyclopediaEffectName" },
-      { value: "EncyclopediaEnemyName", text: "EncyclopediaEnemyName" },
-      { value: "EncyclopediaFacilityName", text: "EncyclopediaFacilityName" },
-      { value: "EncyclopediaFieldName", text: "EncyclopediaFieldName" },
-      { value: "EncyclopediaHelpInfo", text: "EncyclopediaHelpInfo" },
-      { value: "EncyclopediaHelpName", text: "EncyclopediaHelpName" },
-      { value: "EncyclopediaItemName", text: "EncyclopediaItemName" },
-      { value: "EncyclopediaRecipeCategory", text: "EncyclopediaRecipeCategory" },
-      { value: "EncyclopediaRecipeCompleteName", text: "EncyclopediaRecipeCompleteName" },
-      { value: "EncyclopediaRecipeCondition", text: "EncyclopediaRecipeCondition" },
-      { value: "EncyclopediaRecipeIncompleteName", text: "EncyclopediaRecipeIncompleteName" },
-      { value: "EncyclopediaRecipeMaterial1", text: "EncyclopediaRecipeMaterial1" },
-      { value: "EncyclopediaRecipeMaterial2", text: "EncyclopediaRecipeMaterial2" },
-      { value: "EncyclopediaTraitInfo", text: "EncyclopediaTraitInfo" },
-      { value: "EncyclopediaTraitName", text: "EncyclopediaTraitName" },
-      { value: "EventInfo", text: "EventInfo" },
-      { value: "EventName", text: "EventName" },
-      { value: "EventObjective", text: "EventObjective" },
-      { value: "ExtraSoundRoomInfo", text: "ExtraSoundRoomInfo" },
-      { value: "ExtraSoundRoomName", text: "ExtraSoundRoomName" },
-      { value: "ItemName", text: "ItemName" },
-      { value: "MainMenuDialogue", text: "MainMenuDialogue" },
-      { value: "MaterialCategory", text: "MaterialCategory" },
-      { value: "MaterialEffect", text: "MaterialEffect" },
-      { value: "MaterialQuality", text: "MaterialQuality" },
-      { value: "MaterialTrait", text: "MaterialTrait" },
-      { value: "NotificationBanner", text: "NotificationBanner" },
-      { value: "QuestEnemyName", text: "QuestEnemyName" },
-      { value: "QuestInfo", text: "QuestInfo" },
-      { value: "QuestItemName", text: "QuestItemName" },
-      { value: "QuestName", text: "QuestName" },
-      { value: "RecipeMaterial1", text: "RecipeMaterial1" },
-      { value: "RecipeMaterial2", text: "RecipeMaterial2" },
-      { value: "RecipeName", text: "RecipeName" },
-      { value: "RecipeObtainedName", text: "RecipeObtainedName" },
-      { value: "RelatedRecipe", text: "RelatedRecipe" },
-      { value: "RumorKnownInfo", text: "RumorKnownInfo" },
-      { value: "RumorName", text: "RumorName" },
-      { value: "RumorTypeName", text: "RumorTypeName" },
-      { value: "RumorUnknownInfo", text: "RumorUnknownInfo" },
-      { value: "SideDialogue", text: "SideDialogue" },
-      { value: "SkillObtained", text: "SkillObtained" },
-      { value: "StatusAbilityInfo", text: "StatusAbilityInfo" },
-      { value: "StatusSkillInfo", text: "StatusSkillInfo" },
-      { value: "StatusSkillName", text: "StatusSkillName" },
-      { value: "SynthesisTransferTraitInfo", text: "SynthesisTransferTraitInfo" },
-      { value: "TownMapAreaName", text: "TownMapAreaName" },
-      { value: "WorldMapAreaName", text: "WorldMapAreaName" },
+      { "value" : "AreaNameBanner" , "text" : "AreaNameBanner" },
+      { "value" : "BattleAction" , "text" : "BattleAction" },
+      { "value" : "BattleActionEnemySpecial" , "text" : "BattleActionEnemySpecial" },
+      { "value" : "BattleActionSpecial" , "text" : "BattleActionSpecial" },
+      { "value" : "BattleEnemyName" , "text" : "BattleEnemyName" },
+      { "value" : "BattleSkillInfo1" , "text" : "BattleSkillInfo1" },
+      { "value" : "BattleSkillInfo2" , "text" : "BattleSkillInfo2" },
+      { "value" : "BattleSkillName" , "text" : "BattleSkillName" },
+      { "value" : "BattleSkillOpen" , "text" : "BattleSkillOpen" },
+      { "value" : "Choice" , "text" : "Choice" },
+      { "value" : "CraftRecipeMaterial1" , "text" : "CraftRecipeMaterial1" },
+      { "value" : "CraftRecipeMaterial2" , "text" : "CraftRecipeMaterial2" },
+      { "value" : "CraftRecipeName" , "text" : "CraftRecipeName" },
+      { "value" : "CraftTransferTraitInfo" , "text" : "CraftTransferTraitInfo" },
+      { "value" : "DMakerMaterialCategory" , "text" : "DMakerMaterialCategory" },
+      { "value" : "DMakerMaterialTrait" , "text" : "DMakerMaterialTrait" },
+      { "value" : "DialogueName" , "text" : "DialogueName" },
+      { "value" : "DialogueText" , "text" : "DialogueText" },
+      { "value" : "EncyclopediaDialogue" , "text" : "EncyclopediaDialogue" },
+      { "value" : "EncyclopediaEffectInfo" , "text" : "EncyclopediaEffectInfo" },
+      { "value" : "EncyclopediaEffectName" , "text" : "EncyclopediaEffectName" },
+      { "value" : "EncyclopediaEnemyName" , "text" : "EncyclopediaEnemyName" },
+      { "value" : "EncyclopediaFacilityName" , "text" : "EncyclopediaFacilityName" },
+      { "value" : "EncyclopediaFieldName" , "text" : "EncyclopediaFieldName" },
+      { "value" : "EncyclopediaHelpInfo" , "text" : "EncyclopediaHelpInfo" },
+      { "value" : "EncyclopediaHelpName" , "text" : "EncyclopediaHelpName" },
+      { "value" : "EncyclopediaItemName" , "text" : "EncyclopediaItemName" },
+      { "value" : "EncyclopediaRecipeCategory" , "text" : "EncyclopediaRecipeCategory" },
+      { "value" : "EncyclopediaRecipeCompleteName" , "text" : "EncyclopediaRecipeCompleteName" },
+      { "value" : "EncyclopediaRecipeCondition" , "text" : "EncyclopediaRecipeCondition" },
+      { "value" : "EncyclopediaRecipeIncompleteName" , "text" : "EncyclopediaRecipeIncompleteName" },
+      { "value" : "EncyclopediaRecipeMaterial1" , "text" : "EncyclopediaRecipeMaterial1" },
+      { "value" : "EncyclopediaRecipeMaterial2" , "text" : "EncyclopediaRecipeMaterial2" },
+      { "value" : "EncyclopediaTraitInfo" , "text" : "EncyclopediaTraitInfo" },
+      { "value" : "EncyclopediaTraitName" , "text" : "EncyclopediaTraitName" },
+      { "value" : "EventInfo" , "text" : "EventInfo" },
+      { "value" : "EventName" , "text" : "EventName" },
+      { "value" : "EventObjective" , "text" : "EventObjective" },
+      { "value" : "ExtraSoundRoomInfo" , "text" : "ExtraSoundRoomInfo" },
+      { "value" : "ExtraSoundRoomName" , "text" : "ExtraSoundRoomName" },
+      { "value" : "ItemName" , "text" : "ItemName" },
+      { "value" : "MainMenuDialogue" , "text" : "MainMenuDialogue" },
+      { "value" : "MaterialCategory" , "text" : "MaterialCategory" },
+      { "value" : "MaterialEffect" , "text" : "MaterialEffect" },
+      { "value" : "MaterialQuality" , "text" : "MaterialQuality" },
+      { "value" : "MaterialTrait" , "text" : "MaterialTrait" },
+      { "value" : "NotificationBanner" , "text" : "NotificationBanner" },
+      { "value" : "QuestEnemyName" , "text" : "QuestEnemyName" },
+      { "value" : "QuestInfo" , "text" : "QuestInfo" },
+      { "value" : "QuestItemName" , "text" : "QuestItemName" },
+      { "value" : "QuestName" , "text" : "QuestName" },
+      { "value" : "RecipeMaterial1" , "text" : "RecipeMaterial1" },
+      { "value" : "RecipeMaterial2" , "text" : "RecipeMaterial2" },
+      { "value" : "RecipeName" , "text" : "RecipeName" },
+      { "value" : "RecipeObtainedName" , "text" : "RecipeObtainedName" },
+      { "value" : "RelatedRecipe" , "text" : "RelatedRecipe" },
+      { "value" : "RumorKnownInfo" , "text" : "RumorKnownInfo" },
+      { "value" : "RumorName" , "text" : "RumorName" },
+      { "value" : "RumorTypeName" , "text" : "RumorTypeName" },
+      { "value" : "RumorUnknownInfo" , "text" : "RumorUnknownInfo" },
+      { "value" : "SideDialogue" , "text" : "SideDialogue" },
+      { "value" : "SkillObtained" , "text" : "SkillObtained" },
+      { "value" : "StatusAbilityInfo" , "text" : "StatusAbilityInfo" },
+      { "value" : "StatusAbilityInfoId" , "text" : "StatusAbilityInfoId" },
+      { "value" : "StatusAbilityName" , "text" : "StatusAbilityName" },
+      { "value" : "StatusAbilityOpen" , "text" : "StatusAbilityOpen" },
+      { "value" : "StatusSkillInfo" , "text" : "StatusSkillInfo" },
+      { "value" : "StatusSkillInfoId" , "text" : "StatusSkillInfoId" },
+      { "value" : "StatusSkillName" , "text" : "StatusSkillName" },
+      { "value" : "StatusSkillOpen" , "text" : "StatusSkillOpen" },
+      { "value" : "SynthesisTransferTraitInfo" , "text" : "SynthesisTransferTraitInfo" },
+      { "value" : "TownMapAreaName" , "text" : "TownMapAreaName" },
+      { "value" : "WorldMapAreaName" , "text" : "WorldMapAreaName" },
     ],
     defaultValue: "DialogueText",
   },
@@ -583,6 +698,7 @@ ui.options = [
       { value: "AreaNameBanner", text: "AreaNameBanner", selected: true },
       { value: "SideDialogue", text: "SideDialogue", selected: true },
       { value: "BattleEnemyName", text: "BattleEnemyName", selected: true },
+      { value: "BattleSkillName", text: "BattleSkillName", selected: true },
       { value: "BattleSkillInfo1", text: "BattleSkillInfo1", selected: true },
       { value: "BattleSkillInfo2", text: "BattleSkillInfo2", selected: true },
       { value: "BattleAction", text: "BattleAction", selected: true },
@@ -614,6 +730,7 @@ ui.options = [
       { value: "EventObjective", text: "EventObjective", selected: true },
       { value: "StatusSkillName", text: "StatusSkillName", selected: true },
       { value: "StatusSkillInfo", text: "StatusSkillInfo", selected: true },
+      { value: "StatusAbilityName", text: "StatusAbilityName", selected: true },
       { value: "StatusAbilityInfo", text: "StatusAbilityInfo", selected: true },
       { value: "ItemName", text: "ItemName", selected: true },
       { value: "RecipeName", text: "RecipeName", selected: true },
@@ -670,16 +787,24 @@ ui.onchange = (id, current, previous) => {
 
     for (const hookName of previous) {
       if (current.includes(hookName) === false) {
+        const hookStatus = hooksStatus[hookName];
+        if (typeof hookStatus === "undefined") {
+          continue;
+        }
         console.log(`[${hookName}] has been disabled`);
-        hooksStatus[hookName].enabled = false;
+        hookStatus.enabled = false;
         hooksCount -= 1;
       }
     }
 
     for (const hookName of current) {
       if (previous.includes(hookName) === false) {
+        const hookStatus = hooksStatus[hookName];
+        if (typeof hookStatus === "undefined") {
+          continue;
+        }
         console.log(`[${hookName}] has been enabled`);
-        hooksStatus[hookName].enabled = true;
+        hookStatus.enabled = true;
         hooksCount += 1;
       }
     }
@@ -696,8 +821,7 @@ ui.onchange = (id, current, previous) => {
 
 // Update character count in intervals
 setInterval(() => {
-  ui.config.selectedHookCharacterCount =
-    hooksStatus[ui.config.selectedHook].characters;
+  ui.config.selectedHookCharacterCount = hooksStatus[ui.config.selectedHook].characters;
 }, 5000);
 
 ui.open()
