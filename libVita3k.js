@@ -162,11 +162,16 @@ function getDoJitAddress() {
             const __e = Process.findModuleByName('libVita3K.so');
             const ranges = __e.enumerateRanges('r-x');
             // ranges.forEach(range => console.warn(JSON.stringify(range, null, 2)));
-            const RelinkForDescriptorSig = '6c 05 c1 78 9f ?? ?? 31 ?1 ?? ?? 54 ?? 0? 00 91 ?f 0? ?? eb 61 ff ff 54 03 00 00 14 ?f 0? ?? eb ?1 ?? ?? 54 e8 03 40 f9 08 15 40 f9';
+            // 6c 05 c1 78 9f 05 00 31 a1 00 00 54 4a 05 00 91 3f 01 0a eb 61 ff ff 54 03 00 00 14 5f 01 09 eb c1 01 00 54 e8 07 40 f9 08 15 40 f9 - vita3k discord announcement build
+            // 6c 05 c1 78 9f 05 00 31 a1 00 00 54 29 05 00 91 5f 01 09 eb 61 ff ff 54 03 00 00 14 3f 01 0a eb c1 01 00 54 e8 03 40 f9 08 15 40 f9 - vita3k zx v12.5 build 16?
+            // 6c 05 c1 78 9f ?? ?? 31 ?1 ?? ?? 54 29 ?? ?? 91 5f 01 09 eb ?1 ?? ?? 54 ?? ?? ?? 1? 3f 01 0a eb ?1 ?? ?? 54 e8 03 40 f9 08 15 40 f9 - frida-pat
+            const RelinkForDescriptorSig = '6c 05 c1 78 9f ?? ?? 31 ?1 ?? ?? 54 ?? ?? ?? 91 ?? 01 ?? eb ?1 ?? ?? 54 ?? ?? ?? 1? ?f 01 ?? eb ?1 ?? ?? 54 e8';
+
             const address = getPatternAddress({
                 name: 'RelinkForDescriptor',
                 pattern: RelinkForDescriptorSig,
                 ranges: ranges,
+                getFirst: false,
             });
             if (address.isNull() === false) {
                 const lookbackSize = 0x80;
