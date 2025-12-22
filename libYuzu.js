@@ -53,7 +53,7 @@ function getInitializeAddress() {
 
         if (addresses?.length !== 0) {
             const address = addresses[0];
-            console.warn('Unix KProcess Initialize:', address);
+            console.log('Unix KProcess Initialize:', address);
             InitializeStartAddress = address;
             CreateProcessParameterArg = 1;
         }
@@ -81,7 +81,7 @@ function getInitializeAddress() {
                 console.warn(JSON.stringify(InitializeSigResults, null, 2));
             }
             const InitializeAddress = InitializeSigResults[0].address;
-            console.warn('MSVC KPRocess Initialize:', InitializeAddress);
+            console.log('MSVC KPRocess Initialize:', InitializeAddress);
             const lookbackSize = 0x50;
             const subAddress = InitializeAddress.sub(lookbackSize);
             const subResults = scanAttempt(subAddress, lookbackSize, 'cc cc cc');
@@ -113,7 +113,7 @@ function getInitializeAddress() {
         } else {
             InitializeSigResults.length > 1 && console.warn(InitializeSigResults.length, 'signature matches found?');
             const InitializeAddress = InitializeSigResults[0].address;
-            console.warn('MSVC KPRocess Initialize:', InitializeAddress);
+            console.log('MSVC KPRocess Initialize:', InitializeAddress);
             const lookbackSize = 0x400;
             const subAddress = InitializeAddress.sub(lookbackSize);
             const subResults = scanAttempt(subAddress, lookbackSize, 'cc cc cc');
@@ -144,7 +144,7 @@ function getInitializeAddress() {
             // console.log('Failed to find MingW Initialize');
         } else {
             const InitializeAddress = InitializeSigResults[0].address;
-            console.warn('MingW KPRocess Initialize:', InitializeAddress);
+            console.log('MingW KPRocess Initialize:', InitializeAddress);
             const lookbackSize = 0x50;
             const subAddress = InitializeAddress.sub(lookbackSize);
             const subResults = scanAttempt(subAddress, lookbackSize, '4? 5? 4? 5?');
@@ -171,7 +171,7 @@ function getInitializeAddress() {
                 // console.warn(JSON.stringify(InitializeSigResults, null, 2));
             // }
             const InitializeAddress = InitializeSigResults[0].address;
-            console.warn('MingW Clang KPRocess Initialize:', InitializeAddress);
+            console.log('MingW Clang KPRocess Initialize:', InitializeAddress);
             const lookbackSize = 0x100;
             const subAddress = InitializeAddress.sub(lookbackSize);
             const subResults = scanAttempt(subAddress, lookbackSize, '4? 5? 4? 5? 4?');
@@ -225,7 +225,7 @@ function tryGetAslrOffset() {
                 const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
                 const aslrOffsetHex = codeAddress.sub(baseAddress);
 
-                console.warn('ASLR Offset:', aslrOffsetHex);
+                console.log('ASLR Offset:', aslrOffsetHex);
                 aslrOffset = aslrOffsetHex.toUInt32();
                 sessionStorage.setItem('YUZU_ASLR_OFFSET', aslrOffset);
             } else {
@@ -343,7 +343,7 @@ function getDoJitAddress() {
         }
         const RegisterBlock3 = RegisterBlockMatches3[0];
         if (RegisterBlock3) {
-            console.warn('MingW Clang RegisterBlock:', RegisterBlock3.address);
+            console.log('MingW Clang RegisterBlock:', RegisterBlock3.address);
             const beginSubSig1 = '41 5? 41 5? 5?';
             const lookbackSize = 0x50;
             const address = RegisterBlock3.address.sub(lookbackSize);
@@ -362,7 +362,7 @@ function getDoJitAddress() {
         }
         const RegisterBlock2 = RegisterBlockMatches[0];
         if (RegisterBlock2) {
-            console.warn('MingW RegisterBlock:', RegisterBlock2.address);
+            console.log('MingW RegisterBlock:', RegisterBlock2.address);
             const beginSubSig1 = '41 5? 41 5? 41 5?';
             const lookbackSize = 0x100;
             const address = RegisterBlock2.address.sub(lookbackSize);
@@ -376,7 +376,7 @@ function getDoJitAddress() {
         const RegisterBlockSig1 = 'E8 ?? ?? ?? ?? 4? 8B ?? 4? 8B ?? 4? 8B ?? E8 ?? ?? ?? ?? 4? 89?? 4? 8B???? ???????? 4? 89?? ?? 4? 8B?? 4? 89';
         const RegisterBlock = Memory.scanSync(__e.base, __e.size, RegisterBlockSig1)[0];
         if (RegisterBlock) {
-            console.warn('MSVC RegisterBlock:', RegisterBlock.address);
+            console.log('MSVC RegisterBlock:', RegisterBlock.address);
             const beginSubSig1 = 'CC 40 5? 5? 5?';
             const lookbackSize = 0x400;
             const address = RegisterBlock.address.sub(lookbackSize);
@@ -390,7 +390,7 @@ function getDoJitAddress() {
         const PatchSig1 = '4????? 4????? 4????? FF?? ?? 4????? ?? 4????? 75 ?? 4????? ?? 4????? ?? 4?';
         const Patch = Memory.scanSync(__e.base, __e.size, PatchSig1)[0];
         if (Patch) {
-            console.warn('Patch', Patch.address);
+            console.log('Patch', Patch.address);
             // const beginSubSig1 = '4883EC ?? 48';
             const beginSubSig1 = 'CC 4? 8?';
             const lookbackSize = 0x90;
@@ -408,7 +408,7 @@ function getDoJitAddress() {
         // ?RegisterBlock@EmitX64@X64@Backend@Dynarmic@@IEAA?AUBlockDescriptor@1234@AEBVLocationDescriptor@IR@4@PEBX1_K@Z
         const symbols = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::RegisterBlock');
         if (symbols.length !== 0) {
-            console.warn('RegisterBlock symbol:', symbols[0]);
+            console.log('RegisterBlock symbol:', symbols[0]);
             return symbols[0];
         }
 
@@ -416,7 +416,7 @@ function getDoJitAddress() {
         // ?Patch@EmitX64@X64@Backend@Dynarmic@@IEAAXAEBVLocationDescriptor@IR@4@PEBX@Z
         const patchs = DebugSymbol.findFunctionsMatching('Dynarmic::Backend::X64::EmitX64::Patch');
         if (patchs.length !== 0) {
-            console.warn('Patch symbol: ', patchs[0]);
+            console.log('Patch symbol: ', patchs[0]);
             idxDescriptor = 1;
             idxEntrypoint = 2;
             return patchs[0];
