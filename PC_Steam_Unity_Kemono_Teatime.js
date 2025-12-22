@@ -1718,6 +1718,8 @@ ui.open()
 This script has untested hooks.
 If you notice strange behavior, please report it in the Discord or the script's pull request!
 Splash screen can only be disabled by editing the script directly.
+
+If you've unlocked the "Other" tab, send your save file to me so I can make a hook for it.
 `);
   })
   .catch((err) => {
