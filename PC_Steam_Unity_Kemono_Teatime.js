@@ -45,7 +45,7 @@ const untestedHookMessage = "This hook isn't tested, tell me if it works or not!
 const SETTINGS = {
   fancyOutput: true, // works best for CJK languages
   singleSentence: true, // should only be applicable when fancyOutput is false
-  noCharacterNames: false, // do not output character names
+  characterNames: true, // output character names
   onlyDialogue: false, // only output dialogue text
   filterSeenText: false, // filters out text that has already been sent during the game session
   splashScreen: true, // show cute splash screen, no ui option for this yet
@@ -523,7 +523,7 @@ Mono.setHook("", "ART_ScriptEngineBackLogWindow", "Setup", -1, {
 // spammed on every frame when opening logs
 Mono.setHook("", "EventCharaName", "GetNameText", -1, {
   onLeave(retval) {
-    if (isBacklogOpen || SETTINGS.noCharacterNames) {
+    if (isBacklogOpen || !SETTINGS.characterNames) {
       return null;
     }
 
@@ -963,27 +963,28 @@ Mono.setHook("", "Leisure_Notice", "DatalSet", -1, {
   },
 });
 
-// FurnitureData
-Mono.setHook("", "FurnitureData", "NameReturn", -1, {
-  onLeave(retval) {
-    console.log("onLeave: FurnitureData.NameReturn");
-    console.warn(untestedHookMessage);
+// overlaps with RewardCommentData
+// // FurnitureData
+// Mono.setHook("", "FurnitureData", "NameReturn", -1, {
+//   onLeave(retval) {
+//     console.log("onLeave: FurnitureData.NameReturn");
+//     console.warn(untestedHookMessage);
 
-    const text = readString(retval);
-    handler(text);
-  },
-});
+//     const text = readString(retval);
+//     handler(text);
+//   },
+// });
 
-// FurnitureData
-Mono.setHook("", "FurnitureData", "DetailReturn", -1, {
-  onLeave(retval) {
-    console.log("onLeave: FurnitureData.DetailReturn");
-    console.warn(untestedHookMessage);
+// // FurnitureData
+// Mono.setHook("", "FurnitureData", "DetailReturn", -1, {
+//   onLeave(retval) {
+//     console.log("onLeave: FurnitureData.DetailReturn");
+//     console.warn(untestedHookMessage);
 
-    const text = toSingleSentence(readString(retval));
-    handler(text);
-  },
-});
+//     const text = toSingleSentence(readString(retval));
+//     handler(text);
+//   },
+// });
 
 // OtherData hooks need to be nested inside another hook to work properly
 // // OtherData
@@ -1058,10 +1059,10 @@ ui.options = [
     defaultValue: SETTINGS.singleSentence,
   },
   {
-    id: "noCharacterNames",
+    id: "characterNames",
     type: "checkbox",
     label: "Character Names",
-    defaultValue: SETTINGS.noCharacterNames,
+    defaultValue: SETTINGS.characterNames,
   },
   {
     id: "onlyDialogue",
