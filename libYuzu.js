@@ -6,7 +6,13 @@
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
-const __e = Process.mainModule ?? Process.enumerateModules()[0];
+
+const arch = Process.arch;
+
+const __e =
+  Process.platform !== "linux" && arch !== "arm64"
+    ? Process.mainModule ?? Process.enumerateModules()[0]
+    : Process.getModuleByName("libyuzu-android.so");    
 if (null !== (Process.platform === 'linux' ? Module.findExportByName(null, 'DotNetRuntimeInfo') : __e.findExportByName('DotNetRuntimeInfo'))) {
     return (module.exports = exports = require('./libRyujinx.js'));
 }
@@ -14,12 +20,6 @@ if (null !== (Process.platform === 'linux' ? Module.findExportByName(null, 'DotN
 console.warn('[Compatibility]');
 console.warn('Yuzu 1616+');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
-
-const arch = Process.arch;
-
-if (arch !== 'x64' && arch !== 'arm64') {
-    throw new Error(`Unsupported architecture: ${arch}`);
-}
 
 if (arch === 'arm64') {
     console.warn(`
@@ -63,8 +63,8 @@ function getInitializeAddress() {
     if (Process.platform !== 'windows') {
         let addresses;
         if (arch === 'arm64') {
-            console.log("Looking for Arm64 Initialize...");
-            addresses = DebugSymbol.findFunctionsNamed("_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterENSt6__ndk14spanIKjLm18446744073709551615EEEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSD_17ProcessAddressTagEEE");
+            console.log('Looking for ARM64 Initialize...');
+            addresses = [__e.getExportByName('_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterENSt6__ndk14spanIKjLm18446744073709551615EEEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSD_17ProcessAddressTagEEE')];
         } else {
             console.log('Looking for Unix Initialize...');
             addresses = DebugSymbol.findFunctionsNamed('_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterESt4spanIKjLm18446744073709551615EEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSC_17ProcessAddressTagEEE');
@@ -378,23 +378,15 @@ function getDoJitAddress() {
             for (const name of names) {
                 const addresses = DebugSymbol.findFunctionsNamed(name);
                 if (addresses.length !== 0) {
+                    console.log('X64 RegisterBlock:', addresses[0]);
                     return addresses[0];
                 }
             }
         } else if (arch === 'arm64') {
-            // find functions of interest
-            // for (const thing of DebugSymbol.findFunctionsMatching("*")) {
-            //     const symbol = DebugSymbol.fromAddress(thing);
-            //     if (symbol.name?.startsWith("_")) {
-            //         console.warn(symbol.name);
-            //     }
-            // }
-
             const name = '_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte'; // android arm64
-            const addresses = DebugSymbol.findFunctionsNamed(name);
-            if (addresses.length !== 0) {
-                return addresses[0];
-            }
+            const address = __e.getExportByName(name);
+            console.log('ARM64 RelinkForDescriptor:', address);
+            return address;
         } else {
             console.warn("Unknown architecture?:", arch)
         }
