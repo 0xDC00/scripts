@@ -1,33 +1,25 @@
 // ==UserScript==
-// @name         STAR OCEAN THE SECOND STORY R 
+// @name         STAR OCEAN THE SECOND STORY R
 // @version      0.1
 // @author       [Carl-Lw]
-// @description  Steam
-// * Square-Enix
+// @description  Steam 
+//* Square-Enix
 //
 // https://store.steampowered.com/app/2238900/STAR_OCEAN_THE_SECOND_STORY_R/
 // ==/UserScript==
 
 const Mono = require('./libMono.js');
 
-// ===== Output =====
-function outLine(s) {
-  trans.send(String(s));
-}
-
-// ===== Options =====
 const STABLE_MS = 650;
-const SPRITE_MODE = 'token'; // 'token' or 'drop'
+const SPRITE_MODE = 'token'; // Changeable between 'token' and 'drop'
 const PRINT_ID = false;
 
 const SUPPRESS_SHORT_EN_NEAR_JP = true;
 const SHORT_EN_MAXLEN = 22;
 const SHORT_EN_WINDOW_MS = 2000;
 
-// ===== Text filering and helpers =====
-function hasJapanese(s) {
-  return /[\u3040-\u30ff\u3400-\u9fff]/.test(s || '');
-}
+const outLine = s => trans.send(String(s));
+const hasJP = s => /[\u3040-\u30ff\u3400-\u9fff]/.test(s || '');
 
 function stripTmpTags(s) {
   if (!s) return '';
@@ -37,32 +29,12 @@ function stripTmpTags(s) {
     s = s.replace(/<sprite\b[^>]*>/gi, '');
   } else {
     s = s.replace(
-      /<sprite\b[^>]*name\s*=\s*("([^"]+)"|([^\s>]+))[^>]*>/gi,
-      (m, _q, qname, uname) => `[${qname || uname || 'sprite'}]`
-    );
-    s = s.replace(/<sprite\b[^>]*>/gi, '[sprite]');
+      /<sprite\b[^>]*\bname\s*=\s*(?:"([^"]+)"|([^\s>]+))[^>]*>/gi,
+      (_m, q, u) => `[${q || u || 'sprite'}]`
+    ).replace(/<sprite\b[^>]*>/gi, '[sprite]');
   }
 
-  s = s.replace(/<\/?style(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?(?:b|i|u|s|sup|sub|mark|nobr)>/gi, '');
-  s = s.replace(/<\/?color(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?size(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?font(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?material(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?align(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?voffset(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?pos(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?indent(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?line-height(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?alpha(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?cspace(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?mspace(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?width(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<\/?link(?:=[^>]+)?>/gi, '');
-
-  s = s.replace(/<br\s*\/?>/gi, '\n');
-  s = s.replace(/<[^>]+>/g, '');
-  return s;
+  return s.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[^>]+>/g, '');
 }
 
 function normalizeText(s) {
@@ -70,32 +42,27 @@ function normalizeText(s) {
   s = String(s || '').replace(/\r\n/g, '\n');
   s = s.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
   s = s.replace(/[ \t]+/g, ' ').trim();
-  s = s.replace(/^["「『]+/, '').replace(/["」』]+$/, '').trim();
-  return s;
+  return s.replace(/^["「『]+/, '').replace(/["」』]+$/, '').trim();
 }
 
 function isUseless(t) {
   if (!t) return true;
-  const onlyText = t.replace(/[「」『』（）\(\)\[\]{}"“”'’。、・？！…\s\-—–_:;,.]/g, '');
-  return onlyText.length === 0;
+  return t.replace(/[「」『』（）()\[\]{}"“”'’。、・？！…\s\-—–_:;,.]/g, '').length === 0;
 }
 
-function isShortEnglishFragment(t) {
+function isShortEN(t) {
   if (t.length > SHORT_EN_MAXLEN) return false;
   if (!/^[\x00-\x7F]+$/.test(t)) return false;
   if (/^[A-Z0-9 _\[\]]+$/.test(t)) return false;
-  if (!/[A-Za-z]/.test(t)) return false;
-  return true;
+  return /[A-Za-z]/.test(t);
 }
 
-// ===== Stabilise text output to avoid duplicates =====
 const slots = new Map();
 let recentJPTime = 0;
 
 function scheduleEmit(key) {
   const slot = slots.get(key);
   if (!slot) return;
-
   if (slot.timer) clearTimeout(slot.timer);
 
   slot.timer = setTimeout(() => {
@@ -103,7 +70,7 @@ function scheduleEmit(key) {
     const t = slot.text;
     if (!t || isUseless(t)) return;
 
-    if (SUPPRESS_SHORT_EN_NEAR_JP && !hasJapanese(t) && isShortEnglishFragment(t)) {
+    if (SUPPRESS_SHORT_EN_NEAR_JP && !hasJP(t) && isShortEN(t)) {
       if ((Date.now() - recentJPTime) < SHORT_EN_WINDOW_MS) return;
     }
 
@@ -115,11 +82,10 @@ function scheduleEmit(key) {
   }, STABLE_MS);
 }
 
-// ===== Hooks =====
 function main() {
   const cls = 'Game.GameText';
 
-  Mono.setHook(null, cls, 'set_MessageId', 1, function (args) {
+  Mono.setHook(null, cls, 'set_MessageId', 1, args => {
     const key = args[0].toString();
     const id = normalizeText(args[1].readMonoString());
     if (!id) return;
@@ -129,7 +95,7 @@ function main() {
     slots.set(key, slot);
   });
 
-  Mono.setHook(null, cls, 'set_text', 1, function (args) {
+  Mono.setHook(null, cls, 'set_text', 1, args => {
     const key = args[0].toString();
     const t = normalizeText(args[1].readMonoString());
     if (!t || isUseless(t)) return;
@@ -138,10 +104,9 @@ function main() {
     slot.text = t;
     slots.set(key, slot);
 
-    if (hasJapanese(t)) recentJPTime = Date.now();
+    if (hasJP(t)) recentJPTime = Date.now();
     scheduleEmit(key);
   });
-
 }
 
 setImmediate(main);
