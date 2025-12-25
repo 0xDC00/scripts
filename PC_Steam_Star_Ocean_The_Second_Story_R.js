@@ -12,22 +12,19 @@ const Mono = require('./libMono.js');
 
 // ---------- output ----------
 function outLine(s) {
-  try {
-    if (typeof trans !== 'undefined' && trans && typeof trans.send === 'function') {
-      trans.send(String(s));
-      return;
-    }
-  } catch (_) {}
-  try { console.log(String(s)); } catch (_) {}
+  trans.send(String(s));
 }
 
 // ---------- options ----------
 const SPRITE_MODE = 'token';          // 'token' or 'drop'
-const STABLE_MS = 650;               // debounce window (increase if needed)
+const STABLE_MS = 650;               // debounce window
 const MAX_CACHE = 500;
 const PRINT_ID = false;
 
-// Keep menus but suppress 'short' English fragments when JP is actively streaming
+// If true: only emit Japanese-containing strings
+const JP_ONLY = false;
+
+// Keep menus, but suppress short English fragments while JP is actively streaming
 const SUPPRESS_SHORT_EN_NEAR_JP = true;
 const SHORT_EN_MAXLEN = 22;
 const SHORT_EN_WINDOW_MS = 2000;
@@ -53,7 +50,7 @@ function stripTmpTags(s) {
   // style wrapper
   s = s.replace(/<\/?style(?:=[^>]+)?>/gi, '');
 
-  // TMP tags
+  // common TMP tags
   s = s.replace(/<\/?(?:b|i|u|s|sup|sub|mark|nobr)>/gi, '');
   s = s.replace(/<\/?color(?:=[^>]+)?>/gi, '');
   s = s.replace(/<\/?size(?:=[^>]+)?>/gi, '');
@@ -79,7 +76,6 @@ function stripTmpTags(s) {
 function normalizeText(s) {
   s = stripTmpTags(s);
   s = String(s || '').replace(/\r\n/g, '\n');
-  // keep newlines (multi-line dialogue), but normalize spaces around them
   s = s.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
   s = s.replace(/[ \t]+/g, ' ');
   s = s.trim();
@@ -95,10 +91,9 @@ function isUseless(t) {
 }
 
 function isShortEnglishFragment(t) {
-  // Clean-up of short english fragments
   if (t.length > SHORT_EN_MAXLEN) return false;
-  if (!/^[\x00-\x7F]+$/.test(t)) return false;          // ASCII only
-  if (/^[A-Z0-9 _\[\]]+$/.test(t)) return false;       // allow menu-like ALLCAPS and tokens
+  if (!/^[\x00-\x7F]+$/.test(t)) return false;        // ASCII only
+  if (/^[A-Z0-9 _\[\]]+$/.test(t)) return false;     // allow menu-like ALLCAPS/tokens
   if (!/[A-Za-z]/.test(t)) return false;
   return true;
 }
@@ -118,7 +113,7 @@ function trimSlotsIfNeeded() {
 }
 
 function getKeyFromThis(args) {
-  try { return args[0].toString(); } catch (_) { return 'unknown'; }
+  return args[0].toString();
 }
 
 function scheduleEmit(key) {
@@ -133,7 +128,8 @@ function scheduleEmit(key) {
     const t = slot.text;
     if (!t || isUseless(t)) return;
 
-    // suppress short EN fragments if JP has been active recently
+    if (JP_ONLY && !hasJapanese(t)) return;
+
     if (SUPPRESS_SHORT_EN_NEAR_JP) {
       if (!hasJapanese(t) && isShortEnglishFragment(t)) {
         if ((Date.now() - recentJPTime) < SHORT_EN_WINDOW_MS) return;
@@ -143,7 +139,7 @@ function scheduleEmit(key) {
     if (t === slot.lastEmitted) return;
     slot.lastEmitted = t;
 
-    if (PRINT_ID && slot.messageId) outLine(`[Id] : ${slot.messageId}`);
+    if (PRINT_ID && slot.messageId) outLine(slot.messageId);
     outLine(t);
   }, STABLE_MS);
 }
@@ -188,18 +184,16 @@ function main() {
     trimSlotsIfNeeded();
     const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '', lastSeen: 0 };
 
-    // Update latest text and debounce emit
     slot.text = t;
     slot.lastSeen = Date.now();
     slots.set(key, slot);
 
     if (hasJapanese(t)) recentJPTime = Date.now();
 
-    // Schedule emit to prevent prefix spamming
+    // Always debounce
     scheduleEmit(key);
   });
 
-  outLine('[Status] Game.GameText set_text stabilized (debounced emit).');
 }
 
 setImmediate(main);
