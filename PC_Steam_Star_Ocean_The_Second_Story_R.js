@@ -10,47 +10,40 @@
 
 const Mono = require('./libMono.js');
 
-// ---------- output ----------
+// ===== Output =====
 function outLine(s) {
   trans.send(String(s));
 }
 
-// ---------- options ----------
-const SPRITE_MODE = 'token';          // 'token' or 'drop'
-const STABLE_MS = 650;               // debounce window
-const MAX_CACHE = 500;
+// ===== Options =====
+const STABLE_MS = 650;
+const SPRITE_MODE = 'token'; // 'token' or 'drop'
 const PRINT_ID = false;
 
-// If true: only emit Japanese-containing strings
-const JP_ONLY = false;
-
-// Keep menus, but suppress short English fragments while JP is actively streaming
 const SUPPRESS_SHORT_EN_NEAR_JP = true;
 const SHORT_EN_MAXLEN = 22;
 const SHORT_EN_WINDOW_MS = 2000;
 
-// ---------- helpers ----------
-function hasJapanese(s) { return /[\u3040-\u30ff\u3400-\u9fff]/.test(s || ''); }
+// ===== Text filering and helpers =====
+function hasJapanese(s) {
+  return /[\u3040-\u30ff\u3400-\u9fff]/.test(s || '');
+}
 
 function stripTmpTags(s) {
   if (!s) return '';
   s = String(s);
 
-  // TMP sprites
   if (SPRITE_MODE === 'drop') {
     s = s.replace(/<sprite\b[^>]*>/gi, '');
   } else {
-    s = s.replace(/<sprite\b[^>]*name\s*=\s*("([^"]+)"|([^\s>]+))[^>]*>/gi, (m, _q, qname, uname) => {
-      const name = qname || uname || 'sprite';
-      return `[${name}]`;
-    });
+    s = s.replace(
+      /<sprite\b[^>]*name\s*=\s*("([^"]+)"|([^\s>]+))[^>]*>/gi,
+      (m, _q, qname, uname) => `[${qname || uname || 'sprite'}]`
+    );
     s = s.replace(/<sprite\b[^>]*>/gi, '[sprite]');
   }
 
-  // style wrapper
   s = s.replace(/<\/?style(?:=[^>]+)?>/gi, '');
-
-  // common TMP tags
   s = s.replace(/<\/?(?:b|i|u|s|sup|sub|mark|nobr)>/gi, '');
   s = s.replace(/<\/?color(?:=[^>]+)?>/gi, '');
   s = s.replace(/<\/?size(?:=[^>]+)?>/gi, '');
@@ -66,9 +59,8 @@ function stripTmpTags(s) {
   s = s.replace(/<\/?mspace(?:=[^>]+)?>/gi, '');
   s = s.replace(/<\/?width(?:=[^>]+)?>/gi, '');
   s = s.replace(/<\/?link(?:=[^>]+)?>/gi, '');
-  s = s.replace(/<br\s*\/?>/gi, '\n');
 
-  // remove remaining tags
+  s = s.replace(/<br\s*\/?>/gi, '\n');
   s = s.replace(/<[^>]+>/g, '');
   return s;
 }
@@ -77,9 +69,7 @@ function normalizeText(s) {
   s = stripTmpTags(s);
   s = String(s || '').replace(/\r\n/g, '\n');
   s = s.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
-  s = s.replace(/[ \t]+/g, ' ');
-  s = s.trim();
-  // strip wrapping quotes if the whole string is wrapped
+  s = s.replace(/[ \t]+/g, ' ').trim();
   s = s.replace(/^["「『]+/, '').replace(/["」』]+$/, '').trim();
   return s;
 }
@@ -92,29 +82,15 @@ function isUseless(t) {
 
 function isShortEnglishFragment(t) {
   if (t.length > SHORT_EN_MAXLEN) return false;
-  if (!/^[\x00-\x7F]+$/.test(t)) return false;        // ASCII only
-  if (/^[A-Z0-9 _\[\]]+$/.test(t)) return false;     // allow menu-like ALLCAPS/tokens
+  if (!/^[\x00-\x7F]+$/.test(t)) return false;
+  if (/^[A-Z0-9 _\[\]]+$/.test(t)) return false;
   if (!/[A-Za-z]/.test(t)) return false;
   return true;
 }
 
-// ---------- per-object stabilization ----------
-const slots = new Map(); // key -> { text, lastEmitted, timer, messageId, lastSeen }
+// ===== Stabilise text output to avoid duplicates =====
+const slots = new Map();
 let recentJPTime = 0;
-
-function trimSlotsIfNeeded() {
-  if (slots.size <= MAX_CACHE) return;
-  let oldestKey = null;
-  let oldestT = Infinity;
-  for (const [k, v] of slots.entries()) {
-    if (v.lastSeen < oldestT) { oldestT = v.lastSeen; oldestKey = k; }
-  }
-  if (oldestKey) slots.delete(oldestKey);
-}
-
-function getKeyFromThis(args) {
-  return args[0].toString();
-}
 
 function scheduleEmit(key) {
   const slot = slots.get(key);
@@ -124,16 +100,11 @@ function scheduleEmit(key) {
 
   slot.timer = setTimeout(() => {
     slot.timer = null;
-
     const t = slot.text;
     if (!t || isUseless(t)) return;
 
-    if (JP_ONLY && !hasJapanese(t)) return;
-
-    if (SUPPRESS_SHORT_EN_NEAR_JP) {
-      if (!hasJapanese(t) && isShortEnglishFragment(t)) {
-        if ((Date.now() - recentJPTime) < SHORT_EN_WINDOW_MS) return;
-      }
+    if (SUPPRESS_SHORT_EN_NEAR_JP && !hasJapanese(t) && isShortEnglishFragment(t)) {
+      if ((Date.now() - recentJPTime) < SHORT_EN_WINDOW_MS) return;
     }
 
     if (t === slot.lastEmitted) return;
@@ -144,53 +115,30 @@ function scheduleEmit(key) {
   }, STABLE_MS);
 }
 
-// ---------- hook helper ----------
-const IMAGE_TRIES = [null, true, '', 'Assembly-CSharp'];
-
-function trySetHook(className, methodName, argCount, cb) {
-  for (const img of IMAGE_TRIES) {
-    try {
-      Mono.setHook(img, className, methodName, argCount, cb);
-      outLine(`[Hook] ${String(img)} :: ${className}.${methodName}/${argCount}`);
-      return true;
-    } catch (_) {}
-  }
-  outLine(`[HookFail] ${className}.${methodName}/${argCount}`);
-  return false;
-}
-
-// ---------- main ----------
+// ===== Hooks =====
 function main() {
-  const CLS = 'Game.GameText';
+  const cls = 'Game.GameText';
 
-  trySetHook(CLS, 'set_MessageId', 1, function (args) {
-    const key = getKeyFromThis(args);
+  Mono.setHook(null, cls, 'set_MessageId', 1, function (args) {
+    const key = args[0].toString();
     const id = normalizeText(args[1].readMonoString());
     if (!id) return;
 
-    trimSlotsIfNeeded();
-    const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '', lastSeen: 0 };
+    const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '' };
     slot.messageId = id;
-    slot.lastSeen = Date.now();
     slots.set(key, slot);
   });
 
-  trySetHook(CLS, 'set_text', 1, function (args) {
-    const key = getKeyFromThis(args);
-    const raw = args[1].readMonoString();
-    const t = normalizeText(raw);
+  Mono.setHook(null, cls, 'set_text', 1, function (args) {
+    const key = args[0].toString();
+    const t = normalizeText(args[1].readMonoString());
     if (!t || isUseless(t)) return;
 
-    trimSlotsIfNeeded();
-    const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '', lastSeen: 0 };
-
+    const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '' };
     slot.text = t;
-    slot.lastSeen = Date.now();
     slots.set(key, slot);
 
     if (hasJapanese(t)) recentJPTime = Date.now();
-
-    // Always debounce
     scheduleEmit(key);
   });
 
