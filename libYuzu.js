@@ -64,7 +64,7 @@ function getInitializeAddress() {
         let addresses;
         if (arch === 'arm64') {
             console.log('Looking for ARM64 Initialize...');
-            addresses = [__e.findExportByName('_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterENSt6__ndk14spanIKjLm18446744073709551615EEEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSD_17ProcessAddressTagEEE')];
+            addresses = [__e.getExportByName('_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterENSt6__ndk14spanIKjLm18446744073709551615EEEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSD_17ProcessAddressTagEEE')];
         } else {
             console.log('Looking for Unix Initialize...');
             addresses = DebugSymbol.findFunctionsNamed('_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterESt4spanIKjLm18446744073709551615EEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSC_17ProcessAddressTagEEE');
@@ -384,11 +384,9 @@ function getDoJitAddress() {
             }
         } else if (arch === 'arm64') {
             const name = '_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte'; // android arm64
-            const address = __e.findExportByName(name);
-            if (address) {
-                console.log('ARM64 RelinkForDescriptor:', address);
-                return address;
-            }
+            const address = __e.getExportByName(name);
+            console.log('ARM64 RelinkForDescriptor:', address);
+            return address;
         } else {
             console.warn("Unknown architecture?:", arch)
         }
