@@ -139,7 +139,7 @@ function main() {
     const key = safeToString(args[0]);
     if (!key) return;
 
-    const t = norm(safeReadMonoString(args[1])); // <- fixed: safe read
+    const t = norm(safeReadMonoString(args[1]));
     if (!t || !useful(t)) return;
 
     const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '' };
