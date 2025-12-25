@@ -7,13 +7,12 @@
 //
 // https://store.steampowered.com/app/2799860/INAZUMA_ELEVEN_Heroes_Victory_Road/
 // ==/UserScript==
-
 const __e = Process.enumerateModules()[0];
 const handler = trans.send(s => s, -100);
 
 (function () {
-    const seenTexts = new Map();
-    let cachedOffset = -1; 
+    let lastSentText = "";
+    let cachedOffset = -1;
     
     attach('dialogue_box', '48 8B CB E8 ?? ?? ?? ?? B0 01', 'r9');
     
@@ -45,14 +44,15 @@ const handler = trans.send(s => s, -100);
             
             const text = extractUtf8Fast(reg);
             
-            if (text) {
-                const now = Date.now();
-                const lastSeen = seenTexts.get(text) || 0;
+            if (text && text !== lastSentText) {
+                lastSentText = text;
                 
-                if (now - lastSeen > 3000) {
-                    seenTexts.set(text, now);
-                    handler(text);
-                }
+                let cleaned = text
+                    .replace(/\[([^\]\/]+)\/[^\]]+\]/g, '$1')
+                    .replace(/\\n/g, '\n')
+                    .replace(">>>", "");
+                
+                handler(cleaned);
             }
         });
     }
@@ -72,7 +72,7 @@ const handler = trans.send(s => s, -100);
             try {
                 const s = ptr.add(off).readUtf8String();
                 if (s && s.length > 2 && /[ぁ-んァ-ン一-龯]/.test(s)) {
-                    cachedOffset = off; 
+                    cachedOffset = off;
                     return s;
                 }
             } catch {}
