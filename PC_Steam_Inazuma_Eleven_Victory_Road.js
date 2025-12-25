@@ -10,19 +10,7 @@
 
 const __e = Process.enumerateModules()[0];
 
-const handler = (msg) => {
-    try {
-        if (typeof trans !== 'undefined' && trans && typeof trans.send === 'function') {
-            trans.send(msg, -100);
-        } else if (typeof send === 'function') {
-            send(msg);
-        } else {
-            console.log(msg);
-        }
-    } catch (e) {
-        console.log(msg);
-    }
-};
+const handler = trans.send(s => s, -100);
 
 (function () {
     let lastText = "";
@@ -34,8 +22,8 @@ const handler = (msg) => {
     };
 
     const hooks = [
-        { name: 'dialogue', offset: 0xFBEB5D, register: 'r9', category: 'dialogue' },
-        { name: 'extra', offset: 0xFBE27D, register: 'r8', category: 'extra' },
+        { name: 'dialogue', pattern: "48 8B CB E8 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? 48 8B 06 48 8B CE", hookOffset: 0, register: 'r9', category: 'dialogue'},
+        { name: 'extra', pattern: "48 8B CB E8 6B 9D 4D FF", hookOffset: 0, register: 'r8', category: 'extra' },
     ];
 
     console.log("=== TEXT HOOK CONTROLS ===");
@@ -52,7 +40,7 @@ const handler = (msg) => {
             GetAsyncKeyState = () => 0;
         }
     } else {
-        console.warn('GetAsyncKeyState not found — keyboard toggles disabled.');
+        console.warn('GetAsyncKeyState not found - keyboard toggles disabled.');
         GetAsyncKeyState = () => 0;
     }
 
@@ -70,26 +58,33 @@ const handler = (msg) => {
 
 
     hooks.forEach(hook => {
-        const addr = __e.base.add(hook.offset);
-        console.log(`[${hook.name}] Hook ready @ 0x${hook.offset.toString(16).toUpperCase()}`);
+        Memory.scan(__e.base, __e.size, hook.pattern, {
+            onMatch(address) {
+                const hookAddr = address.add(hook.hookOffset);
 
-        Interceptor.attach(addr, function () {
-            if (!hookStates[hook.category]) return;
+                console.log(
+                    `[${hook.name}] Match @ ${address} Hook @ ${hookAddr}`
+                );
 
-            const reg = this.context[hook.register];
-            if (!reg || reg.isNull()) return;
+                Interceptor.attach(hookAddr, function () {
+                    if (!hookStates[hook.category]) return;
 
-            const text = extractText(reg);
-            if (text && text !== lastText) {
-                lastText = text;
+                    const reg = this.context[hook.register];
+                    if (!reg || reg.isNull()) return;
 
-                const cleaned = text
-                    .replace(/\[([^\]\/]+)\/[^\]]+\]/g, '$1')
-                    .replace(/\\n/g, '\n')
-                    .replace(/\[(CG|CY|CR|CB|C)\]/g, '')
-                    .replace(/\$gaiji_keyword\d+/g, '');
+                    const text = extractText(reg);
+                    if (text && text !== lastText) {
+                        lastText = text;
 
-                handler(cleaned);
+                        const cleaned = text
+                            .replace(/\[([^\]\/]+)\/[^\]]+\]/g, '$1')
+                            .replace(/\\n/g, '\n')
+                            .replace(/\[(CG|CY|CR|CB|C)\]/g, '')
+                            .replace(/\$gaiji_keyword\d+/g, '');
+
+                        handler(cleaned);
+                    }
+                });
             }
         });
     });
