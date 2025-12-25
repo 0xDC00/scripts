@@ -11,7 +11,6 @@
 const Mono = require('./libMono.js');
 
 const STABLE_MS = 650;
-const SPRITE_MODE = 'token'; // Changeable between 'token' and 'drop'
 const PRINT_ID = false;
 
 const SUPPRESS_SHORT_EN_NEAR_JP = true;
@@ -21,41 +20,22 @@ const SHORT_EN_WINDOW_MS = 2000;
 const outLine = s => trans.send(String(s));
 const hasJP = s => /[\u3040-\u30ff\u3400-\u9fff]/.test(s || '');
 
-function stripTmpTags(s) {
-  if (!s) return '';
-  s = String(s);
+// Replace TMP sprites with placeholder box
+const stripTmpTags = s => String(s || '')
+  .replace(/<sprite\b[^>]*>/gi, ' ▢ ')
+  .replace(/<br\s*\/?>/gi, '\n')
+  .replace(/<\/?[^>]+>/g, '');
 
-  if (SPRITE_MODE === 'drop') {
-    s = s.replace(/<sprite\b[^>]*>/gi, '');
-  } else {
-    s = s.replace(
-      /<sprite\b[^>]*\bname\s*=\s*(?:"([^"]+)"|([^\s>]+))[^>]*>/gi,
-      (_m, q, u) => `[${q || u || 'sprite'}]`
-    ).replace(/<sprite\b[^>]*>/gi, '[sprite]');
-  }
+const norm = s => stripTmpTags(s).replace(/\r\n/g, '\n').trim();
 
-  return s.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?[^>]+>/g, '');
-}
+// "Useful" if it contains at least one ascii letter/digit or JP script char
+const useful = t => /[0-9A-Za-z\u3040-\u30ff\u3400-\u9fff]/.test(t || '');
 
-function normalizeText(s) {
-  s = stripTmpTags(s);
-  s = String(s || '').replace(/\r\n/g, '\n');
-  s = s.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
-  s = s.replace(/[ \t]+/g, ' ').trim();
-  return s.replace(/^["「『]+/, '').replace(/["」』]+$/, '').trim();
-}
-
-function isUseless(t) {
-  if (!t) return true;
-  return t.replace(/[「」『』（）()\[\]{}"“”'’。、・？！…\s\-—–_:;,.]/g, '').length === 0;
-}
-
-function isShortEN(t) {
-  if (t.length > SHORT_EN_MAXLEN) return false;
-  if (!/^[\x00-\x7F]+$/.test(t)) return false;
-  if (/^[A-Z0-9 _\[\]]+$/.test(t)) return false;
-  return /[A-Za-z]/.test(t);
-}
+const shortEN = t =>
+  t && t.length <= SHORT_EN_MAXLEN &&
+  /^[\x00-\x7F]+$/.test(t) &&
+  /[A-Za-z]/.test(t) &&
+  !/^[A-Z0-9 _\[\]]+$/.test(t);
 
 const slots = new Map();
 let recentJPTime = 0;
@@ -68,9 +48,9 @@ function scheduleEmit(key) {
   slot.timer = setTimeout(() => {
     slot.timer = null;
     const t = slot.text;
-    if (!t || isUseless(t)) return;
+    if (!t || !useful(t)) return;
 
-    if (SUPPRESS_SHORT_EN_NEAR_JP && !hasJP(t) && isShortEN(t)) {
+    if (SUPPRESS_SHORT_EN_NEAR_JP && !hasJP(t) && shortEN(t)) {
       if ((Date.now() - recentJPTime) < SHORT_EN_WINDOW_MS) return;
     }
 
@@ -87,7 +67,7 @@ function main() {
 
   Mono.setHook(null, cls, 'set_MessageId', 1, args => {
     const key = args[0].toString();
-    const id = normalizeText(args[1].readMonoString());
+    const id = norm(args[1].readMonoString());
     if (!id) return;
 
     const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '' };
@@ -97,8 +77,8 @@ function main() {
 
   Mono.setHook(null, cls, 'set_text', 1, args => {
     const key = args[0].toString();
-    const t = normalizeText(args[1].readMonoString());
-    if (!t || isUseless(t)) return;
+    const t = norm(args[1].readMonoString());
+    if (!t || !useful(t)) return;
 
     const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '' };
     slot.text = t;
@@ -110,3 +90,4 @@ function main() {
 }
 
 setImmediate(main);
+
