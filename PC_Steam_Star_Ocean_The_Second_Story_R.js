@@ -2,10 +2,10 @@
 // @name         STAR OCEAN THE SECOND STORY R
 // @version      0.1
 // @author       [Carl-Lw]
-// @description  Steam 
+// @description  Steam
 //* Square-Enix
 //
-// https://store.steampowered.com/app/2238900/STAR_OCEAN_THE_SECOND_STORY_R/
+// https://store.steampowered.com/app/2238900/STAR_OCEAN_THE_SECOND STORY R/
 // ==/UserScript==
 
 const Mono = require('./libMono.js');
@@ -17,60 +17,83 @@ const SUPPRESS_SHORT_EN_NEAR_JP = true;
 const SHORT_EN_MAXLEN = 22;
 const SHORT_EN_WINDOW_MS = 2000;
 
-// Toggle numeric output: suppress number-heavy / numeric-only spam (battle damage, stats, etc.)
+// Toggle: suppress number-heavy / numeric-only spam (battle damage, stats, etc.)
 const SUPPRESS_NUMERIC_SPAM = true;
 
 // Strictness: true = drop only numeric-like strings; false = drop mostly-numeric strings too
 const DROP_ONLY_PURE_NUMERIC = true;
-const NUMERIC_RATIO_THRESHOLD = 0.70; // used only when DROP_ONLY_PURE_NUMERIC === false
+const NUMERIC_RATIO_THRESHOLD = 0.70;
 
 const outLine = s => trans.send(String(s));
-const hasJP = s => /[\u3040-\u30ff\u3400-\u9fff]/.test(s || '');
 
-// Replace TMP sprites with placeholder box and strip other tags
+/* ===============================
+   Regex list
+   =============================== */
+const RX = {
+  JP: /[\u3040-\u30ff\u3400-\u9fff]/,
+
+  TMP_SPRITE: /<sprite\b[^>]*>/gi,
+  BR: /<br\s*\/?>/gi,
+  TAGS: /<\/?[^>]+>/g,
+
+  // ASCII-only + contains at least one Latin letter
+  ASCII_AND_LATIN: /^(?=.*[A-Za-z])[\x00-\x7F]+$/,
+  ALLCAPS_NUM: /^[A-Z0-9 _\[\]]+$/,
+
+  PURE_NUMERIC_LIKE: /^[0-9\s+\-.,:%/×x＊*()［\[\]］]+$/,
+
+  DIGITS: /[0-9]/g,
+
+  // removes everything except [0-9A-Za-zJP]
+  NON_SIGNAL: /[^0-9A-Za-z\u3040-\u30ff\u3400-\u9fff]/g
+};
+/* =============================== */
+
+const hasJP = s => RX.JP.test(s || '');
+
+// Replace TMP sprites with placeholder box and strip TMP/HTML tags
 const stripTmpTags = s => String(s || '')
-  .replace(/<sprite\b[^>]*>/gi, ' ▢ ')
-  .replace(/<br\s*\/?>/gi, '\n')
-  .replace(/<\/?[^>]+>/g, '');
+  .replace(RX.TMP_SPRITE, ' ▢ ')
+  .replace(RX.BR, '\n')
+  .replace(RX.TAGS, '');
 
 const norm = s => stripTmpTags(s).replace(/\r\n/g, '\n').trim();
 
 // Keep only strings that contain at least one ascii letter/digit or JP script char
-const useful = t => /[0-9A-Za-z\u3040-\u30ff\u3400-\u9fff]/.test(t || '');
+const useful = t => !!t && t.replace(RX.NON_SIGNAL, '').length > 0;
 
 const shortEN = t =>
-  t && t.length <= SHORT_EN_MAXLEN &&
-  /^[\x00-\x7F]+$/.test(t) &&
-  /[A-Za-z]/.test(t) &&
-  !/^[A-Z0-9 _\[\]]+$/.test(t);
+  t &&
+  t.length <= SHORT_EN_MAXLEN &&
+  RX.ASCII_AND_LATIN.test(t) &&
+  !RX.ALLCAPS_NUM.test(t);
 
-// === Numeric spam suppression helpers ===
-function isPureNumericLike(t) {
-  // Digits + common numeric punctuation/symbols/spaces only
-  return /^[0-9\s+\-.,:%/×x＊*()［\[\]］]+$/.test(t);
-}
+// === Numeric spam suppression ===
+const isPureNumericLike = t => RX.PURE_NUMERIC_LIKE.test(t);
+
 function isMostlyNumeric(t) {
-  const sig = (t.match(/[0-9A-Za-z\u3040-\u30ff\u3400-\u9fff]/g) || []).length;
+  const sig = t.replace(RX.NON_SIGNAL, '').length;
   if (!sig) return true;
-  const digs = (t.match(/[0-9]/g) || []).length;
+
+  const digs = (t.match(RX.DIGITS) || []).length;
   return (digs / sig) >= NUMERIC_RATIO_THRESHOLD;
 }
+
 function shouldDropNumericSpam(t) {
   if (!SUPPRESS_NUMERIC_SPAM) return false;
   if (!t) return true;
   return DROP_ONLY_PURE_NUMERIC ? isPureNumericLike(t) : isMostlyNumeric(t);
 }
-// =========================================
+// ========================================
 
 // === Safe Mono reads ===
 function safeToString(x) {
   try {
     if (x == null) return '';
     if (typeof x === 'string') return x;
-    if (x.isNull && x.isNull()) return '';
-    if (x.handle && x.handle.isNull && x.handle.isNull()) return '';
-    return x.toString ? x.toString() : String(x);
-  } catch (_e) {
+    if (x?.isNull?.() || x?.handle?.isNull?.()) return '';
+    return x?.toString ? x.toString() : String(x);
+  } catch {
     return '';
   }
 }
@@ -79,11 +102,9 @@ function safeReadMonoString(x) {
   try {
     if (x == null) return '';
     if (typeof x === 'string') return x;
-    if (x.isNull && x.isNull()) return '';
-    if (x.handle && x.handle.isNull && x.handle.isNull()) return '';
-    if (x.readMonoString) return x.readMonoString();
-    return safeToString(x);
-  } catch (_e) {
+    if (x?.isNull?.() || x?.handle?.isNull?.()) return '';
+    return x?.readMonoString ? x.readMonoString() : safeToString(x);
+  } catch {
     return '';
   }
 }
@@ -92,9 +113,17 @@ function safeReadMonoString(x) {
 const slots = new Map();
 let recentJPTime = 0;
 
+const newSlot = () => ({
+  text: '',
+  lastEmitted: '',
+  timer: null,
+  messageId: ''
+});
+
 function scheduleEmit(key) {
   const slot = slots.get(key);
   if (!slot) return;
+
   if (slot.timer) clearTimeout(slot.timer);
 
   slot.timer = setTimeout(() => {
@@ -102,11 +131,8 @@ function scheduleEmit(key) {
 
     const t = slot.text;
     if (!t || !useful(t)) return;
-
-    // suppress numeric spam (battle/status)
     if (shouldDropNumericSpam(t)) return;
 
-    // suppress short EN fragments right after JP lines
     if (SUPPRESS_SHORT_EN_NEAR_JP && !hasJP(t) && shortEN(t)) {
       if ((Date.now() - recentJPTime) < SHORT_EN_WINDOW_MS) return;
     }
@@ -130,7 +156,7 @@ function main() {
     const id = norm(safeReadMonoString(args[1]));
     if (!id) return;
 
-    const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '' };
+    const slot = slots.get(key) || newSlot();
     slot.messageId = id;
     slots.set(key, slot);
   });
@@ -142,7 +168,7 @@ function main() {
     const t = norm(safeReadMonoString(args[1]));
     if (!t || !useful(t)) return;
 
-    const slot = slots.get(key) || { text: '', lastEmitted: '', timer: null, messageId: '' };
+    const slot = slots.get(key) || newSlot();
     slot.text = t;
     slots.set(key, slot);
 
