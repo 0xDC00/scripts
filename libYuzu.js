@@ -245,8 +245,20 @@ function tryGetAslrOffset() {
                 const aslrOffsetHex = codeAddress.sub(baseAddress);
 
                 if (aslrOffsetHex.compare(ptr(0x80000000)) > 0) {
-                    console.warn(`High code address ${codeAddress}, using dogwater NCE hooks...`);
-                    hookNce(codeAddress);
+                    console.warn(`High code address ${codeAddress}, using NCE hooks...`);
+                    
+                    const RunAddress = __e.getExportByName('_ZN6Kernel8KProcess3RunEim');
+                    const runHook = Interceptor.attach(RunAddress, {
+                        onEnter(args) {
+                            console.warn('KProcess::Run just ran');
+                        },
+                        onLeave() {
+                            console.warn('Detaching KProcess::Run hook')
+                            runHook.detach();
+                            hookNce(codeAddress);
+                        }
+                    })
+
                     return true;
                 }
 
@@ -701,95 +713,29 @@ function setHook(object, dfVer) {
     });
 }
 
+// console.warn("MANUALLY INVOKING hookNce!!!!!!");
+// hookNce();
+
 /** @param {NativePointer} codeAddress */
 function hookNce(codeAddress) {
-    const originalInstructions = new Map(); // use sessionStorage instead?
-    const opcode = 0; // UDF #0, force SIGILL
+    const NceGetBaseAddress = new NativeFunction(__e.getExportByName('NceGetBaseAddress'), 'uint64', ['uint64']);
+    const NceInstallExternalHook = new NativeFunction(__e.getExportByName('NceInstallExternalHook'), 'bool', ['uint64', 'uint32']);
+    const NceRemoveExternalHook = new NativeFunction(__e.getExportByName('NceRemoveExternalHook'), 'bool', ['uint64']);
+    const NceGetCurrentContext = new NativeFunction(__e.getExportByName('NceGetCurrentContext'), 'pointer', []);
+    const nceTrampoline = __e.getExportByName('NceTrampoline');
+    console.warn(JSON.stringify(nceTrampoline, null, 2));
 
-    Process.setExceptionHandler(function (details) {
-        if (details.type !== 'illegal-instruction') {
-            console.warn('Unknown exception type:', details.type);
-            return false;
-        }
-        // we're handling the exception caused by our UDF instruction
-
-        const pc = details.context.pc;
-        const pcStr = pc.toString();
-        const op = operations[pcStr];
-
-        if (op === undefined) {
-            console.error('This is about to crash the emulator', pcStr);
-            return false;
-        }
-
-        const originalIns = originalInstructions.get(pcStr);
-
-        // missing some stuff from buildRegs
-        const regs = Object.create(null);
-        for (let i = 0; i <= 28; i++) {
-            regs[i] = { value: details.context['x' + i] };
-        }
-        regs.pc = pc;
-        regs.lr = details.context.lr;
-        regs.fp = details.context.fp;
-        regs.sp = details.context.sp;
-
-        op.call(details.context, regs);
-
-        // restore original instruction
-        pc.writeU32(originalIns);
-
-        // retrap after executing original instruction?
-        setTimeout(() => {
-            try {
-                pc.writeU32(opcode); 
-            } catch(e) {
-                console.error('Error while retrapping', e);
-            }
-        }, 5);
-
-        return true; 
-    });
-
-    /** @param {NativePointer} hostAddress */
-    function hook(hostAddress) {
-        try {
-            console.log(hexdump(hostAddress.sub(8), { length: 0x20, header: true, ansi: true }));
-            const hostAddressIns = Instruction.parse(hostAddress);
-
-            if (hostAddressIns.mnemonic === 'udf') {
-                console.error(`Hooking udf at ${hostAddress} (${hostAddressIns.mnemonic} ${hostAddressIns.opStr})`);
-                return;
-            }
-
-            const hostAddressStr = hostAddress.toString();
-            const originalIns = hostAddress.readU32();
-            originalInstructions.set(hostAddressStr, originalIns);
-
-            Memory.protect(hostAddress, 4, 'rwx');
-            hostAddress.writeU32(opcode);
-            
-            console.log(`Hooked ${hostAddress}`);
-
-            // make sure we actually replaced the instruction
-            // setInterval(() => {
-            //     console.log(hexdump(hostAddr.sub(8), { length: 0x20, header: true, ansi: true }));
-            // }, 5000);
-        } catch (e) {
-            console.error(`Failed to hook ${hostAddress}:\n ${e.stack}`);
-        }
+    // https://switchbrew.org/wiki/Rtld
+    const magicPattern = '00 00 00 00 08 00 00 00 4d 4f 44 30';
+    const magicResults = Memory.scanSync(codeAddress, 0x10000, magicPattern);
+    if (magicResults.length === 0) {
+        throw new Error('Failed to find MOD0 magic pattern');
     }
-
-    // idk where these offsets come from
-    const mysteriousOffset = 0x6000; // taishou x alice, summer pockets; Luca System games? 24,576
-    // const mysteriousOffset = 0x4000; // wand of fortune R; 16,384
-    console.warn('Mysterious offset:', ptr(mysteriousOffset));
-
-    const baseAddress = codeAddress.add(mysteriousOffset); 
-    console.warn('NCE Base Address:', baseAddress);
+    const baseAddress = magicResults.at(-1).address;
+    console.warn('NCE Base Address:', baseAddress.address);
 
     for (const key in operations) {
-        const em_address = ptr(key)
+        const em_address = ptr(key);
         const hostAddress = baseAddress.add(em_address.sub(0x80004000)); // PC = Program Counter register
         console.warn(`${em_address} => ${hostAddress}`);
 
@@ -799,14 +745,56 @@ function hookNce(codeAddress) {
             throw new Error('Missing operation for ' + key);
         }
 
-        // wait for emulator to finish doing NCE stuff
-        // there's probably a better way to do this
-        setTimeout(() => {
-            hook(hostAddress);
-        }, 5000);
+        const expectedInstruction = 0; // skip verification
+        const installStatus = NceInstallExternalHook(uint64(hostAddress.toString()), expectedInstruction);
+        if (installStatus) {
+            console.warn("Value of installStatus:", installStatus);
+        } else {
+            console.error("Value of installStatus:", installStatus);
+        }
+        console.warn(hexdump(hostAddress, { header: false, ansi: false, length: 0x30 }))
+
     }
+
+    console.warn("Hooking nceTrampoline", nceTrampoline);
+    Interceptor.attach(nceTrampoline, {
+        onEnter(args) {
+            console.warn("onEnter: NceTrampoline");
+            
+            const em_address = args[0];
+            // console.warn('pc:', em_address);
+
+            const context = args[1];
+            // console.warn('context:', context);
+        
+            // console.warn('context dump:\n', hexdump(context, { header: false, ansi: false, length: 0x30 }));
+            // console.warn('text?:', context.add(8).readPointer().readUtf16String());
+        
+            const op = operations[em_address.toString()];
+
+            const regs = Object.create(null);
+            for (let i = 0; i < 33; i++) {
+                regs[i] = { value: context.add(i * 8).readPointer() };
+            }
+            regs.pc = em_address;
+
+            op.call(context, regs);
+        }
+    })
+
+    // console.warn(JSON.stringify(Process.getRangeByAddress(codeAddress), null, 2));
+    // console.warn(hexdump(codeAddress, { length: 0x6100 }));
+
+    // const ranges = Process.enumerateRanges("r--");
+    // for (const range of ranges) {
+    //     const results = Memory.scanSync(range.base, range.size, '00 00 00 00 08 00 00 00 4d 4f 44 30 00 83 24 00 88 c1 24 00 d8 c9 2c 21 a0 52 1f 00 9c c3 1f 00 88 c1 24 00 00 00 00 00 00 00 00 00 00 00 00 00 ff 43 02 d1');
+    //     if (results.length > 0) {
+    //         console.warn('Found it at', results[0].address);
+    //     }
+    // }
 }
 
 module.exports = exports = {
     setHook,
 };
+
