@@ -716,14 +716,42 @@ function setHook(object, dfVer) {
 // console.warn("MANUALLY INVOKING hookNce!!!!!!");
 // hookNce();
 
+// 0 = DEBUG (all logs), 1 = INFO, 2 = WARNING, 3 = ERROR
+const NCE_MIN_LOG_LEVEL = 0;
+
+// Register a callback to receive emulator logs using callback registration instead of 
+// Interceptor.attach/replace because they don't work for calls made from within
+// NativeFunction call context
+const nceRegisterLogCallback = __e.findExportByName('NceRegisterLogCallback');
+if (nceRegisterLogCallback) {
+    const levelNames = ["DEBUG", "INFO", "WARNING", "ERROR"];
+    
+    // Create callback that the emulator will call directly
+    const logCallback = new NativeCallback((level, messagePtr) => {
+        if (level >= NCE_MIN_LOG_LEVEL) {
+            const message = messagePtr.readCString();
+            const levelStr = levelNames[level] || "UNKNOWN";
+            console.log(`[Emu ${levelStr}] ${message}`);
+        }
+    }, 'void', ['int', 'pointer']);
+    
+    // Keep reference to prevent GC from collecting the callback?
+    globalThis._nceLogCallback = logCallback;
+    
+    const registerFn = new NativeFunction(nceRegisterLogCallback, 'void', ['pointer']);
+    registerFn(logCallback);    
+} else {
+    console.warn('Log export not found, internal emulator logs will not be shown');
+}
+
 /** @param {NativePointer} codeAddress */
 function hookNce(codeAddress) {
-    const NceGetBaseAddress = new NativeFunction(__e.getExportByName('NceGetBaseAddress'), 'uint64', ['uint64']);
+    // const NceGetBaseAddress = new NativeFunction(__e.getExportByName('NceGetBaseAddress'), 'uint64', ['uint64']);
     const NceInstallExternalHook = new NativeFunction(__e.getExportByName('NceInstallExternalHook'), 'bool', ['uint64', 'uint32']);
-    const NceRemoveExternalHook = new NativeFunction(__e.getExportByName('NceRemoveExternalHook'), 'bool', ['uint64']);
-    const NceGetCurrentContext = new NativeFunction(__e.getExportByName('NceGetCurrentContext'), 'pointer', []);
+    // const NceRemoveExternalHook = new NativeFunction(__e.getExportByName('NceRemoveExternalHook'), 'bool', ['uint64']);
+    // const NceGetCurrentContext = new NativeFunction(__e.getExportByName('NceGetCurrentContext'), 'pointer', []);
     const nceTrampoline = __e.getExportByName('NceTrampoline');
-    console.warn(JSON.stringify(nceTrampoline, null, 2));
+    // console.warn(JSON.stringify(nceTrampoline, null, 2));
 
     // https://switchbrew.org/wiki/Rtld
     const magicPattern = '00 00 00 00 08 00 00 00 4d 4f 44 30';
@@ -732,7 +760,7 @@ function hookNce(codeAddress) {
         throw new Error('Failed to find MOD0 magic pattern');
     }
     const baseAddress = magicResults.at(-1).address;
-    console.warn('NCE Base Address:', baseAddress.address);
+    console.warn('NCE Base Address:', baseAddress);
 
     for (const key in operations) {
         const em_address = ptr(key);
@@ -747,13 +775,11 @@ function hookNce(codeAddress) {
 
         const expectedInstruction = 0; // skip verification
         const installStatus = NceInstallExternalHook(uint64(hostAddress.toString()), expectedInstruction);
-        if (installStatus) {
-            console.warn("Value of installStatus:", installStatus);
-        } else {
-            console.error("Value of installStatus:", installStatus);
+        if (installStatus === false) {
+            throw new Error('Failed to install NCE hook for ' + hostAddress);
         }
-        console.warn(hexdump(hostAddress, { header: false, ansi: false, length: 0x30 }))
 
+        console.log(hexdump(hostAddress, { header: false, ansi: false, length: 0x10 }));
     }
 
     console.warn("Hooking nceTrampoline", nceTrampoline);
@@ -761,15 +787,8 @@ function hookNce(codeAddress) {
         onEnter(args) {
             console.warn("onEnter: NceTrampoline");
             
-            const em_address = args[0];
-            // console.warn('pc:', em_address);
-
+            const em_address = args[0]; // pc
             const context = args[1];
-            // console.warn('context:', context);
-        
-            // console.warn('context dump:\n', hexdump(context, { header: false, ansi: false, length: 0x30 }));
-            // console.warn('text?:', context.add(8).readPointer().readUtf16String());
-        
             const op = operations[em_address.toString()];
 
             const regs = Object.create(null);
@@ -780,18 +799,7 @@ function hookNce(codeAddress) {
 
             op.call(context, regs);
         }
-    })
-
-    // console.warn(JSON.stringify(Process.getRangeByAddress(codeAddress), null, 2));
-    // console.warn(hexdump(codeAddress, { length: 0x6100 }));
-
-    // const ranges = Process.enumerateRanges("r--");
-    // for (const range of ranges) {
-    //     const results = Memory.scanSync(range.base, range.size, '00 00 00 00 08 00 00 00 4d 4f 44 30 00 83 24 00 88 c1 24 00 d8 c9 2c 21 a0 52 1f 00 9c c3 1f 00 88 c1 24 00 00 00 00 00 00 00 00 00 00 00 00 00 ff 43 02 d1');
-    //     if (results.length > 0) {
-    //         console.warn('Found it at', results[0].address);
-    //     }
-    // }
+    });
 }
 
 module.exports = exports = {
