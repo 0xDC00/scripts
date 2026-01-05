@@ -28,21 +28,29 @@ const addresses = Object.create(null);
 /** @type {ModuleSymbolDetails[]|null} */
 let symbols = null;
 
-const __ranges = Process.enumerateRanges("r-x");
-
-// console.log(JSON.stringify(ranges, null, 2));
+const __ranges = __e.enumerateRanges("r-x");
 
 /**
  * @param {Object} settings
  * @param {RangeDetails[]} settings.ranges
  * @param {string} settings.pattern
+ * @param {string} settings.protection
  * @returns {MemoryScanMatch[]}
  */
-function scanRanges({ ranges, pattern }) {
+function scanRanges({ ranges, pattern, protection }) {
     const allMatches = [];
 
+    const perms = protection.split("-");
     for (const range of ranges) {
-        const rangeMatches = Memory.scanSync(range.base, range.size, pattern);
+        if (perms.every((p) => range.protection.includes(p)) === false) {
+            continue;
+        }
+        let rangeMatches = [];
+        try {
+            rangeMatches = Memory.scanSync(range.base, range.size, pattern);
+        } catch (err) {
+            continue;
+        }
 
         if (rangeMatches.length !== 0) {
             allMatches.push(...rangeMatches);
@@ -59,6 +67,7 @@ function scanRanges({ ranges, pattern }) {
  * @param {string} settings.pattern
  * @param {RangeDetails[]} [settings.ranges]
  * @param {boolean} [settings.getFirst]
+ * @param {string} [settings.protection]
  * @returns {NativePointer}
  */
 function getPatternAddress({
@@ -66,12 +75,13 @@ function getPatternAddress({
     pattern,
     ranges = __ranges,
     getFirst = true,
+    protection = "r-x",
 }) {
     /** @type {MemoryScanMatch[]} */
     let results = null;
 
     try {
-        results = scanRanges({ ranges: ranges, pattern: pattern });
+        results = scanRanges({ ranges: ranges, pattern: pattern, protection: protection });
     } catch (err) {
         throw new Error(`Error occurred with [${name}]: ${err.message}`, {
             cause: err,
@@ -99,9 +109,10 @@ function getPatternAddress({
  * @param {string} settings.name
  * @param {string} settings.pattern
  * @param {number} [settings.lookbackSize]
+ * @param {string} [settings.protection]
  * @returns {NativePointer}
  */
-function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
+function getFunctionAddress({ name, pattern, lookbackSize = 0x100, protection = "r-x" }) {
     /** @param {MemoryScanMatch[]} candidates */
     function findFunctionStartAddress(candidates) {
         if (candidates === 0) {
@@ -120,7 +131,7 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
         return null;
     }
 
-    const address = getPatternAddress({ name, pattern });
+    const address = getPatternAddress({ name, pattern, protection });
     const base = address.sub(lookbackSize);
     const size = lookbackSize;
     const patterns = ["CC 4?", "CC 5?"];
@@ -245,13 +256,16 @@ function setupAddressesThroughPattern() {
 
     addresses.dynarecCheckBreakpoint = getFunctionAddress({
         name: "dynarecCheckBreakpoint",
-        pattern: "8B 35 ???????? 8B 05 ???????? 48 39 05 ???????? 75 0D",
-        //       "8B 35 0BA18602 8B 05 1DA28602 48 39 05 8E5B530D 75 0D" v2.2.0
+        pattern: "8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000",
+        //       "8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000 E8 06030D00 8D 4F 02" v2.2.0
+        //       "8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000 E8 46F30C00 8D 4F 02" v2.6.0
     });
     addresses.psxDynarecCheckBreakpoint = getFunctionAddress({
         name: "psxDynarecCheckBreakpoint",
-        pattern: "8B 35 ???????? 8B 0D ???????? 31 FF B8 00000000",
-        //       "8B 35 6B178802 8B 0D 6D178802 31 FF B8 00000000" v2.2.0
+        pattern: "B9 03000000 E8 ???????? 48 8B 05 ???????? FF 50 28 40",
+        //       "83 C0 FE 83 F8 02 77 16 48 8D 0D DE489400 E8 4126BFFF B9 03000000 E8 9761DBFF 48 8B 05 88CC9E02 FF 50 28 40 B7 01 EB 02 31 FF 89 F8 48 83 C4 58 5B"; // v2.6.0
+        //       "83 C0 FE 83 F8 02 77 16 48 8D 0D AD197F00 E8 5D3FC0FF B9 03000000 E8 137DDBFF 48 8B 05 F4178802 FF 50 28 40 B7 01 EB 02 31 FF 89 F8 48 83 C4 30 5B"; // v2.2.0
+        lookbackSize: 0x300,
     });
 }
 
