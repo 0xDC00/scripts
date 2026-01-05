@@ -335,18 +335,15 @@ Interceptor.attach(DoJitPtr, {
         // x64 example
         // descriptor:       0x1c983e9f2e8
         // em_address:       0x8601a150
-        // em_address (num): 2248253776
         // entrypoint:       0x1c9342cd440
 
         // arm64 example
         // descriptor:       0x86346818 <- already emulation address
         // em_address:       0x86346818
-        // em_address (num): 2251581464
         // entrypoint:       0x6ad985bcc8
 
         // console.warn(`descriptor:       ${descriptor.toString()}
         //             \rem_address:       ${ptr(em_address).toString()}
-        //             \rem_address (num): ${em_address}
         //             \rentrypoint:       ${ptr(entrypoint.toString())}
         //             `);
 
@@ -513,50 +510,6 @@ function getDoJitAddress() {
     }
 
     throw new Error('RegisterBlock not found!');
-}
-
-function createFunctionBody_findBaseAndRegs() {
-    let body = '';
-
-    if (arch === 'x64') {
-        body += `const theRegs = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"];`;
-    } else if (arch === 'arm64') {
-        body += `const theRegs = ["pc", "sp", "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "fp", "lr"];`;
-    } 
-
-    let vm = '';
-    if (globalThis.ARM === true) {
-        vm = `context[regs].readU32();`;
-    } else {
-        vm = `context[regs].readU64();`;
-    }
-
-    // change this according to the game
-    const text = 'address.readShiftJisString();';
-    // const text = "address.add(0x14).readUtf16String();"
-
-    body += `for (const regs of theRegs) {
-                for (const base of theRegs) {
-                    if (regs === base) {
-                        continue;
-                    }
-
-                    try {
-                        const vm = ${vm}
-                        const address = context[base].add(vm);
-                        const text = ${text}
-                        if (text === null || text === "") {
-                            continue;
-                        }
-                        console.warn("regs: " + regs + " | base: " + base + " | " + text);
-                    } catch (err) {}
-                }
-            };`;
-    // body += `console.log(JSON.stringify(context, null, 2));`;
-
-    // body += `console.warn(JSON.stringify(regs + " " + base, null, 2));`;
-
-    return body;
 }
 
 // https://en.wikipedia.org/wiki/Calling_convention#ARM_(A64)
@@ -745,43 +698,18 @@ function setHook(object, dfVer) {
     });
 }
 
-if (arch === 'arm64') {
-    // 0 = DEBUG (all logs), 1 = INFO, 2 = WARNING, 3 = ERROR
-    const NCE_MIN_LOG_LEVEL = 0;
-    
-    // Register a callback to receive emulator logs using callback registration instead of 
-    // Interceptor.attach/replace because they don't work for calls made from within
-    // NativeFunction call context
-    const nceRegisterLogCallback = __e.findExportByName('NceRegisterLogCallback');
-    if (nceRegisterLogCallback) {
-        const levelNames = ["DEBUG", "INFO", "WARNING", "ERROR"];
-        
-        // Create callback that the emulator will call directly
-        const logCallback = new NativeCallback((level, messagePtr) => {
-            if (level >= NCE_MIN_LOG_LEVEL) {
-                const message = messagePtr.readUtf8String();
-                const levelStr = levelNames[level] || "UNKNOWN";
-                console.log(`[Emu ${levelStr}] ${message}`);
-            }
-        }, 'void', ['int', 'pointer']);
-        
-        // Keep reference to prevent GC from collecting the callback?
-        globalThis._nceLogCallback = logCallback;
-        
-        const registerFn = new NativeFunction(nceRegisterLogCallback, 'void', ['pointer']);
-        registerFn(logCallback);
-    }
-}
-
 // separate map for host addresses to operations
 const nceOperations = Object.create(null);
 let nceTrampolineHook = null;
 
-/** 
+/**
+ * Hooks NCE backend. Requires a custom build of Eden to better expose the
+ * emulator to Agent.
  * @param {NativePointer} codeAddress
  * @param {string} titleId
  */
 function hookNce(codeAddress, titleId) {
+    ncePullEmulatorLogs();
     const NceInstallExternalHook = new NativeFunction(__e.getExportByName('NceInstallExternalHook'), 'bool', ['uint64', 'uint32']);
     const NceClearAllHooks = new NativeFunction(__e.getExportByName('NceClearAllHooks'), 'void', []);
     const nceTrampoline = __e.getExportByName('NceTrampoline');
@@ -842,7 +770,7 @@ function hookNce(codeAddress, titleId) {
         nceTrampolineHook = null;
     } 
 
-    console.log("Hooking nceTrampoline: ", nceTrampoline);
+    console.log("Hooking nceTrampoline:", nceTrampoline);
 
     nceTrampolineHook = Interceptor.attach(nceTrampoline, {
         onEnter(args) {
@@ -866,6 +794,36 @@ function hookNce(codeAddress, titleId) {
             op.call(context, regs);
         }
     });
+}
+
+/**
+ * Pull emulator logs when the backend is set to NCE. Requires a custom build
+ * of Eden to better expose the emulator to Agent.
+ * 0 = DEBUG (all logs), 1 = INFO, 2 = WARNING, 3 = ERROR
+ * @param {number} minLogLevel
+ */
+function ncePullEmulatorLogs(minLogLevel = 0) {        
+    // Interceptor.attach doesn't work because the NCE logging function is called
+    // from within a NativeFunction call context
+    const nceRegisterLogCallback = __e.findExportByName('NceRegisterLogCallback');
+    if (nceRegisterLogCallback) {
+        const levelNames = ["DEBUG", "INFO", "WARNING", "ERROR"];
+        
+        // Create callback that the emulator will call directly
+        const logCallback = new NativeCallback((level, messagePtr) => {
+            if (level >= minLogLevel) {
+                const message = messagePtr.readUtf8String();
+                const levelStr = levelNames[level] || "UNKNOWN";
+                console.log(`[Emu ${levelStr}] ${message}`);
+            }
+        }, 'void', ['int', 'pointer']);
+        
+        // Keep reference to prevent GC from collecting the callback?
+        globalThis._nceLogCallback = logCallback;
+        
+        const registerFn = new NativeFunction(nceRegisterLogCallback, 'void', ['pointer']);
+        registerFn(logCallback);
+    }
 }
 
 module.exports = exports = {
