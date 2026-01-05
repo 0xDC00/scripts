@@ -28,21 +28,29 @@ const addresses = Object.create(null);
 /** @type {ModuleSymbolDetails[]|null} */
 let symbols = null;
 
-const __ranges = Process.enumerateRanges("r-x");
-
-// console.log(JSON.stringify(ranges, null, 2));
+const __ranges = __e.enumerateRanges("r-x");
 
 /**
  * @param {Object} settings
  * @param {RangeDetails[]} settings.ranges
  * @param {string} settings.pattern
+ * @param {string} settings.protection
  * @returns {MemoryScanMatch[]}
  */
-function scanRanges({ ranges, pattern }) {
+function scanRanges({ ranges, pattern, protection }) {
     const allMatches = [];
 
+    const perms = protection.split("-");
     for (const range of ranges) {
-        const rangeMatches = Memory.scanSync(range.base, range.size, pattern);
+        if (perms.every((p) => range.protection.includes(p)) === false) {
+            continue;
+        }
+        let rangeMatches = [];
+        try {
+            rangeMatches = Memory.scanSync(range.base, range.size, pattern);
+        } catch (err) {
+            continue;
+        }
 
         if (rangeMatches.length !== 0) {
             allMatches.push(...rangeMatches);
@@ -59,6 +67,7 @@ function scanRanges({ ranges, pattern }) {
  * @param {string} settings.pattern
  * @param {RangeDetails[]} [settings.ranges]
  * @param {boolean} [settings.getFirst]
+ * @param {string} [settings.protection]
  * @returns {NativePointer}
  */
 function getPatternAddress({
@@ -66,12 +75,13 @@ function getPatternAddress({
     pattern,
     ranges = __ranges,
     getFirst = true,
+    protection = "r-x",
 }) {
     /** @type {MemoryScanMatch[]} */
     let results = null;
 
     try {
-        results = scanRanges({ ranges: ranges, pattern: pattern });
+        results = scanRanges({ ranges: ranges, pattern: pattern, protection: protection });
     } catch (err) {
         throw new Error(`Error occurred with [${name}]: ${err.message}`, {
             cause: err,
@@ -99,9 +109,10 @@ function getPatternAddress({
  * @param {string} settings.name
  * @param {string} settings.pattern
  * @param {number} [settings.lookbackSize]
+ * @param {string} [settings.protection]
  * @returns {NativePointer}
  */
-function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
+function getFunctionAddress({ name, pattern, lookbackSize = 0x100, protection = "r-x" }) {
     /** @param {MemoryScanMatch[]} candidates */
     function findFunctionStartAddress(candidates) {
         if (candidates === 0) {
@@ -120,7 +131,7 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100 }) {
         return null;
     }
 
-    const address = getPatternAddress({ name, pattern });
+    const address = getPatternAddress({ name, pattern, protection });
     const base = address.sub(lookbackSize);
     const size = lookbackSize;
     const patterns = ["CC 4?", "CC 5?"];
