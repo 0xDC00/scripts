@@ -10,9 +10,9 @@ if (module.parent === null) {
 const arch = Process.arch;
 
 const __e =
-  Process.platform !== "linux" && arch !== "arm64"
-    ? Process.mainModule ?? Process.enumerateModules()[0]
-    : Process.getModuleByName("libyuzu-android.so");    
+  Process.platform === "linux" && arch === "arm64"
+    ? Process.getModuleByName("libyuzu-android.so")
+    : Process.mainModule ?? Process.enumerateModules()[0];
 if (null !== (Process.platform === 'linux' ? Module.findExportByName(null, 'DotNetRuntimeInfo') : __e.findExportByName('DotNetRuntimeInfo'))) {
     return (module.exports = exports = require('./libRyujinx.js'));
 }
