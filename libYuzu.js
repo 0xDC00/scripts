@@ -14,7 +14,19 @@ const __e =
     ? Process.getModuleByName("libyuzu-android.so")
     : Process.mainModule ?? Process.enumerateModules()[0];
 if (null !== (Process.platform === 'linux' ? Module.findExportByName(null, 'DotNetRuntimeInfo') : __e.findExportByName('DotNetRuntimeInfo'))) {
-    return (module.exports = exports = require('./libRyujinx.js'));
+    const ryujinx = require('./libRyujinx.js');
+    const ryujinx_setHook = ryujinx.setHook;
+    ryujinx.setHook = function(object, dfVer) {
+        for (const [key, value] of Object.entries(object)) {
+            if (key.startsWith('0100')) {
+                // flatten object by getting rid of title ids to match what libRyujinx expects
+                Object.assign(object, value);
+                delete object[key];
+            }
+        }
+        return ryujinx_setHook(object, dfVer);
+    }
+    return (module.exports = exports = ryujinx);
 }
 
 console.warn('[Compatibility]');
@@ -44,6 +56,7 @@ const buildRegs = IS_32 ? createFunction_buildRegs32() : createFunction_buildReg
 const operations = Object.create(null);
 let _operations = Object.create(null);
 let aslrOffset = 0;
+const titleIdToHooks = new Map();
 
 tryGetAslrOffset();
 
@@ -238,9 +251,10 @@ function tryGetAslrOffset() {
             const textBytes = '41 70 70 6c 69 63 61 74 69 6f 6e 00'; // Application
             const results = Memory.scanSync(CreateProcessParameter, 0x15, textBytes);
             if (results.length !== 0) {
-                // codeAddress already has applied offset
-                const codeAddress = results[0].address.add(0x18).readPointer();
-
+                const safeAddress = results[0].address;
+                const titleId = "0" + safeAddress.add(0x10).readU64().toString(16).toUpperCase();
+                console.warn('titleId from CreateProcessParameter: ' + titleId);
+                const codeAddress = safeAddress.add(0x18).readPointer(); // already has applied offset
                 const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
                 const aslrOffsetHex = codeAddress.sub(baseAddress);
 
@@ -255,7 +269,7 @@ function tryGetAslrOffset() {
                         onLeave() {
                             console.warn('Detaching KProcess::Run hook')
                             runHook.detach();
-                            hookNce(codeAddress);
+                            hookNce(codeAddress, titleId);
                         }
                     })
 
@@ -690,9 +704,27 @@ function setHook(object, dfVer) {
                 console.error('Skip: ' + key + ', this hashCode is not implemented, try Ryujinx.');
                 continue;
             }
-            const element = object[key];
-            const address = IS_32 === true ? uint64(key).add(0x204000) : uint64(key).add(0x80004000);
-            operations[address.toString(10)] = element;
+
+            let address = NULL;
+
+            if (key.startsWith('0100')) {
+                const titleId = key.toUpperCase();
+                titleIdToHooks.set(titleId, {});
+                for (const addressOffset in object[key]) {
+                    const element = object[key][addressOffset];
+                    address = IS_32 === true ? uint64(addressOffset).add(0x204000) : uint64(addressOffset).add(0x80004000);
+                    operations[address.toString(10)] = element;
+                    titleIdToHooks.get(titleId)[address.toString(10)] = element;
+                }
+                // {
+                //     0100A460141B8001: {
+                //         [0x80013f20 - 0x80004000]: mainHandler.bind_(null, 0, "name"),
+                //     },
+            } else {
+                const element = object[key];
+                address = IS_32 === true ? uint64(key).add(0x204000) : uint64(key).add(0x80004000);
+                operations[address.toString(10)] = element;
+            }
         }
     }
 
@@ -713,45 +745,52 @@ function setHook(object, dfVer) {
     });
 }
 
-// console.warn("MANUALLY INVOKING hookNce!!!!!!");
-// hookNce();
-
-// 0 = DEBUG (all logs), 1 = INFO, 2 = WARNING, 3 = ERROR
-const NCE_MIN_LOG_LEVEL = 0;
-
-// Register a callback to receive emulator logs using callback registration instead of 
-// Interceptor.attach/replace because they don't work for calls made from within
-// NativeFunction call context
-const nceRegisterLogCallback = __e.findExportByName('NceRegisterLogCallback');
-if (nceRegisterLogCallback) {
-    const levelNames = ["DEBUG", "INFO", "WARNING", "ERROR"];
+if (arch === 'arm64') {
+    // 0 = DEBUG (all logs), 1 = INFO, 2 = WARNING, 3 = ERROR
+    const NCE_MIN_LOG_LEVEL = 0;
     
-    // Create callback that the emulator will call directly
-    const logCallback = new NativeCallback((level, messagePtr) => {
-        if (level >= NCE_MIN_LOG_LEVEL) {
-            const message = messagePtr.readCString();
-            const levelStr = levelNames[level] || "UNKNOWN";
-            console.log(`[Emu ${levelStr}] ${message}`);
-        }
-    }, 'void', ['int', 'pointer']);
-    
-    // Keep reference to prevent GC from collecting the callback?
-    globalThis._nceLogCallback = logCallback;
-    
-    const registerFn = new NativeFunction(nceRegisterLogCallback, 'void', ['pointer']);
-    registerFn(logCallback);    
-} else {
-    console.warn('Log export not found, internal emulator logs will not be shown');
+    // Register a callback to receive emulator logs using callback registration instead of 
+    // Interceptor.attach/replace because they don't work for calls made from within
+    // NativeFunction call context
+    const nceRegisterLogCallback = __e.findExportByName('NceRegisterLogCallback');
+    if (nceRegisterLogCallback) {
+        const levelNames = ["DEBUG", "INFO", "WARNING", "ERROR"];
+        
+        // Create callback that the emulator will call directly
+        const logCallback = new NativeCallback((level, messagePtr) => {
+            if (level >= NCE_MIN_LOG_LEVEL) {
+                const message = messagePtr.readUtf8String();
+                const levelStr = levelNames[level] || "UNKNOWN";
+                console.log(`[Emu ${levelStr}] ${message}`);
+            }
+        }, 'void', ['int', 'pointer']);
+        
+        // Keep reference to prevent GC from collecting the callback?
+        globalThis._nceLogCallback = logCallback;
+        
+        const registerFn = new NativeFunction(nceRegisterLogCallback, 'void', ['pointer']);
+        registerFn(logCallback);
+    }
 }
 
-/** @param {NativePointer} codeAddress */
-function hookNce(codeAddress) {
-    // const NceGetBaseAddress = new NativeFunction(__e.getExportByName('NceGetBaseAddress'), 'uint64', ['uint64']);
+// separate map for host addresses to operations
+const nceOperations = Object.create(null);
+let nceTrampolineHook = null;
+
+/** 
+ * @param {NativePointer} codeAddress
+ * @param {string} titleId
+ */
+function hookNce(codeAddress, titleId) {
     const NceInstallExternalHook = new NativeFunction(__e.getExportByName('NceInstallExternalHook'), 'bool', ['uint64', 'uint32']);
-    // const NceRemoveExternalHook = new NativeFunction(__e.getExportByName('NceRemoveExternalHook'), 'bool', ['uint64']);
-    // const NceGetCurrentContext = new NativeFunction(__e.getExportByName('NceGetCurrentContext'), 'pointer', []);
+    const NceClearAllHooks = new NativeFunction(__e.getExportByName('NceClearAllHooks'), 'void', []);
     const nceTrampoline = __e.getExportByName('NceTrampoline');
-    // console.warn(JSON.stringify(nceTrampoline, null, 2));
+
+    // clear previous process's hooks to handle scenarios where a game loads another game
+    NceClearAllHooks();
+    for (const key in nceOperations) {
+        delete nceOperations[key];
+    }
 
     // https://switchbrew.org/wiki/Rtld
     const magicPattern = '00 00 00 00 08 00 00 00 4d 4f 44 30';
@@ -762,40 +801,67 @@ function hookNce(codeAddress) {
     const baseAddress = magicResults.at(-1).address;
     console.warn('NCE Base Address:', baseAddress);
 
-    for (const key in operations) {
-        const em_address = ptr(key);
-        const hostAddress = baseAddress.add(em_address.sub(0x80004000)); // PC = Program Counter register
+    const titleOperations = Object.create(null);
+    if (titleIdToHooks.has(titleId)) {
+        const length = Object.keys(titleIdToHooks.get(titleId)).length;
+        console.log(`Applying ${length} hooks for titleId ${titleId}`);
+        Object.assign(titleOperations, titleIdToHooks.get(titleId));
+    } else {
+        console.log(`No specific hooks found for titleId ${titleId}, applying global hooks`);
+        Object.assign(titleOperations, operations);
+    }
+
+    for (const key of titleIdToHooks.keys()) {
+        console.log('Known titleId:', key);
+    }
+
+    for (const [key, value] of Object.entries(titleOperations)) {
+        const em_address = ptr(key); // e.g. 0x80013f94
+        const hostAddress = baseAddress.add(em_address.sub(0x80004000)); // pc reg, e.g. 0x18bec83f94
         console.warn(`${em_address} => ${hostAddress}`);
 
-        const op = operations[key.toString()];
-        operations[hostAddress.toString()] = op; // reassign
+        const op = value;
         if (op === undefined) {
             throw new Error('Missing operation for ' + key);
         }
+        nceOperations[hostAddress.toString(10)] = op;
 
         const expectedInstruction = 0; // skip verification
-        const installStatus = NceInstallExternalHook(uint64(hostAddress.toString()), expectedInstruction);
+        const installStatus = NceInstallExternalHook(uint64(hostAddress.toString(10)), expectedInstruction);
         if (installStatus === false) {
             throw new Error('Failed to install NCE hook for ' + hostAddress);
         }
 
-        console.log(hexdump(hostAddress, { header: false, ansi: false, length: 0x10 }));
+        // see the next few instructions
+        // console.log(hexdump(hostAddress, { header: false, ansi: false, length: 0x10 }));
     }
 
-    console.warn("Hooking nceTrampoline", nceTrampoline);
-    Interceptor.attach(nceTrampoline, {
+    if (nceTrampolineHook !== null) {
+        console.log("Detaching previous NceTrampoline hook");
+        nceTrampolineHook.detach();
+        nceTrampolineHook = null;
+    } 
+
+    console.log("Hooking nceTrampoline: ", nceTrampoline);
+
+    nceTrampolineHook = Interceptor.attach(nceTrampoline, {
         onEnter(args) {
-            console.warn("onEnter: NceTrampoline");
+            // console.warn("onEnter: NceTrampoline");
             
-            const em_address = args[0]; // pc
+            const hostAddress = args[0]; // e.g. 0x18bec83f94
             const context = args[1];
-            const op = operations[em_address.toString()];
+            const op = nceOperations[hostAddress.toString(10)];
+
+            if (op === undefined) {
+                console.error('No handler for address: ' + hostAddress);
+                return;
+            }
 
             const regs = Object.create(null);
             for (let i = 0; i < 33; i++) {
                 regs[i] = { value: context.add(i * 8).readPointer() };
             }
-            regs.pc = em_address;
+            regs.pc = hostAddress;
 
             op.call(context, regs);
         }
@@ -805,4 +871,3 @@ function hookNce(codeAddress) {
 module.exports = exports = {
     setHook,
 };
-
