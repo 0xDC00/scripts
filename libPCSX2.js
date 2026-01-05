@@ -1,5 +1,5 @@
 // @name         PCSX2 JIT Hooker
-// @version      2.2.0 -> 2.3.313
+// @version      2.2.0 -> 2.6.0
 // @author       logantgt, Mansive, based on work from [DC] and koukdw
 // @description  windows, linux, mac (x64)
 
@@ -690,3 +690,4 @@ module.exports = exports = {
 };
 
 // #endregion
+
