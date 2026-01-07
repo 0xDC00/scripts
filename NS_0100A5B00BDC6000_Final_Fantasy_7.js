@@ -15,7 +15,7 @@ setHook({
     '1.0.3': {
         [0x809d39f4 - 0x80004000]: mainHandler, // main dialogue/textbox
         [0x80e20024 - 0x80004000]: mainHandler, // tutorial text
-        [0x80088594 - 0x80004000]: mainHandler, // item/materia description (returns when text (re-)appears)
+        [0x80088594 - 0x80004000]: mainHandler, // item/materia description (returns when text (re-)appears) - some battle messages
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
@@ -29,10 +29,10 @@ const fe_table = createKanjiFETable();
 
 function handler(regs) {
     const address = regs[0].value;
-    //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+    console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     let s = readString(address);
-
+    s = s.replace(/^０A$/g, '').replace(/^Yビ/g, '');
     return s;
 }
 
