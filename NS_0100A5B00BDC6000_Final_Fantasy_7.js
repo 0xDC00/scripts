@@ -29,7 +29,7 @@ const fe_table = createKanjiFETable();
 
 function handler(regs) {
     const address = regs[0].value;
-    console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+    //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     let s = readString(address);
     s = s.replace(/^０A$/g, '').replace(/^Yビ/g, '');
@@ -424,4 +424,5 @@ function createKanjiFETable(){
     
     return fe_table;
 }
+
 
