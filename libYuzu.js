@@ -709,12 +709,16 @@ let nceTrampolineHook = null;
  * @param {string} titleId
  */
 function hookNce(codeAddress, titleId) {
-    ncePullEmulatorLogs();
+    try {
+        ncePullEmulatorLogs();
+    } catch (e) {
+        throw new Error('Failed to setup NCE logging. Unsupported emulator?\n' + e.stack);
+    }
     const NceInstallExternalHook = new NativeFunction(__e.getExportByName('NceInstallExternalHook'), 'bool', ['uint64', 'uint32']);
     const NceClearAllHooks = new NativeFunction(__e.getExportByName('NceClearAllHooks'), 'void', []);
     const nceTrampoline = __e.getExportByName('NceTrampoline');
 
-    // clear previous process's hooks to handle scenarios where a game loads another game
+    // clear previous hooks to handle scenarios where a game loads another game
     NceClearAllHooks();
     for (const key in nceOperations) {
         delete nceOperations[key];
@@ -805,7 +809,7 @@ function hookNce(codeAddress, titleId) {
 function ncePullEmulatorLogs(minLogLevel = 0) {        
     // Interceptor.attach doesn't work because the NCE logging function is called
     // from within a NativeFunction call context
-    const nceRegisterLogCallback = __e.findExportByName('NceRegisterLogCallback');
+    const nceRegisterLogCallback = __e.getExportByName('NceRegisterLogCallback');
     if (nceRegisterLogCallback) {
         const levelNames = ["DEBUG", "INFO", "WARNING", "ERROR"];
         
