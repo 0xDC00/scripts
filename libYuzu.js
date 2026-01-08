@@ -74,6 +74,7 @@ function getInitializeAddress() {
     let CreateProcessParameterArg = 1;
 
     if (Process.platform !== 'windows') {
+        /** @type {NativePointer[]=} */
         let addresses;
         if (arch === 'arm64') {
             console.log('Looking for ARM64 Initialize...');
@@ -221,6 +222,33 @@ function getInitializeAddress() {
     return { InitializeStartAddress, CreateProcessParameterArg };
 }
 
+// e.g. 1.0.0, 1.0.2...
+// mainly needed for NCE to avoid setting hooks for one version on a different version,
+// doing so would is more likely to crash NCE than Dynarmic
+/** Check if game version matches with script version and warn if it doesn't */
+function checkVersionMatch() {
+    let GetVersionStringAddress = NULL;
+    if (Process.platform === "linux" && arch === "arm64") {
+        GetVersionStringAddress = __e.getExportByName('_ZNK7FileSys4NACP16GetVersionStringEv');
+    } else {
+        // other platforms
+        return;
+    }
+
+    const hook = Interceptor.attach(GetVersionStringAddress, {
+        onLeave(retval) {
+            hook.detach();
+            const DisplayVersion = retval.readUtf8String(); // from nn::oe::DisplayVersion
+            const scriptVersion = globalThis.gameVer;
+            if (DisplayVersion !== scriptVersion) {
+                console.error(`
+                    \rScript version '${scriptVersion}' does not match game version '${DisplayVersion}', the game may crash!
+                `);
+            }
+        }
+    });
+}
+
 /*
 struct CreateProcessParameter {
     std::array<char, 12> name;  0x0,  12 bytes
@@ -245,6 +273,11 @@ function tryGetAslrOffset() {
 
     Interceptor.attach(InitializeStartAddress, {
         onEnter(args) {
+            // GetVersionString() is called multiple times when the emulator opens,
+            // so putting it inside this Interceptor makes it easier to get the correct
+            // version for the game
+            checkVersionMatch();
+
             // 1 for MingW, 2 for MSVC
             const CreateProcessParameter = args[CreateProcessParameterArg];
 
@@ -258,21 +291,20 @@ function tryGetAslrOffset() {
                 const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
                 const aslrOffsetHex = codeAddress.sub(baseAddress);
 
+                // codeAddress on Dynarmic is around 0x80004000,
+                // but on NCE it's like 0x18be72fbd4
                 if (aslrOffsetHex.compare(ptr(0x80000000)) > 0) {
                     console.warn(`High code address ${codeAddress}, using NCE hooks...`);
                     
                     const RunAddress = __e.getExportByName('_ZN6Kernel8KProcess3RunEim');
                     const runHook = Interceptor.attach(RunAddress, {
-                        onEnter(args) {
-                            console.warn('KProcess::Run just ran');
-                        },
                         onLeave() {
-                            console.warn('Detaching KProcess::Run hook')
                             runHook.detach();
                             hookNce(codeAddress, titleId);
                         }
                     })
 
+                    // doesn't need ASLR calculations
                     return true;
                 }
 
@@ -714,6 +746,7 @@ function hookNce(codeAddress, titleId) {
     } catch (e) {
         throw new Error('Failed to setup NCE logging. Unsupported emulator?\n' + e.stack);
     }
+
     const NceInstallExternalHook = new NativeFunction(__e.getExportByName('NceInstallExternalHook'), 'bool', ['uint64', 'uint32']);
     const NceClearAllHooks = new NativeFunction(__e.getExportByName('NceClearAllHooks'), 'void', []);
     const nceTrampoline = __e.getExportByName('NceTrampoline');
