@@ -13,7 +13,7 @@ const mainHandler = trans.send(handler, '200+');
 
 setHook({
     '1.0.1': {
-        [0x8006f940 - 0x80004000]: mainHandler, // text　
+        [0x8006f950 - 0x80004000]: mainHandler, // text　
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
