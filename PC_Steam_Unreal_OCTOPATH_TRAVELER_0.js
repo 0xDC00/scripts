@@ -1,5 +1,6 @@
 // ==UserScript==
 // @name         OCTOPATH TRAVELER 0
+// @developer    Square Enix / DOKIDOKI GROOVE WORKS
 // @version      0.1
 // @author       Mansive / Musi
 // @description  Steam
