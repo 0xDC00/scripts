@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         OCTOPATH TRAVELER 0
-// @developer    Square Enix / DOKIDOKI GROOVE WORKS
-// @version      0.1
+// @version      1.0.3.0
 // @author       Mansive / Musi
 // @description  Steam
-// * KEY
+// * Square Enix
+// * DOKIDOKI GROOVE WORKS
 //
 // https://store.steampowered.com/app/3014320/OCTOPATH_TRAVELER_0/
 // ==/UserScript==
