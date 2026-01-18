@@ -9,7 +9,7 @@ if (module.parent === null) {
 
 const IS_DEBUG = false;
 const FORCE_PATTERN_FALLBACK = false;
-const IGNORE_SETUP_CACHE = true;
+const IGNORE_SETUP_CACHE = false;
 
 const isAndroid = Process.platform === "linux" && Process.arch === "arm64"
 const __e =
