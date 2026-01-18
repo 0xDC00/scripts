@@ -11,8 +11,11 @@ const IS_DEBUG = false;
 const FORCE_PATTERN_FALLBACK = false;
 const IGNORE_SETUP_CACHE = false;
 
-const __e = Process.mainModule ?? Process.enumerateModules()[0];
-// console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
+const isAndroid = Process.platform === "linux" && Process.arch === "arm64"
+const __e =
+    isAndroid
+        ? Process.getModuleByName("libemucore.so")
+        : Process.mainModule ?? Process.enumerateModules()[0];
 
 console.warn("[Compatibility]");
 console.warn("PCSX2 v2.2.0+");
