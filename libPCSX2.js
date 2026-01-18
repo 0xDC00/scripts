@@ -25,13 +25,12 @@ console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
 /** @type {Object.<string, NativePointer>} */
 const addresses = Object.create(null);
+const __ranges = isAndroid ? [] : __e.enumerateRanges("r-x");
 
 // enumerateSymbols() is a slow operation,
 // postpone it until we're sure there are no cached addresses in sessionStorage
 /** @type {ModuleSymbolDetails[]|null} */
 let symbols = null;
-
-const __ranges = __e.enumerateRanges("r-x");
 
 /**
  * @param {Object} settings
