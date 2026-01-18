@@ -26,12 +26,11 @@ console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
 /** @type {Object.<string, NativePointer>} */
 const addresses = Object.create(null);
-const __ranges = isAndroid ? [] : __e.enumerateRanges("r-x");
 
-// enumerateSymbols() is a slow operation,
-// postpone it until we're sure there are no cached addresses in sessionStorage
 /** @type {ModuleSymbolDetails[]|null} */
 let symbols = null;
+
+const __ranges = isAndroid ? [] : __e.enumerateRanges("r-x");
 
 /**
  * @param {Object} settings
@@ -204,6 +203,10 @@ function setupAddressesThroughDebugAndroid() {
     addresses.psxDynarecCheckBreakpoint = findSymbol("_ZL25psxDynarecCheckBreakpointv").address;
 }
 
+function setupAddressesThroughPatternAndroid() {
+    throw new Error("Android pattern scanning isn't implemented yet!");
+}
+
 // prettier-ignore
 function setupAddressesThroughDebug() {
     // ?New@BaseBlocks@@QEAAPEAUBASEBLOCKEX@@I_K@Z
@@ -297,28 +300,31 @@ if (sessionStorage.getItem("PCSX2_ADDRESSES") && IGNORE_SETUP_CACHE === false) {
 
     setupAddressesThroughCache();
 } else {
+    const setup = {};
     if (isAndroid) {
-        console.warn("Using debug symbols");
-        setupAddressesThroughDebugAndroid();
-    } else if (
-        DebugSymbol.findFunctionsNamed("BaseBlocks::New").length >= 1 &&
-        FORCE_PATTERN_FALLBACK === false
-    ) {
-        console.warn("Using debug symbols");
+        setup.hasSymbols = !!findSymbol("_ZN10BaseBlocks3NewEjm");
+        setup.setupAddressesThroughDebug = setupAddressesThroughDebugAndroid;
+        setup.setupAddressesThroughPattern = setupAddressesThroughPatternAndroid;
+    } else {
+        // windows, linux, mac?
+        setup.hasSymbols = DebugSymbol.findFunctionsNamed("BaseBlocks::New").length >= 1;
+        setup.setupAddressesThroughDebug = setupAddressesThroughDebug;
+        setup.setupAddressesThroughPattern = setupAddressesThroughPattern;
+    }
 
-        setupAddressesThroughDebug();
+    if (!FORCE_PATTERN_FALLBACK && setup.hasSymbols) {
+        console.warn("Using debug symbols");
+        setup.setupAddressesThroughDebug();
     } else {
         console.warn("Using pattern scanning");
-
         try {
-            setupAddressesThroughPattern();
+            setup.setupAddressesThroughPattern();
         } catch (err) {
             console.error(`
                 \rFailed pattern scanning!
-                \rInstall debug symbols to make PCSX2 hooking work,
+                \rInstall debug symbols to make hooking work,
                 \ror wait for someone to fix the patterns.
             `);
-
             throw err;
         }
     }
