@@ -1,5 +1,5 @@
 // @name         PCSX2 JIT Hooker
-// @version      2.2.0 -> 2.6.0
+// @version      2.2.0 -> 2.6.2
 // @author       logantgt, Mansive, based on work from [DC] and koukdw
 // @description  windows, linux, mac (x64), android (arm64)
 
@@ -18,7 +18,7 @@ const __e =
         : Process.mainModule ?? Process.enumerateModules()[0];
 
 console.warn("[Compatibility]");
-console.warn("PCSX2 2.2.0 -> 2.6.0");
+console.warn("PCSX2 2.2.0 -> 2.6.2");
 console.warn("ARMSX2 1.0.7");
 console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
