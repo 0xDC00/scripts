@@ -273,8 +273,8 @@ function setupAddressesThroughPattern() {
         addresses.psxRegs = calculateLeaAddress(ins);
     }
 
-    addresses.eeMem = findSymbol("EEmem").address.readPointer();
-    addresses.iopMem = findSymbol("IOPmem").address.readPointer();
+    addresses.eeMem = findSymbol("EEmem").address;
+    addresses.iopMem = findSymbol("IOPmem").address;
 
     addresses.dynarecCheckBreakpoint = getFunctionAddress({
         name: "dynarecCheckBreakpoint",
