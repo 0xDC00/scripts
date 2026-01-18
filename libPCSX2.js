@@ -312,7 +312,7 @@ if (sessionStorage.getItem("PCSX2_ADDRESSES") && IGNORE_SETUP_CACHE === false) {
         setup.setupAddressesThroughPattern = setupAddressesThroughPattern;
     }
 
-    if (!FORCE_PATTERN_FALLBACK && setup.hasSymbols) {
+    if (setup.hasSymbols && !FORCE_PATTERN_FALLBACK ) {
         console.warn("Using debug symbols");
         setup.setupAddressesThroughDebug();
     } else {
