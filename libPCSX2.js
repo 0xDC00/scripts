@@ -284,7 +284,7 @@ function setupAddressesThroughPattern() {
     });
     addresses.psxDynarecCheckBreakpoint = getFunctionAddress({
         name: "psxDynarecCheckBreakpoint",
-        pattern: "B9 03000000 E8 ???????? 48 8B 05 ???????? FF 50 28 40",
+        pattern: "B9 03000000 E8 ???????? 48 8B 05 ???????? FF 50 28 40 B7",
         //       "83 C0 FE 83 F8 02 77 16 48 8D 0D DE489400 E8 4126BFFF B9 03000000 E8 9761DBFF 48 8B 05 88CC9E02 FF 50 28 40 B7 01 EB 02 31 FF 89 F8 48 83 C4 58 5B"; // v2.6.0
         //       "83 C0 FE 83 F8 02 77 16 48 8D 0D AD197F00 E8 5D3FC0FF B9 03000000 E8 137DDBFF 48 8B 05 F4178802 FF 50 28 40 B7 01 EB 02 31 FF 89 F8 48 83 C4 30 5B"; // v2.2.0
         lookbackSize: 0x300,
