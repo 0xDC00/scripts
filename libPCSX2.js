@@ -642,14 +642,26 @@ const iopContext = {
     Interceptor.replace(psxDynarecCheckBreakpoint, new NativeCallback(() => { return; }, "void", []));
 }
 
+const addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
+function addBreakpoint(cpu, temp, enabled, stepping) {
+    try{
+        addBp(cpu, temp, enabled, stepping)
+    } catch (e) {
+        if (e.message.includes("access violation")) {
+            // safe
+        } else {
+            console.error(e.stack);
+        }
+    }
+}
+
 // prettier-ignore
-async function setHookEE(object) {
+function setHookEE(object) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
-            const addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
-            addBp(0x01, parseInt(key), 0x00, 0x01);
+            addBreakpoint(0x01, parseInt(key), 0x00, 0x01);
         }
     }
 
@@ -669,13 +681,12 @@ async function setHookEE(object) {
 }
 
 // prettier-ignore
-async function setHookIOP(object) {
+function setHookIOP(object) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
-            const addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
-            addBp(0x02, parseInt(key), 0x00, 0x01);
+            addBreakpoint(0x02, parseInt(key), 0x00, 0x01);
         }
     }
 
@@ -710,4 +721,3 @@ module.exports = exports = {
 };
 
 // #endregion
-
