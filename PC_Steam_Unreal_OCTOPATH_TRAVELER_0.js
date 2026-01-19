@@ -8,6 +8,7 @@
 //
 // https://store.steampowered.com/app/3014320/OCTOPATH_TRAVELER_0/
 // ==/UserScript==
+
 const UE = require("./libUnrealEngine.js");
 const { getObjectFullName } = UE;
 
@@ -67,7 +68,8 @@ UE.setHook("/Script/Kingship.KSTextBlock:SetText", {
     // paste in only the calls you want to get text from
     if (
       ctx === "/Engine/Transient.GameEngine.KSGameInstance.BalloonManagerBP_C.WidgetTree.Balloon_03.WidgetTree.TalkText_Balloon.WidgetTree.Balloon" || // capture dialogue
-      ctx === "/Engine/Transient.GameEngine.KSGameInstance.NarrationWidget_C.WidgetTree.NarrationMessageWidget.WidgetTree.KSTextBlock" // capture fullscreen text
+      ctx === "/Engine/Transient.GameEngine.KSGameInstance.NarrationWidget_C.WidgetTree.NarrationMessageWidget.WidgetTree.KSTextBlock" || // capture fullscreen text
+      ctx === "/Engine/Transient.GameEngine.KSGameInstance.BalloonManagerBP_C.WidgetTree.Balloon_DeepThink.WidgetTree.TalkText_DeepThink.WidgetTree.DeepThink" // capture fullscreen voiced text
     ) {
       if (s !== "") {
         // only send if text is different from the last sent text 
