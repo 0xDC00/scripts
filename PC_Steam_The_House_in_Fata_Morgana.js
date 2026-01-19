@@ -54,7 +54,7 @@ console.warn('[Known Issue] Some inner dialogue is picked up even when not displ
                 return;
             }
             
-            const text = this.context[register].readUtf16String();
+            const text = basePtr.readUtf16String();
             
             // early return if no text
             if (!text || text.length === 0) {
