@@ -10,7 +10,6 @@
 
 const __e = Process.enumerateModules()[0];
 console.warn('[Known Issue] Some inner dialogue is picked up even when not displayed in game. Recommend ignoring this for spoiler reasons.');
-
 (function () {
     const mainHandler = trans.send(handler, '250+');
     attach('DialogueHook', 'E8 33 DC E1 FF', 'edx');
@@ -30,7 +29,13 @@ console.warn('[Known Issue] Some inner dialogue is picked up even when not displ
     }
     
     function endsWithPunctuation(text) {
+        // check if text ends with punctuation
         return /[。！？…・]$/.test(text);
+    }
+    
+    function hasJapaneseText(text) {
+        // check if text contains Japanese characters
+        return /[\u3040-\u30FF\u4E00-\u9FAF]/.test(text);
     }
     
     function attach(name, pattern, register) {
@@ -42,36 +47,36 @@ console.warn('[Known Issue] Some inner dialogue is picked up even when not displ
         const address = results[0].address;
         console.log(`[${name}] Found hook at ${address}`);
         Interceptor.attach(address, function (args) {
-            try {
-                const basePtr = this.context[register];
+            const basePtr = this.context[register];
+            
+            // early return if pointer is null
+            if (!basePtr || basePtr.isNull()) {
+                return;
+            }
+            
+            const text = this.context[register].readUtf16String();
+            
+            // early return if no text
+            if (!text || text.length === 0) {
+                return;
+            }
+            
+            const cleaned = cleanText(text);
+            
+            // only output japanese characters and no duplicates
+            if (cleaned.length > 0 && hasJapaneseText(cleaned) && cleaned !== lastText) {
+                lastText = cleaned;
                 
-                // const text = basePtr.readPointer().readUtf16String();
-                const text = this.context[register].readUtf16String();
-                
-                if (text && text.length > 0) {
-                    const cleaned = cleanText(text);
-                    
-                    // only output japanese characters and no duplicates
-                    if (cleaned.length > 0 && 
-                        /[\u3040-\u30FF\u4E00-\u9FAF]/.test(cleaned) &&
-                        cleaned !== lastText) {
-                        
-                        lastText = cleaned;
-                        
-                        if (sentenceBuffer.length > 0) {
-                            sentenceBuffer += cleaned;
-                        } else {
-                            sentenceBuffer = cleaned;
-                        }
-                        
-                        if (endsWithPunctuation(cleaned)) {
-                            mainHandler('\n' + sentenceBuffer + '\n');
-                            sentenceBuffer = '';
-                        }
-                    }
+                if (sentenceBuffer.length > 0) {
+                    sentenceBuffer += cleaned;
+                } else {
+                    sentenceBuffer = cleaned;
                 }
-            } catch (e) {
-                // silence errors for null pointers
+                
+                if (endsWithPunctuation(cleaned)) {
+                    mainHandler('\n' + sentenceBuffer + '\n');
+                    sentenceBuffer = '';
+                }
             }
         });
     }
