@@ -725,7 +725,7 @@ let previous_objNum = -1;
 Mono.setHook("", "TeaRecipePrefab", "SetDetail", -1, {
   onEnter(args) {
     if (SETTINGS.onlyDialogue) {
-      logDim("skipped: TeaRecipePrefab.SetDetail");
+      // logDim("skipped: TeaRecipePrefab.SetDetail");
       return null;
     }
 
