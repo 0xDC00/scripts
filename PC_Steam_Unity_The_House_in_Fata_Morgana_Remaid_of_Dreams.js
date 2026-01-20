@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         The House in Fata Morgana
+// @name         The House in Fata Morgana: Remaid of Dreams
 // @version      4.11
 // @author       Musi
 // @description  Steam
