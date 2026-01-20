@@ -15,7 +15,7 @@
 const Mono = require('./libMono.js');
 const handleLine = trans.send((s) => s, '250+');
 
-console.warn('[Known Issue] Some inner dialogue is picked up even when not displayed in game. Recommend ignoring this for spoiler reasons.');
+console.warn('[Known Issue] You may have to detach from the game manually when exiting, otherwise it might not close.');
 
 function cleanText(text) {
     return text
@@ -29,7 +29,6 @@ function cleanText(text) {
 }
 
 function hasJapaneseText(text) {
-    // check if text contains Japanese characters 
     return /[\u3040-\u30FF\u4E00-\u9FAF]/.test(text);
 }
 
@@ -54,6 +53,13 @@ Mono.setHook('Unity.TextMeshPro', 'TMPro.TextMeshProUGUI', 'set_text', 1, {
         // early return if no Japanese text
         if (!hasJapaneseText(text)) {
             return;
+        }
+        
+        // callstack filtering (dialogue has 4 frames)
+        const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
+        
+        if (callstack.length !== 4) {
+            return; // filter out UI/menu text
         }
         
         const cleaned = cleanText(text);
