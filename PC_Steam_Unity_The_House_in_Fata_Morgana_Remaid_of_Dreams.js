@@ -15,52 +15,24 @@
 const Mono = require('./libMono.js');
 const handleLine = trans.send((s) => s, '250+');
 
-console.warn('[known issues]\n');
-console.warn('you may have to detach from the game manually when exiting, otherwise it might not close.\n');
-
-// there might be a better way to do this with the libMono.js but i couldnt figure it out 
-const mono = Process.getModuleByName("mono-2.0-bdwgc.dll");
-const mono_domain_get = new NativeFunction(mono.findExportByName("mono_domain_get"), 'pointer', []);
-const mono_jit_info_table_find = new NativeFunction(mono.findExportByName("mono_jit_info_table_find"), 'pointer', ['pointer', 'pointer']);
-const mono_jit_info_get_method = new NativeFunction(mono.findExportByName("mono_jit_info_get_method"), 'pointer', ['pointer']);
-const mono_method_get_name = new NativeFunction(mono.findExportByName("mono_method_get_name"), 'pointer', ['pointer']);
-
-function getMethodName(returnAddr) {
-    const domain = mono_domain_get();
-    const jitInfo = mono_jit_info_table_find(domain, returnAddr);
-    if (jitInfo.isNull()) return "";
-    const method = mono_jit_info_get_method(jitInfo);
-    return mono_method_get_name(method).readUtf8String();
-}
+console.warn('[Known issue] You may have to detach from the game manually when exiting, otherwise it might not close.\n');
 
 let lastText = '';
-let cachedGetter = null;
 
 Mono.perform(() => {
-    const targetClass = Mono.findClass('', 'TextPutTMPro');
-    if (!targetClass) return;
-
-    // cache the getter once to prevent debug output in console
-    cachedGetter = targetClass.findMethod('get_OriginalMessage', 0);
-
     // direct hook dialogue
     Mono.setHook('', 'TextPutTMPro', 'GenerateNewText', -1, {
         onEnter(args) {
-            if (!cachedGetter) return;
-
-            // pull the text pointer by invoking the getter on the current instance
-            const basePtr = cachedGetter.invoke(args[0]);
+            const instance = args[0].wrap();
+            
+            // call the getter directly from the wrapped instance
+            const basePtr = instance.get_OriginalMessage();
             
             if (!basePtr || basePtr.isNull()) {
                 return;
             }
             
             let text = basePtr.readMonoString();
-            
-            // return if no text
-            if (!text) {
-                return;
-            }
 
             // remove alignment tags
             text = text.replace(/<align="[^"]*">/g, '').replace(/<\/align>/g, '');
