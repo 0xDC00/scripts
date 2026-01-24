@@ -356,7 +356,8 @@ function perform(f, m) {
         };
         let h1;
         if (Process.platform === "windows") {
-            h1 = Interceptor.attach(Module.findExportByName('kernel32.dll', "LoadLibraryExW"), {
+            const LoadLibraryExW = Process.findModuleByName('kernel32.dll')?.findExportByName('LoadLibraryExW');
+            h1 = Interceptor.attach(LoadLibraryExW, {
                 onEnter: function (args) {
                     this.path = args[0].readUtf16String();
                     console.log('***LoadLibraryExW', this.path);
@@ -365,14 +366,16 @@ function perform(f, m) {
             });
         }
         else {
-            h1 = Interceptor.attach(Module.findExportByName(null, "dlopen"), {
+            // 17 -> getGlobalExportByName, 16 -> findExportByName
+            const findExportByName = Module.getGlobalExportByName ?? Module.findExportByName;
+            h1 = Interceptor.attach(findExportByName(null, "dlopen"), {
                 onEnter: function (args) {
                     this.path = args[0].readCString();
                     console.log('***dlopen', this.path);
                 },
                 onLeave
             });
-            Interceptor.attach(Module.findExportByName(null, "android_dlopen_ext"), {
+            Interceptor.attach(findExportByName(null, "android_dlopen_ext"), {
                 onEnter: function (args) {
                     this.path = args[0].readCString();
                     console.log('***android_dlopen_ext', this.path);
@@ -2685,8 +2688,8 @@ function isMono() {
 
     // attempt to find the export using its respective module
     for (const func of functions) {
-        const address = Module.findExportByName(func.module, func.name);
-        if (address === null) continue;
+        const address = Process.findModuleByName(func.module)?.findExportByName(func.name);
+        if (!address) continue;
 
         const module = Process.getModuleByAddress(address);
         return { isAot: func.isAot, module };
