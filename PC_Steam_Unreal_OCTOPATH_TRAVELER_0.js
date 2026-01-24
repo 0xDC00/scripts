@@ -69,7 +69,8 @@ UE.setHook("/Script/Kingship.KSTextBlock:SetText", {
     if (
       ctx === "/Engine/Transient.GameEngine.KSGameInstance.BalloonManagerBP_C.WidgetTree.Balloon_03.WidgetTree.TalkText_Balloon.WidgetTree.Balloon" || // capture dialogue
       ctx === "/Engine/Transient.GameEngine.KSGameInstance.NarrationWidget_C.WidgetTree.NarrationMessageWidget.WidgetTree.KSTextBlock" || // capture fullscreen text
-      ctx === "/Engine/Transient.GameEngine.KSGameInstance.BalloonManagerBP_C.WidgetTree.Balloon_DeepThink.WidgetTree.TalkText_DeepThink.WidgetTree.DeepThink" // capture fullscreen voiced text
+      ctx === "/Engine/Transient.GameEngine.KSGameInstance.BalloonManagerBP_C.WidgetTree.Balloon_DeepThink.WidgetTree.TalkText_DeepThink.WidgetTree.DeepThink" || // capture fullscreen voiced text
+	  ctx === "/Engine/Transient.GameEngine.KSGameInstance.BalloonManagerBP_C.WidgetTree.Balloon_TheVoiceOfGod.WidgetTree.TalkText_Balloon.WidgetTree.BalloonEvent" // capture black dialogue bubble
     ) {
       if (s !== "") {
         // only send if text is different from the last sent text 
@@ -99,3 +100,4 @@ UE.setHook("/Script/Kingship.KSTextBlock:SetText", {
     }
   },
 });
+
