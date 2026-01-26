@@ -367,7 +367,10 @@ function perform(f, m) {
         }
         else {
             // 17 -> getGlobalExportByName, 16 -> findExportByName
-            const findExportByName = Module.getGlobalExportByName ?? Module.findExportByName;
+            const findExportByName = 
+                Module.getGlobalExportByName 
+                    ? (_, name) => { try { return Module.getGlobalExportByName(name) } catch { return null } }
+                    : Module.findExportByName;
             h1 = Interceptor.attach(findExportByName(null, "dlopen"), {
                 onEnter: function (args) {
                     this.path = args[0].readCString();
