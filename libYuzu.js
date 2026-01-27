@@ -61,17 +61,19 @@ function getInitializeAddress() {
     let CreateProcessParameterArg = 1;
 
     if (Process.platform !== 'windows') {
-        let addresses;
+        let address;
         if (arch === 'arm64') {
             console.log('Looking for ARM64 Initialize...');
-            addresses = [__e.getExportByName('_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterENSt6__ndk14spanIKjLm18446744073709551615EEEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSD_17ProcessAddressTagEEE')];
+            const name = Process.platform !== 'darwin'
+                ? '_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterENSt6__ndk14spanIKjLm18446744073709551615EEEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSD_17ProcessAddressTagEEE' // android arm64
+                : '__ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterEPNS_14KResourceLimitEb'; // macOS arm64?
+            address = __e.getExportByName(name);
         } else {
             console.log('Looking for Unix Initialize...');
-            addresses = DebugSymbol.findFunctionsNamed('_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterESt4spanIKjLm18446744073709551615EEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSC_17ProcessAddressTagEEE');
+            address = DebugSymbol.getFunctionByName('_ZN6Kernel8KProcess10InitializeERKNS_3Svc22CreateProcessParameterESt4spanIKjLm18446744073709551615EEPNS_14KResourceLimitENS_14KMemoryManager4PoolEN6Common12TypedAddressILb1ENSC_17ProcessAddressTagEEE');
         }
 
-        if (addresses?.length !== 0) {
-            const address = addresses[0];
+        if (address) {
             console.log('Unix KProcess Initialize:', address);
             InitializeStartAddress = address;
             CreateProcessParameterArg = 1;
@@ -97,7 +99,7 @@ function getInitializeAddress() {
         } else {
             if (InitializeSigResults.length > 1) {
                 console.warn(InitializeSigResults.length, 'signature matches found?');
-                console.warn(JSON.stringify(InitializeSigResults, null, 2));
+                // console.warn(JSON.stringify(InitializeSigResults, null, 2));
             }
             const InitializeAddress = InitializeSigResults[0].address;
             console.log('MSVC KPRocess Initialize:', InitializeAddress);
@@ -383,7 +385,10 @@ function getDoJitAddress() {
                 }
             }
         } else if (arch === 'arm64') {
-            const name = '_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte'; // android arm64
+            const name = 
+                Process.platform !== 'darwin' 
+                    ? '_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte'   // android arm64
+                    : '__ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte'; // macOS arm64
             const address = __e.getExportByName(name);
             console.log('ARM64 RelinkForDescriptor:', address);
             return address;
