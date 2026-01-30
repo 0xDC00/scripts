@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         DRAGON QUEST VII Reimagined
+// @name         DRAGON QUEST VII Reimagined (ドラゴンクエストVII Reimagined)
 // @version      DEMO
 // @author       Mansive
 // @description  Steam
