@@ -4,6 +4,8 @@
 // @author       Mansive
 // @description  Steam
 // Only Japanese was tested
+//
+// Square Enix, HEXADRIVE Inc. 
 // https://store.steampowered.com/app/2499860/DRAGON_QUEST_VII_Reimagined/
 // ==/UserScript==
 
