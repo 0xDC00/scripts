@@ -7,7 +7,7 @@
 // * Broccoli
 // ==/UserScript==
 const gameVer = "1.0.0";
-``;
+
 const { setHook } = require("./libYuzu.js");
 // const mainHandler = trans.send(handler, "200+");
 // const listHandler = trans.send(handler2, "200+");
@@ -59,7 +59,13 @@ setHook(
   }[(globalThis.gameVer = globalThis.gameVer ?? gameVer)],
 );
 
-const playerName = "Hello";
+const playerName = "環無";
+console.log(`
+If you're using a non-default player name,
+you can change the playerName variable in the script so that the script will accurately output your name.
+
+Current playerName: ${playerName}
+`);
 
 function readString(regs, index, hookname) {
   console.log("onEnter: " + hookname);
@@ -83,7 +89,7 @@ function mainHandler(regs, index, hookname) {
   text = text.replace(/\[|'.*?\]/g, ""); // ruby text
   text = text.replace(/\]/g, ""); // closing brace if no ruby text
 
-  text = text + hookname;
+  // text = text + hookname;
 
   genericHandler(text);
 }
