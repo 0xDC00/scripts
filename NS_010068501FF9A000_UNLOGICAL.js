@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         [010068501FF9A000] UN:LOGICAL (UNLOGICAL)
-// @version      1.0.0, 1.0.1
+// @version      1.0.0
 // @author       Mansive
 // @description  Yuzu
 // * LicoBiTs
