@@ -31,7 +31,6 @@ console.warn('[Known Issue] On choices, only the first option is output, this is
         }
         const address = results[0].address;
         console.log(`[${name}] Found hook at ${address}`);
-
         let previous = '';
 
         Interceptor.attach(address, {
@@ -41,19 +40,21 @@ console.warn('[Known Issue] On choices, only the first option is output, this is
                     if (ptr.isNull()) return;
 
                     const rawText = ptr.readUtf8String();
-                    if (!rawText) return;
+                    if (!rawText || rawText === previous) return;
+                    previous = rawText;
 
                     const cleanedText = rawText
-                        .replace(/\[p\]/g, '無名') // replace protag name
-                        .replace(/\[ft\].*?\[fe\]/g, '')
-                        .replace(/\[fs\]|\[\/\]/g, '')
-                        .replace(/\[\$.*?\]/g, '')
-                        .replace(/\[c\d+\]/g, '')
+                        .replace(/[p]/g, '無名') // replace protag name
+                        .replace(/[ft].?[fe]/g, '')
+                        .replace(/[fs]|[/]/g, '')
+                        .replace(/[$.?]/g, '')
+                        .replace(/[c\d+]/g, '')
+						.replace(/\[t\].*?\[\]/g, '')
+						.replace(/\[\]/g, '')
                         .trim();
 
-                    if (cleanedText && cleanedText !== previous) {
+                    if (cleanedText) {
                         console.log(`[DEBUG] Triggered: ${name}`);
-                        previous = cleanedText;
                         handler(cleanedText);
                     }
                 } catch (e) {
