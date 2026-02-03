@@ -15,35 +15,45 @@ console.warn('[Known Issue] When opening the log in game, the line at the top is
 console.warn('[Known Issue] On choices, only the first option is output, this is a limit of the DialogueHook');
 
 (function () {
-    attach('FullscreenMovieText', 'E8 22 8A 1A 00', 'rdx', 0); // i wasnt able to find a robust hook that works across versions on this
-    attach('FullscreenText', 'E8 F8 7A 2A 00', 'rdx', 0); // same here
+    attach('FullscreenMovieText', '45 33 C9 48 8D 44 24 40 49 8B CA 48 89 44 24 30 C6 44 24 28 01 C6 44 24 20 01 E8', 'rdx', 26);
+    attach('FullscreenText', 'C6 44 24 20 01 41 B1 01 48 8D 8B A0 01 00 00 E8', 'rdx', 15);
     attach('BattleTextboxDialogue', '49 8B CA C6 44 24 20 01 E8 ?? ?? ?? ?? 48 83 C4 58', 'rdx', 8);
-    attach('BattleDialogue', 'C6 44 24 20 00 41 B1 01 E8 ?? ?? ?? ?? 48 8B 4F 60', 'rdx', 8);
+    attach('BattleDialogue', 'C6 44 24 20 00 41 B1 01 E8 ?? ?? ?? ?? 48 8B 4F 60 BB 02 00 00', 'rdx', 8);
     attach('MovieDialogue', 'C6 44 24 28 01 C6 44 24 20 01 E8 ?? ?? ?? ?? 49 8B 8D 90', 'rdx', 10);
     attach('TutorialHook', '44 88 4C 24 20 41 B1 01 E8 ?? ?? ?? ?? 48 83 C4 58 C3 CC CC 4C', 'rdx', 8);
     attach('DialogueHook', '44 88 4C 24 20 41 B1 01 E8 ?? ?? ?? ?? 48 83 C4 58 C3 CC 33 C0', 'rdx', 8);
-
+    
     function attach(name, pattern, register, offset) {
         const results = Memory.scanSync(__e.base, __e.size, pattern);
+        
         if (results.length === 0) {
             console.error(`[${name}] Hook not found!`);
             return;
         }
         
+        // log match count
+        if (results.length === 1) {
+            console.log(`[${name}] Pattern matched uniquely`);
+        } else {
+            console.warn(`[${name}] Pattern matched ${results.length} times`);
+        }
+        
         const address = results[0].address.add(offset);
         console.log(`[${name}] Found hook at ${address}`);
+        
         let previous = '';
-
+        
         Interceptor.attach(address, {
             onEnter: function (args) {
                 try {
                     const ptr = this.context[register];
                     if (ptr.isNull()) return;
-
+                    
                     const rawText = ptr.readUtf8String();
                     if (!rawText || rawText === previous) return;
+                    
                     previous = rawText;
-
+                    
                     const cleanedText = rawText
                         .replace(/\[p\]/g, '無名') // replace protag name
                         .replace(/\[ft\].*?\[fe\]/g, '')
@@ -53,7 +63,7 @@ console.warn('[Known Issue] On choices, only the first option is output, this is
                         .replace(/\[t\].*?\[\]/g, '')
                         .replace(/\[\]/g, '')
                         .trim();
-
+                    
                     if (cleanedText) {
                         console.log(`[DEBUG] Triggered: ${name}`);
                         handler(cleanedText);
