@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         The House in Fata Morgana
-// @version      1.0.0.0
+// @version      1.35
 // @author       Musi
 // @description  Steam
 // * NOVECT
