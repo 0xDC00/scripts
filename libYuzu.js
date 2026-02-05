@@ -245,7 +245,9 @@ function tryGetAslrOffset() {
                 const aslrOffsetHex = codeAddress.sub(baseAddress);
 
                 if (aslrOffsetHex.compare(ptr(0x80000000)) > 0) {
-                    console.error('Code address too high, are you on NCE?', codeAddress);
+                    console.warn(`High code address ${codeAddress}, using dogwater NCE hooks...`);
+                    hookNce(codeAddress);
+                    return true;
                 }
 
                 console.log('ASLR Offset:', aslrOffsetHex);
@@ -697,6 +699,112 @@ function setHook(object, dfVer) {
             }
         }
     });
+}
+
+/** @param {NativePointer} codeAddress */
+function hookNce(codeAddress) {
+    const originalInstructions = new Map(); // use sessionStorage instead?
+    const opcode = 0; // UDF #0, force SIGILL
+
+    Process.setExceptionHandler(function (details) {
+        if (details.type !== 'illegal-instruction') {
+            console.warn('Unknown exception type:', details.type);
+            return false;
+        }
+        // we're handling the exception caused by our UDF instruction
+
+        const pc = details.context.pc;
+        const pcStr = pc.toString();
+        const op = operations[pcStr];
+
+        if (op === undefined) {
+            console.error('This is about to crash the emulator', pcStr);
+            return false;
+        }
+
+        const originalIns = originalInstructions.get(pcStr);
+
+        // missing some stuff from buildRegs
+        const regs = Object.create(null);
+        for (let i = 0; i <= 28; i++) {
+            regs[i] = { value: details.context['x' + i] };
+        }
+        regs.pc = pc;
+        regs.lr = details.context.lr;
+        regs.fp = details.context.fp;
+        regs.sp = details.context.sp;
+
+        op.call(details.context, regs);
+
+        // restore original instruction
+        pc.writeU32(originalIns);
+
+        // retrap after executing original instruction?
+        setTimeout(() => {
+            try {
+                pc.writeU32(opcode); 
+            } catch(e) {
+                console.error('Error while retrapping', e);
+            }
+        }, 5);
+
+        return true; 
+    });
+
+    /** @param {NativePointer} hostAddress */
+    function hook(hostAddress) {
+        try {
+            console.log(hexdump(hostAddress.sub(8), { length: 0x20, header: true, ansi: true }));
+            const hostAddressIns = Instruction.parse(hostAddress);
+
+            if (hostAddressIns.mnemonic === 'udf') {
+                console.error(`Hooking udf at ${hostAddress} (${hostAddressIns.mnemonic} ${hostAddressIns.opStr})`);
+                return;
+            }
+
+            const hostAddressStr = hostAddress.toString();
+            const originalIns = hostAddress.readU32();
+            originalInstructions.set(hostAddressStr, originalIns);
+
+            Memory.protect(hostAddress, 4, 'rwx');
+            hostAddress.writeU32(opcode);
+            
+            console.log(`Hooked ${hostAddress}`);
+
+            // make sure we actually replaced the instruction
+            // setInterval(() => {
+            //     console.log(hexdump(hostAddr.sub(8), { length: 0x20, header: true, ansi: true }));
+            // }, 5000);
+        } catch (e) {
+            console.error(`Failed to hook ${hostAddress}:\n ${e.stack}`);
+        }
+    }
+
+    // idk where these offsets come from
+    const mysteriousOffset = 0x6000; // taishou x alice, summer pockets; Luca System games? 24,576
+    // const mysteriousOffset = 0x4000; // wand of fortune R; 16,384
+    console.warn('Mysterious offset:', ptr(mysteriousOffset));
+
+    const baseAddress = codeAddress.add(mysteriousOffset); 
+    console.warn('NCE Base Address:', baseAddress);
+
+    for (const key in operations) {
+        const em_address = ptr(key)
+        const hostAddress = baseAddress.add(em_address.sub(0x80004000)); // PC = Program Counter register
+        console.warn(`${em_address} => ${hostAddress}`);
+
+        const op = operations[key.toString()];
+        operations[hostAddress.toString()] = op; // reassign
+        if (op === undefined) {
+            throw new Error('Missing operation for ' + key);
+        }
+
+        // wait for emulator to finish doing NCE stuff
+        // there's probably a better way to do this
+        setTimeout(() => {
+            hook(hostAddress);
+        }, 5000);
+    }
 }
 
 module.exports = exports = {
