@@ -30,7 +30,7 @@ console.warn('[Known Issue] Some inner dialogue is picked up even when not displ
     
     function endsWithPunctuation(text) {
         // check if text ends with punctuation
-        return /[。！？…・]$/.test(text);
+        return /[。！？…・）]$/.test(text);
     }
     
     function hasJapaneseText(text) {
