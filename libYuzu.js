@@ -1,4 +1,4 @@
-// @name         Yuzu JIT Hooker
+// @name         Yuzu JIT/NCE Hooker
 // @version      1646+
 // @author       [DC]
 // @description  windows, linux
@@ -8,11 +8,10 @@ if (module.parent === null) {
 }
 
 const arch = Process.arch;
-
 const __e =
-  Process.platform === "linux" && arch === "arm64"
-    ? Process.getModuleByName("libyuzu-android.so")
-    : Process.mainModule ?? Process.enumerateModules()[0];
+    Process.platform === "linux" && arch === "arm64"
+        ? Process.getModuleByName("libyuzu-android.so")
+        : Process.mainModule ?? Process.enumerateModules()[0];
 if (null !== (Process.platform === 'linux' ? Module.findExportByName(null, 'DotNetRuntimeInfo') : __e.findExportByName('DotNetRuntimeInfo'))) {
     const ryujinx = require('./libRyujinx.js');
     const ryujinx_setHook = ryujinx.setHook;
@@ -65,7 +64,7 @@ function getInitializeAddress() {
         try {
             return Memory.scanSync(address, size, pattern);
         } catch (e) {
-            console.log('Scan error:', e);
+            console.log('Scan attempt error:', e.message);
         }
         return [];
     }
@@ -229,9 +228,14 @@ function getInitializeAddress() {
 function checkVersionMatch() {
     let GetVersionStringAddress = NULL;
     if (Process.platform === "linux" && arch === "arm64") {
-        GetVersionStringAddress = __e.getExportByName('_ZNK7FileSys4NACP16GetVersionStringEv');
+        GetVersionStringAddress = __e.findExportByName('_ZNK7FileSys4NACP16GetVersionStringEv');
     } else {
         // other platforms
+        return;
+    }
+
+    if (GetVersionStringAddress.isNull()) {
+        console.warn('Failed to find GetVersionString address');
         return;
     }
 
@@ -242,7 +246,8 @@ function checkVersionMatch() {
             const scriptVersion = globalThis.gameVer;
             if (DisplayVersion !== scriptVersion) {
                 console.error(`
-                    \rScript version '${scriptVersion}' does not match game version '${DisplayVersion}', the game may crash!
+                    \rScript version '${scriptVersion}' does not match game version '${DisplayVersion}'.
+                    \rThe game may crash, or the script may not work as intended!
                 `);
             }
         }
@@ -763,6 +768,7 @@ function hookNce(codeAddress, titleId) {
     if (magicResults.length === 0) {
         throw new Error('Failed to find MOD0 magic pattern');
     }
+
     const baseAddress = magicResults.at(-1).address;
     console.warn('NCE Base Address:', baseAddress);
 
@@ -797,12 +803,11 @@ function hookNce(codeAddress, titleId) {
             throw new Error('Failed to install NCE hook for ' + hostAddress);
         }
 
-        // see the next few instructions
-        // console.log(hexdump(hostAddress, { header: false, ansi: false, length: 0x10 }));
     }
 
+    // NceTrampoline already hooked from multi title game
     if (nceTrampolineHook !== null) {
-        console.log("Detaching previous NceTrampoline hook");
+        console.log("Detaching previous NCE hooks");
         nceTrampolineHook.detach();
         nceTrampolineHook = null;
     } 
@@ -845,13 +850,24 @@ function ncePullEmulatorLogs(minLogLevel = 0) {
     const nceRegisterLogCallback = __e.getExportByName('NceRegisterLogCallback');
     if (nceRegisterLogCallback) {
         const levelNames = ["DEBUG", "INFO", "WARNING", "ERROR"];
-        
+
         // Create callback that the emulator will call directly
         const logCallback = new NativeCallback((level, messagePtr) => {
             if (level >= minLogLevel) {
                 const message = messagePtr.readUtf8String();
                 const levelStr = levelNames[level] || "UNKNOWN";
-                console.log(`[Emu ${levelStr}] ${message}`);
+                const result = `[Emu ${levelStr}] ${message}`;
+                if (level <= 1) {
+                    console.info(result);
+                }
+                else if (level === 2) {
+                    console.warn(result);
+                }
+                else if (level === 3) {
+                    console.error(result);
+                } else {
+                    console.error(`Unknown log level from NCE: ${result}`);
+                }
             }
         }, 'void', ['int', 'pointer']);
         
