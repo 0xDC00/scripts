@@ -1,16 +1,13 @@
 // ==UserScript==
 // @name         [010068501FF9A000] UN:LOGICAL (UNLOGICAL)
-// @version      1.0.0
+// @version      1.0.0 + 1.0.1
 // @author       Mansive
 // @description  Yuzu
 // * LicoBiTs
 // * Broccoli
 // ==/UserScript==
 const gameVer = "1.0.0";
-
 const { setHook } = require("./libYuzu.js");
-// const mainHandler = trans.send(handler, "200+");
-// const listHandler = trans.send(handler2, "200+");
 
 let timer;
 const texts = new Set();
@@ -32,14 +29,16 @@ function _orderedHandler() {
     trans.send([...topTexts].join("\r\n") + "\r\n" + [...bottomTexts].join("\r\n"));
     topTexts.clear();
     bottomTexts.clear();
-  }, 200);
+  }, 500);
 }
 
-function topHandler(text) {
+function topHandler(text, list = false) {
+  !list && topTexts.clear();
   topTexts.add(text) && _orderedHandler();
 }
 
-function bottomHandler(text) {
+function bottomHandler(text, list = false) {
+  !list && bottomTexts.clear();
   bottomTexts.add(text) && _orderedHandler();
 }
 
@@ -49,7 +48,7 @@ setHook(
       [0x818ec8e0 - 0x80004000]: mainHandler.bind_(null, 1, "dialogue"),
       [0x81c0db08 - 0x80004000]: choiceDescHandler.bind_(null, 0, "choice desc"),
       [0x818e43c4 - 0x80004000]: choiceOptionHandler.bind_(null, 1, "choice option"),
-      [0x81a1bbb8 - 0x80004000]: mainHandler.bind_(null, 0, "dict"),
+      [0x81a1bbb8 - 0x80004000]: dictHandler.bind_(null, 0, "dict"),
       [0x81a69d5c - 0x80004000]: mainHandler.bind_(null, 0, "news1"),
       [0x81a69dbc - 0x80004000]: mainHandler.bind_(null, 0, "news2"),
       [0x81a69e38 - 0x80004000]: listHandler.bind_(null, 0, "note"),
@@ -75,7 +74,7 @@ function readString(regs, index, hookname) {
   const len = address.add(0x10).readU32();
   let text = address.add(0x14).readUtf16String(len);
 
-  console.warn(JSON.stringify(text));
+  // console.warn(JSON.stringify(text));
 
   return text;
 }
@@ -105,22 +104,30 @@ function choiceDescHandler(regs, index, hookname) {
 
   text = text.replace(/\\n/g, "\n");
 
-  topHandler(text);
+  topHandler(text, true);
 }
 
 function choiceOptionHandler(regs, index, hookname) {
   const text = readString(...arguments);
 
-  bottomHandler(text);
+  bottomHandler(text, true);
+}
+
+function dictHandler(regs, index, hookname) {
+  let text = readString(...arguments);
+
+  text = text.replace(/([^。…？！）])\n/g, "$1"); // merge incomplete sentences
+
+  bottomHandler(text, false);
 }
 
 let previous = "";
 trans.replace((s) => {
   if (s === previous) {
-    console.warn("skipped duplicate");
+    console.log("skipped duplicate");
     return null;
   }
   previous = s;
 
-  return s;
+  return s.trim();
 });

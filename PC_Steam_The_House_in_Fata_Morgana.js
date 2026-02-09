@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         The House in Fata Morgana
-// @version      1.0.0.0
+// @version      1.35
 // @author       Musi
 // @description  Steam
 // * NOVECT
@@ -30,7 +30,7 @@ console.warn('[Known Issue] Some inner dialogue is picked up even when not displ
     
     function endsWithPunctuation(text) {
         // check if text ends with punctuation
-        return /[。！？…・]$/.test(text);
+        return /[。！？…・）]$/.test(text);
     }
     
     function hasJapaneseText(text) {
