@@ -1,4 +1,4 @@
-// @name         Yuzu JIT Hooker
+// @name         Yuzu JIT & NCE Hooker
 // @version      1646+
 // @author       [DC]
 // @description  windows, linux
@@ -8,13 +8,24 @@ if (module.parent === null) {
 }
 
 const arch = Process.arch;
-
 const __e =
-  Process.platform === "linux" && arch === "arm64"
-    ? Process.getModuleByName("libyuzu-android.so")
-    : Process.mainModule ?? Process.enumerateModules()[0];
+    Process.platform === "linux" && arch === "arm64"
+        ? Process.getModuleByName("libyuzu-android.so")
+        : Process.mainModule ?? Process.enumerateModules()[0];
 if (null !== (Process.platform === 'linux' ? Module.findExportByName(null, 'DotNetRuntimeInfo') : __e.findExportByName('DotNetRuntimeInfo'))) {
-    return (module.exports = exports = require('./libRyujinx.js'));
+    const ryujinx = require('./libRyujinx.js');
+    const ryujinx_setHook = ryujinx.setHook;
+    ryujinx.setHook = function(object, dfVer) {
+        for (const [key, value] of Object.entries(object)) {
+            if (key.startsWith('0100')) {
+                // flatten object by getting rid of title ids to match what libRyujinx expects
+                Object.assign(object, value);
+                delete object[key];
+            }
+        }
+        return ryujinx_setHook(object, dfVer);
+    }
+    return (module.exports = exports = ryujinx);
 }
 
 console.warn('[Compatibility]');
@@ -44,6 +55,7 @@ const buildRegs = IS_32 ? createFunction_buildRegs32() : createFunction_buildReg
 const operations = Object.create(null);
 let _operations = Object.create(null);
 let aslrOffset = 0;
+const titleIdToHooks = new Map();
 
 tryGetAslrOffset();
 
@@ -52,7 +64,7 @@ function getInitializeAddress() {
         try {
             return Memory.scanSync(address, size, pattern);
         } catch (e) {
-            console.log('Scan error:', e);
+            console.log('Scan attempt error:', e.message);
         }
         return [];
     }
@@ -61,6 +73,7 @@ function getInitializeAddress() {
     let CreateProcessParameterArg = 1;
 
     if (Process.platform !== 'windows') {
+        /** @type {NativePointer[]=} */
         let addresses;
         if (arch === 'arm64') {
             console.log('Looking for ARM64 Initialize...');
@@ -208,6 +221,39 @@ function getInitializeAddress() {
     return { InitializeStartAddress, CreateProcessParameterArg };
 }
 
+// e.g. 1.0.0, 1.0.2...
+// mainly needed for NCE to avoid setting hooks for one version on a different version,
+// doing so would is more likely to crash NCE than Dynarmic
+/** Check if game version matches with script version and warn if it doesn't */
+function checkVersionMatch() {
+    let GetVersionStringAddress = NULL;
+    if (Process.platform === "linux" && arch === "arm64") {
+        GetVersionStringAddress = __e.findExportByName('_ZNK7FileSys4NACP16GetVersionStringEv');
+    } else {
+        // other platforms
+        return;
+    }
+
+    if (GetVersionStringAddress.isNull()) {
+        console.warn('Failed to find GetVersionString address');
+        return;
+    }
+
+    const hook = Interceptor.attach(GetVersionStringAddress, {
+        onLeave(retval) {
+            hook.detach();
+            const DisplayVersion = retval.readUtf8String(); // from nn::oe::DisplayVersion
+            const scriptVersion = globalThis.gameVer;
+            if (DisplayVersion !== scriptVersion) {
+                console.error(`
+                    \rScript version '${scriptVersion}' does not match game version '${DisplayVersion}'.
+                    \rThe game may crash, or the script may not work as intended!
+                `);
+            }
+        }
+    });
+}
+
 /*
 struct CreateProcessParameter {
     std::array<char, 12> name;  0x0,  12 bytes
@@ -221,7 +267,7 @@ struct CreateProcessParameter {
 };
 */
 function tryGetAslrOffset() {
-    aslrOffset = sessionStorage.getItem('YUZU_ASLR_OFFSET') ?? aslrOffset;
+    aslrOffset = sessionStorage.getItem('ASLR_Offset') ?? aslrOffset;
 
     const { InitializeStartAddress, CreateProcessParameterArg } = getInitializeAddress();
     if (InitializeStartAddress.isNull()) {
@@ -232,25 +278,51 @@ function tryGetAslrOffset() {
 
     Interceptor.attach(InitializeStartAddress, {
         onEnter(args) {
+            // GetVersionString() is called multiple times when the emulator opens,
+            // so putting it inside this Interceptor makes it easier to get the correct
+            // version for the game
+            checkVersionMatch();
+
             // 1 for MingW, 2 for MSVC
             const CreateProcessParameter = args[CreateProcessParameterArg];
 
             const textBytes = '41 70 70 6c 69 63 61 74 69 6f 6e 00'; // Application
             const results = Memory.scanSync(CreateProcessParameter, 0x15, textBytes);
             if (results.length !== 0) {
-                // codeAddress already has applied offset
-                const codeAddress = results[0].address.add(0x18).readPointer();
+                const safeAddress = results[0].address;
+                const titleId = "0" + safeAddress.add(0x10).readU64().toString(16).toUpperCase();
+                const codeAddress = safeAddress.add(0x18).readPointer(); // already has applied offset
+
+                // only used for reattaching NCE for now
+                sessionStorage.setItem('Initialize_Params', {
+                    codeAddress: codeAddress.toString(10),
+                    titleId: titleId,
+                });
 
                 const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
                 const aslrOffsetHex = codeAddress.sub(baseAddress);
 
+                // codeAddress on Dynarmic is around 0x80004000,
+                // but on NCE it's like 0x18be72fbd4
                 if (aslrOffsetHex.compare(ptr(0x80000000)) > 0) {
-                    console.error('Code address too high, are you on NCE?', codeAddress);
+                    console.warn(`High code address ${codeAddress}, using NCE hooks...`);
+                    sessionStorage.setItem('NCE', true);
+                    
+                    const RunAddress = __e.getExportByName('_ZN6Kernel8KProcess3RunEim');
+                    const runHook = Interceptor.attach(RunAddress, {
+                        onLeave() {
+                            runHook.detach();
+                            hookNce(codeAddress, titleId);
+                        }
+                    })
+
+                    // doesn't need ASLR calculations
+                    return true;
                 }
 
                 console.log('ASLR Offset:', aslrOffsetHex);
                 aslrOffset = aslrOffsetHex.toUInt32();
-                sessionStorage.setItem('YUZU_ASLR_OFFSET', aslrOffset);
+                sessionStorage.setItem('ASLR_Offset', aslrOffset);
             } else {
                 throw new Error('Missing string?');
             }
@@ -307,18 +379,15 @@ Interceptor.attach(DoJitPtr, {
         // x64 example
         // descriptor:       0x1c983e9f2e8
         // em_address:       0x8601a150
-        // em_address (num): 2248253776
         // entrypoint:       0x1c9342cd440
 
         // arm64 example
         // descriptor:       0x86346818 <- already emulation address
         // em_address:       0x86346818
-        // em_address (num): 2251581464
         // entrypoint:       0x6ad985bcc8
 
         // console.warn(`descriptor:       ${descriptor.toString()}
         //             \rem_address:       ${ptr(em_address).toString()}
-        //             \rem_address (num): ${em_address}
         //             \rentrypoint:       ${ptr(entrypoint.toString())}
         //             `);
 
@@ -393,10 +462,10 @@ function getDoJitAddress() {
     }
     else {
         // Windows MingW Clang
-        //          e8 ba 94 2f 00 48 89 f9 48 89 da 4d 89 f0 e8 54 00 00 00 4c 89 36 4c 89 7e 08 48 83 c7 18 48 8b 03 48 89 44 24 20 48 8b 06 48 89 44 24 28 48 8b 46 08 48 89 44 24 30 48 8d 4c 24 40 4c 8d 44 24 20 48 89 fa e8 de 97 4a 00 // clang 0.0.4-rc3
-        //          E8 E2 6F E5 01 48 89 F9 48 89 DA 4D 89 F0 E8 54 00 00 00 4C 89 36 4C 89 7E 08 48 83 C7 18 48 8B 03 48 89 44 24 20 48 8B 06 48 89 44 24 28 48 8B 46 08 48 89 44 24 30 48 8D 4C 24 40 4C 8D 44 24 20 48 89 FA E8 1E 07 00 00 48 89 F0 48 83 C4 50 5B 5F 5E 41 5E 41 5F C3 // clang 0.0.4
-        //          24 B0 00 00 00 48 89 F9 48 89 DA 4D 89 F0 E8 6B 00 00 00 4C 89 36 4C 89 7E 08 48 83 C7 18 48 8B 03 48 89 44 24 30 48 8B 06 48 89 44 24 38 48 8B 46 08 48 89 44 24 40 48 8D 54 24 50 4C 8D 44 24 30 48 89 F9 E8 45 09 00 00 48 89 F0 48 83 C4 60 5B 5F 5E 41 5E 41 5F C3 // clang 0.1.0 truncated
-        //          e8 ?? ?? ?? ?? 4? 89 f9 4? 89 da 4? 89 f0 e8 ?? ?? ?? ?? 4? 89 36 4? 89 7e 08 4? 83 c7 ?? 4? 8b 03 4? 89 44 ?? ?? 4? 8b 06 4? 89 44 ?? ?? 4? 8b 46 08 4? 89 44 ?? ?? 4? 8d ?? ?4 40 4? 8d ?? ?4 20 4? 89 fa e8 // clang 0.0.4-rc3 frida
+        //                         e8 ba 94 2f 00 48 89 f9 48 89 da 4d 89 f0 e8 54 00 00 00 4c 89 36 4c 89 7e 08 48 83 c7 18 48 8b 03 48 89 44 24 20 48 8b 06 48 89 44 24 28 48 8b 46 08 48 89 44 24 30 48 8d 4c 24 40 4c 8d 44 24 20 48 89 fa e8 de 97 4a 00 // clang 0.0.4-rc3
+        //                         E8 E2 6F E5 01 48 89 F9 48 89 DA 4D 89 F0 E8 54 00 00 00 4C 89 36 4C 89 7E 08 48 83 C7 18 48 8B 03 48 89 44 24 20 48 8B 06 48 89 44 24 28 48 8B 46 08 48 89 44 24 30 48 8D 4C 24 40 4C 8D 44 24 20 48 89 FA E8 1E 07 00 00 48 89 F0 48 83 C4 50 5B 5F 5E 41 5E 41 5F C3 // clang 0.0.4
+        //                         24 B0 00 00 00 48 89 F9 48 89 DA 4D 89 F0 E8 6B 00 00 00 4C 89 36 4C 89 7E 08 48 83 C7 18 48 8B 03 48 89 44 24 30 48 8B 06 48 89 44 24 38 48 8B 46 08 48 89 44 24 40 48 8D 54 24 50 4C 8D 44 24 30 48 89 F9 E8 45 09 00 00 48 89 F0 48 83 C4 60 5B 5F 5E 41 5E 41 5F C3 // clang 0.1.0 truncated
+        //                         e8 ?? ?? ?? ?? 4? 89 f9 4? 89 da 4? 89 f0 e8 ?? ?? ?? ?? 4? 89 36 4? 89 7e 08 4? 83 c7 ?? 4? 8b 03 4? 89 44 ?? ?? 4? 8b 06 4? 89 44 ?? ?? 4? 8b 46 08 4? 89 44 ?? ?? 4? 8d ?? ?4 40 4? 8d ?? ?4 20 4? 89 fa e8 // clang 0.0.4-rc3 frida
         const RegisterBlockSig3 = '4? 89 ?? 4? 89 ?? 4? 89 ?? e8 ?? ?? ?? ?? 4? 89 36 4? 89 ?? ?? ?? ?? ?? ?? 4? 8b ?? 4? 89 44';
         const RegisterBlockMatches3 = Memory.scanSync(__e.base, __e.size, RegisterBlockSig3);
         if (RegisterBlockMatches3.length > 1) {
@@ -485,50 +554,6 @@ function getDoJitAddress() {
     }
 
     throw new Error('RegisterBlock not found!');
-}
-
-function createFunctionBody_findBaseAndRegs() {
-    let body = '';
-
-    if (arch === 'x64') {
-        body += `const theRegs = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"];`;
-    } else if (arch === 'arm64') {
-        body += `const theRegs = ["pc", "sp", "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27", "x28", "fp", "lr"];`;
-    } 
-
-    let vm = '';
-    if (globalThis.ARM === true) {
-        vm = `context[regs].readU32();`;
-    } else {
-        vm = `context[regs].readU64();`;
-    }
-
-    // change this according to the game
-    const text = 'address.readShiftJisString();';
-    // const text = "address.add(0x14).readUtf16String();"
-
-    body += `for (const regs of theRegs) {
-                for (const base of theRegs) {
-                    if (regs === base) {
-                        continue;
-                    }
-
-                    try {
-                        const vm = ${vm}
-                        const address = context[base].add(vm);
-                        const text = ${text}
-                        if (text === null || text === "") {
-                            continue;
-                        }
-                        console.warn("regs: " + regs + " | base: " + base + " | " + text);
-                    } catch (err) {}
-                }
-            };`;
-    // body += `console.log(JSON.stringify(context, null, 2));`;
-
-    // body += `console.warn(JSON.stringify(regs + " " + base, null, 2));`;
-
-    return body;
 }
 
 // https://en.wikipedia.org/wiki/Calling_convention#ARM_(A64)
@@ -676,9 +701,27 @@ function setHook(object, dfVer) {
                 console.error('Skip: ' + key + ', this hashCode is not implemented, try Ryujinx.');
                 continue;
             }
-            const element = object[key];
-            const address = IS_32 === true ? uint64(key).add(0x204000) : uint64(key).add(0x80004000);
-            operations[address.toString(10)] = element;
+
+            let address = NULL;
+
+            if (key.startsWith('0100')) {
+                const titleId = key.toUpperCase();
+                titleIdToHooks.set(titleId, {});
+                for (const addressOffset in object[key]) {
+                    const element = object[key][addressOffset];
+                    address = IS_32 === true ? uint64(addressOffset).add(0x204000) : uint64(addressOffset).add(0x80004000);
+                    operations[address.toString(10)] = element;
+                    titleIdToHooks.get(titleId)[address.toString(10)] = element;
+                }
+                // {
+                //     0100A460141B8001: {
+                //         [0x80013f20 - 0x80004000]: mainHandler.bind_(null, 0, "name"),
+                //     },
+            } else {
+                const element = object[key];
+                address = IS_32 === true ? uint64(key).add(0x204000) : uint64(key).add(0x80004000);
+                operations[address.toString(10)] = element;
+            }
         }
     }
 
@@ -686,6 +729,7 @@ function setHook(object, dfVer) {
 
     Object.keys(sessionStorage).map((key) => {
         const value = sessionStorage.getItem(key);
+        // a key will only have this suffix on dynarmic
         if (key.startsWith('Yuzu_') === true) {
             try {
                 const em_address = value.guest;
@@ -697,6 +741,165 @@ function setHook(object, dfVer) {
             }
         }
     });
+
+    const isNce = sessionStorage.getItem('NCE');
+    if (isNce) {
+        const initializeParams = sessionStorage.getItem('Initialize_Params');
+        if (initializeParams) {
+            const { codeAddress, titleId } = initializeParams;
+            hookNce(ptr(codeAddress), titleId);
+        } else {
+            // first time attaching, not a reattach scenario
+            console.warn('No Initialize_Params found in sessionStorage');
+        }
+    }
+}
+
+// separate map for host addresses to operations
+const nceOperations = Object.create(null);
+let nceTrampolineHook = null;
+
+/**
+ * Hooks NCE backend. Requires a custom build of Eden to better expose the
+ * emulator to Agent.
+ * @param {NativePointer} codeAddress
+ * @param {string} titleId
+ */
+function hookNce(codeAddress, titleId) {
+    try {
+        ncePullEmulatorLogs();
+    } catch (e) {
+        throw new Error('Failed to setup NCE logging. Unsupported emulator?\n' + e.stack);
+    }
+
+    const NceInstallExternalHook = new NativeFunction(__e.getExportByName('NceInstallExternalHook'), 'bool', ['uint64', 'uint32']);
+    const NceClearAllHooks = new NativeFunction(__e.getExportByName('NceClearAllHooks'), 'void', []);
+    const nceTrampoline = __e.getExportByName('NceTrampoline');
+
+    // clear previous hooks to handle scenarios where a game loads another game
+    NceClearAllHooks();
+    for (const key in nceOperations) {
+        delete nceOperations[key];
+    }
+
+    // https://switchbrew.org/wiki/Rtld
+    const magicPattern = '00 00 00 00 08 00 00 00 4d 4f 44 30';
+    const magicResults = Memory.scanSync(codeAddress, 0x10000, magicPattern);
+    if (magicResults.length === 0) {
+        throw new Error('Failed to find MOD0 magic pattern');
+    }
+
+    const baseAddress = magicResults.at(-1).address;
+    console.warn('NCE Base Address:', baseAddress, codeAddress.sub(baseAddress));
+
+    const titleOperations = Object.create(null);
+    if (titleIdToHooks.has(titleId)) {
+        const length = Object.keys(titleIdToHooks.get(titleId)).length;
+        console.log(`Applying ${length} hooks for titleId ${titleId}`);
+        Object.assign(titleOperations, titleIdToHooks.get(titleId));
+    } else {
+        console.log(`No specific hooks found for titleId ${titleId}, applying global hooks`);
+        Object.assign(titleOperations, operations);
+    }
+
+    for (const key of titleIdToHooks.keys()) {
+        console.log('Known titleId:', key);
+    }
+
+    for (const [key, value] of Object.entries(titleOperations)) {
+        const em_address = ptr(key); // e.g. 0x80013f94
+        const hostAddress = baseAddress.add(em_address.sub(0x80004000)); // pc reg, e.g. 0x18bec83f94
+        console.warn(`${em_address} => ${hostAddress}`);
+
+        const op = value;
+        if (op === undefined) {
+            throw new Error('Missing operation for ' + key);
+        }
+        nceOperations[hostAddress.toString(10)] = op;
+
+        // see the next few instructions
+        console.log(hexdump(hostAddress.sub(0x100), { header: false, ansi: false, length: 0x200 }));
+
+        const expectedInstruction = 0; // skip verification
+        const installStatus = NceInstallExternalHook(uint64(hostAddress.toString(10)), expectedInstruction);
+        if (installStatus === false) {
+            throw new Error('Failed to install NCE hook for ' + hostAddress);
+        }
+
+    }
+
+    // NceTrampoline already hooked from multi title game
+    if (nceTrampolineHook !== null) {
+        console.log("Detaching previous NCE hooks");
+        nceTrampolineHook.detach();
+        nceTrampolineHook = null;
+    } 
+
+    console.log("Hooking nceTrampoline:", nceTrampoline);
+
+    nceTrampolineHook = Interceptor.attach(nceTrampoline, {
+        onEnter(args) {
+            // console.warn("onEnter: NceTrampoline");
+            
+            const hostAddress = args[0]; // e.g. 0x18bec83f94
+            const context = args[1];
+            const op = nceOperations[hostAddress.toString(10)];
+
+            if (op === undefined) {
+                console.error('No handler for address: ' + hostAddress);
+                return;
+            }
+
+            const regs = Object.create(null);
+            for (let i = 0; i < 33; i++) {
+                regs[i] = { value: context.add(i * 8).readPointer() };
+            }
+            regs.pc = hostAddress;
+
+            op.call(context, regs);
+        }
+    });
+}
+
+/**
+ * Pull emulator logs when the backend is set to NCE. Requires a custom build
+ * of Eden to better expose the emulator to Agent.
+ * 0 = DEBUG (all logs), 1 = INFO, 2 = WARNING, 3 = ERROR
+ * @param {number} minLogLevel
+ */
+function ncePullEmulatorLogs(minLogLevel = 0) {        
+    // Interceptor.attach doesn't work because the NCE logging function is called
+    // from within a NativeFunction call context
+    const nceRegisterLogCallback = __e.getExportByName('NceRegisterLogCallback');
+    if (nceRegisterLogCallback) {
+        const levelNames = ["DEBUG", "INFO", "WARNING", "ERROR"];
+
+        // Create callback that the emulator will call directly
+        const logCallback = new NativeCallback((level, messagePtr) => {
+            if (level >= minLogLevel) {
+                const message = messagePtr.readUtf8String();
+                const levelStr = levelNames[level] || "UNKNOWN";
+                const result = `[Emu ${levelStr}] ${message}`;
+                if (level <= 1) {
+                    console.info(result);
+                }
+                else if (level === 2) {
+                    console.warn(result);
+                }
+                else if (level === 3) {
+                    console.error(result);
+                } else {
+                    console.error(`Unknown log level from NCE: ${result}`);
+                }
+            }
+        }, 'void', ['int', 'pointer']);
+        
+        // Keep reference to prevent GC from collecting the callback?
+        globalThis._nceLogCallback = logCallback;
+        
+        const registerFn = new NativeFunction(nceRegisterLogCallback, 'void', ['pointer']);
+        registerFn(logCallback);
+    }
 }
 
 module.exports = exports = {
