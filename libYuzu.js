@@ -1,4 +1,4 @@
-// @name         Yuzu JIT/NCE Hooker
+// @name         Yuzu JIT & NCE Hooker
 // @version      1646+
 // @author       [DC]
 // @description  windows, linux
