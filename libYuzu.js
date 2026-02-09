@@ -267,7 +267,7 @@ struct CreateProcessParameter {
 };
 */
 function tryGetAslrOffset() {
-    aslrOffset = sessionStorage.getItem('YUZU_ASLR_OFFSET') ?? aslrOffset;
+    aslrOffset = sessionStorage.getItem('ASLR_Offset') ?? aslrOffset;
 
     const { InitializeStartAddress, CreateProcessParameterArg } = getInitializeAddress();
     if (InitializeStartAddress.isNull()) {
@@ -291,8 +291,14 @@ function tryGetAslrOffset() {
             if (results.length !== 0) {
                 const safeAddress = results[0].address;
                 const titleId = "0" + safeAddress.add(0x10).readU64().toString(16).toUpperCase();
-                console.warn('titleId from CreateProcessParameter: ' + titleId);
                 const codeAddress = safeAddress.add(0x18).readPointer(); // already has applied offset
+
+                // only used for reattaching NCE for now
+                sessionStorage.setItem('Initialize_Params', {
+                    codeAddress: codeAddress.toString(10),
+                    titleId: titleId,
+                });
+
                 const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
                 const aslrOffsetHex = codeAddress.sub(baseAddress);
 
@@ -300,6 +306,7 @@ function tryGetAslrOffset() {
                 // but on NCE it's like 0x18be72fbd4
                 if (aslrOffsetHex.compare(ptr(0x80000000)) > 0) {
                     console.warn(`High code address ${codeAddress}, using NCE hooks...`);
+                    sessionStorage.setItem('NCE', true);
                     
                     const RunAddress = __e.getExportByName('_ZN6Kernel8KProcess3RunEim');
                     const runHook = Interceptor.attach(RunAddress, {
@@ -315,7 +322,7 @@ function tryGetAslrOffset() {
 
                 console.log('ASLR Offset:', aslrOffsetHex);
                 aslrOffset = aslrOffsetHex.toUInt32();
-                sessionStorage.setItem('YUZU_ASLR_OFFSET', aslrOffset);
+                sessionStorage.setItem('ASLR_Offset', aslrOffset);
             } else {
                 throw new Error('Missing string?');
             }
@@ -722,6 +729,7 @@ function setHook(object, dfVer) {
 
     Object.keys(sessionStorage).map((key) => {
         const value = sessionStorage.getItem(key);
+        // a key will only have this suffix on dynarmic
         if (key.startsWith('Yuzu_') === true) {
             try {
                 const em_address = value.guest;
@@ -733,6 +741,18 @@ function setHook(object, dfVer) {
             }
         }
     });
+
+    const isNce = sessionStorage.getItem('NCE');
+    if (isNce) {
+        const initializeParams = sessionStorage.getItem('Initialize_Params');
+        if (initializeParams) {
+            const { codeAddress, titleId } = initializeParams;
+            hookNce(ptr(codeAddress), titleId);
+        } else {
+            // first time attaching, not a reattach scenario
+            console.warn('No Initialize_Params found in sessionStorage');
+        }
+    }
 }
 
 // separate map for host addresses to operations
@@ -770,7 +790,7 @@ function hookNce(codeAddress, titleId) {
     }
 
     const baseAddress = magicResults.at(-1).address;
-    console.warn('NCE Base Address:', baseAddress);
+    console.warn('NCE Base Address:', baseAddress, codeAddress.sub(baseAddress));
 
     const titleOperations = Object.create(null);
     if (titleIdToHooks.has(titleId)) {
@@ -796,6 +816,9 @@ function hookNce(codeAddress, titleId) {
             throw new Error('Missing operation for ' + key);
         }
         nceOperations[hostAddress.toString(10)] = op;
+
+        // see the next few instructions
+        console.log(hexdump(hostAddress.sub(0x100), { header: false, ansi: false, length: 0x200 }));
 
         const expectedInstruction = 0; // skip verification
         const installStatus = NceInstallExternalHook(uint64(hostAddress.toString(10)), expectedInstruction);
