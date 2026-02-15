@@ -58,21 +58,30 @@ function jitAttach(em_address, entrypoint, op) {
 
 function getDoJitAddress() {
     if (Process.platform !== 'windows') {
-        // Unix
-        // not __ZN8MIPSComp10IRFrontend5DoJitEjRNSt3__16vectorI6IRInstNS1_9allocatorIS3_EEEERjb
-        const names = [
-            '_ZN8MIPSComp3Jit5DoJitEjP8JitBlock', // linux x64
-            // __ZN8MIPSComp3Jit5DoJitEjP8JitBlock
-            'MIPSComp::Jit::DoJit(unsigned int, JitBlock*)', // macOS x64 (demangle)
-            '_ZN8MIPSComp8Arm64Jit5DoJitEjP8JitBlock', // android arm64
-            // __ZN8MIPSComp8Arm64Jit5DoJitEjP8JitBlock
-            'MIPSComp::Arm64Jit::DoJit(unsigned int, JitBlock*)' // macOS arm64 (demangle)
-        ];
-        for (const name of names) {
-            const addresss = DebugSymbol.findFunctionsNamed(name);
-            if (addresss.length !== 0) {
-                return addresss[0];
+        if (Process.arch === 'x64' || Process.platform === "darwin") {
+            // Unix & macOS
+            // not __ZN8MIPSComp10IRFrontend5DoJitEjRNSt3__16vectorI6IRInstNS1_9allocatorIS3_EEEERjb
+            const names = [
+                '_ZN8MIPSComp3Jit5DoJitEjP8JitBlock', // linux x64
+                // __ZN8MIPSComp3Jit5DoJitEjP8JitBlock
+                'MIPSComp::Jit::DoJit(unsigned int, JitBlock*)', // macOS x64 (demangle)
+                // __ZN8MIPSComp8Arm64Jit5DoJitEjP8JitBlock
+                'MIPSComp::Arm64Jit::DoJit(unsigned int, JitBlock*)' // macOS arm64 (demangle)
+            ];
+            for (const name of names) {
+                const addresss = DebugSymbol.findFunctionsNamed(name);
+                if (addresss.length !== 0) {
+                    return addresss[0];
+                }
             }
+        } else if (Process.arch === 'arm64' && Process.platform === "linux") {
+            // ARM64 Android
+            const __e = Process.getModuleByName('libppsspp_jni.so');
+            const name = '_ZN8MIPSComp8Arm64Jit5DoJitEjP8JitBlock';
+            const address = __e.getExportByName(name);
+            return address;
+        } else {
+            console.warn("Unknown architecture?:", Process.arch);
         }
     }
     else {
