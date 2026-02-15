@@ -69,9 +69,9 @@ function getDoJitAddress() {
                 'MIPSComp::Arm64Jit::DoJit(unsigned int, JitBlock*)' // macOS arm64 (demangle)
             ];
             for (const name of names) {
-                const addresss = DebugSymbol.findFunctionsNamed(name);
-                if (addresss.length !== 0) {
-                    return addresss[0];
+                const addresses = DebugSymbol.findFunctionsNamed(name);
+                if (addresses.length !== 0) {
+                    return addresses[0];
                 }
             }
         } else if (Process.arch === 'arm64' && Process.platform === "linux") {

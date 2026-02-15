@@ -62,9 +62,9 @@ function getDoJitAddress() {
             "Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)", // macOS x64 (demangle)
         ];
         for (const name of names) {
-            const addresss = DebugSymbol.findFunctionsNamed(name);
-            if (addresss.length !== 0) {
-                return addresss[0];
+            const addresses = DebugSymbol.findFunctionsNamed(name);
+            if (addresses.length !== 0) {
+                return addresses[0];
             }
         }
     }
