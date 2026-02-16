@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Sora no Kiseki the 1st / 空の軌跡 the 1st
-// @version      1.04.2
+// @version      1.06.2
 // @author       Tom (tomrock645)
 // @description  Steam
 // * developer   Nihon Falcom
@@ -8,9 +8,6 @@
 //
 // https://store.steampowered.com/app/3375780/Trails_in_the_Sky_1st_Chapter/
 // ==/UserScript==
-
-
-console.warn("Known issues:\n- The description extraction for some items is a bit scuffed (e.g. second half before first half, one extra word before the second half, missing first half (would be too tedious to get the text and it's not worth it imo)).");
 
 
 const __e = Process.enumerateModules()[0];
@@ -358,7 +355,8 @@ const thirdHandler = trans.send((s) => s, '25+');
 })();
 
 
-let isAbnormalQuartz = false;
+// let isAbnormalQuartz = false;
+let inventoryName = '';
 (function () {
     const inventorySig = 'e8 ?? ?? ?? ?? 90 ?? 83 ff 04 0f 85';
     var results = Memory.scanSync(__e.base, __e.size, inventorySig);
@@ -375,151 +373,223 @@ let isAbnormalQuartz = false;
         // console.warn("in: inventory");
 
         const inventoryAddress = this.context.rdx;
-        let inventoryDescription = inventoryAddress.readUtf8String();
-        let inventoryName = getName(inventoryAddress);
+        // let inventoryDescription = inventoryAddress.readUtf8String();
+        inventoryName = getName(inventoryAddress);
+        // inventoryDescription = cleanText(inventoryDescription);
+
+        // setTimeout(() => {
+        //     if (inventoryDescription !== '' && itemDescription === '') {
+        //         thirdHandler(inventoryName + "\n" + inventoryDescription);
+                
+        //         if(isQuartz) {
+        //             isAbnormalQuartz = true; // In case a quartz gets extracted from here with a description instead of only being the name
+        //             isQuartz = false;
+        //         }
+        //     }
+
+        //     else if (itemDescription !== '') {
+        //         thirdHandler(inventoryName + "\n" + itemDescription);
+        //         itemDescription = '';
+        //     }
+            
+        //     else 
+        //         thirdHandler(inventoryName);
+        // }, 20);
+    });
+})();
+
+
+(function () { 
+    const inventoryDescriptionSig = '83 a0 bc 00 00 00 fe ?? 8d ?? ?? 30 ?? 8b 8b 10 01';
+    var results = Memory.scanSync(__e.base, __e.size, inventoryDescriptionSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[inventoryDescriptionPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address.add(0x13);
+    console.log('[inventoryDescriptionPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: inventoryDescription");
+
+        const inventoryDescriptionAddress = this.context.rdx;
+        let inventoryDescription = inventoryDescriptionAddress.readUtf8String();
         inventoryDescription = cleanText(inventoryDescription);
 
-        setTimeout(() => {
-            if (inventoryDescription !== '' && itemDescription === '') {
-                thirdHandler(inventoryName + "\n" + inventoryDescription);
-                
-                if(isQuartz) {
-                    isAbnormalQuartz = true; // In case a quartz gets extracted from here with a description instead of only being the name
-                    isQuartz = false;
-                }
-            }
-
-            else if (itemDescription !== '') {
-                thirdHandler(inventoryName + "\n" + itemDescription);
-                itemDescription = '';
-            }
-            
-            else 
-                thirdHandler(inventoryName);
-        }, 20);
+        secondHandler(inventoryName + '\n' + inventoryDescription);
     });
 })();
 
 
-let isQuartz = false;
-let hasFirstQuartzHalf = false;
-(function () { // First half
-    const quartzDescription1Sig = 'e8 ?? ?? ?? ?? ?? 8b cf ?? 8b d0 ?? b8 04 08 00 00 e8 ?? ?? ?? ?? c6 ?? ?? ?? ?? ?? 00 ?? 8b 05';
-    var results = Memory.scanSync(__e.base, __e.size, quartzDescription1Sig);
+(function () { 
+    const shopInventoryDescriptionSig = 'e8 ?? ?? ?? ?? 90 eb ?? ?? 8b fb ?? 8b';
+    var results = Memory.scanSync(__e.base, __e.size, shopInventoryDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[quartzDescription1Pattern] Hook not found!');
+        console.error('[shopInventoryDescriptionPattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[quartzDescription1Pattern] Found hook', address);
+    console.log('[shopInventoryDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: quartzDescription1");
+        // console.warn("in: shopInventoryDescription");
 
-        const quartzDescriptionAddress = this.context.r8;
-        let quartzDescription1 = quartzDescriptionAddress.readUtf8String();
-        quartzDescription1 = cleanText(quartzDescription1);
+        const shopInventoryDescriptionAddress = this.context.rdx;
+        let shopInventoryDescription = shopInventoryDescriptionAddress.readUtf8String();
+        shopInventoryDescription = cleanText(shopInventoryDescription);
 
-        isQuartz = true;
-        hasFirstQuartzHalf = true;
-
-        setTimeout(() => {
-            if(isAbnormalQuartz) {
-                thirdHandler(quartzDescription1);
-                isAbnormalQuartz = false;
-            }
-
-            else if (quartzDescription3 === '') {
-                thirdHandler(quartzDescription1 + "\n" + quartzDescription2);
-                quartzDescription2 = '';
-            }
-
-            else {
-                thirdHandler(quartzDescription1 + "\n" + quartzDescription3 + " " + quartzDescription2);
-                quartzDescription2 = '';
-                quartzDescription3 = '';
-            }
-
-            isQuartz = false;
-        }, 30);
+        secondHandler(inventoryName + '\n' + shopInventoryDescription);
     });
 })();
 
 
-let quartzDescription2 = '';
-(function () { // Second half
-    const quartzDescription2Sig = 'e8 ?? ?? ?? ?? ?? 01 9c ?? 00 08 00 00 c6 85 c0 96 03';
-    var results = Memory.scanSync(__e.base, __e.size, quartzDescription2Sig);
+// let isQuartz = false;
+// let hasFirstQuartzHalf = false;
+// (function () { // First half
+//     const quartzDescription1Sig = 'e8 ?? ?? ?? ?? ?? 8b cf ?? 8b d0 ?? b8 04 08 00 00 e8 ?? ?? ?? ?? c6 ?? ?? ?? ?? ?? 00 ?? 8b 05';
+//     var results = Memory.scanSync(__e.base, __e.size, quartzDescription1Sig);
+//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+//     if (results.length === 0) {
+//         console.error('[quartzDescription1Pattern] Hook not found!');
+//         return;
+//     }
+
+//     const address = results[0].address;
+//     console.log('[quartzDescription1Pattern] Found hook', address);
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: quartzDescription1");
+
+//         const quartzDescriptionAddress = this.context.r8;
+//         let quartzDescription1 = quartzDescriptionAddress.readUtf8String();
+//         quartzDescription1 = cleanText(quartzDescription1);
+
+//         isQuartz = true;
+//         hasFirstQuartzHalf = true;
+
+//         setTimeout(() => {
+//             if(isAbnormalQuartz) {
+//                 thirdHandler(quartzDescription1);
+//                 isAbnormalQuartz = false;
+//             }
+
+//             else if (quartzDescription3 === '') {
+//                 thirdHandler(quartzDescription1 + "\n" + quartzDescription2);
+//                 quartzDescription2 = '';
+//             }
+
+//             else {
+//                 thirdHandler(quartzDescription1 + "\n" + quartzDescription3 + " " + quartzDescription2);
+//                 quartzDescription2 = '';
+//                 quartzDescription3 = '';
+//             }
+
+//             isQuartz = false;
+//         }, 30);
+//     });
+// })();
+
+
+// let quartzDescription2 = '';
+// (function () { // Second half 
+//     const quartzDescription2Sig = 'e8 ?? ?? ?? ?? ?? 8b c0 ?? 8d ?? b0 70 04 00 ?? 8d 8d e0';
+//     var results = Memory.scanSync(__e.base, __e.size, quartzDescription2Sig);
+//     console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+//     if (results.length === 0) {
+//         console.error('[quartzDescription2Pattern] Hook not found!');
+//         return;
+//     }
+
+//     const address = results[0].address.add(0x16);
+//     console.log('[quartzDescription2Pattern] Found hook', address);
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: quartzDescription2");
+
+//         if(hasFirstQuartzHalf === false) // Sometimes the function is called when it shouldn't
+//             return;
+
+//         const quartzDescriptionAddress = this.context.rdx;
+//         quartzDescription2 = quartzDescriptionAddress.readUtf8String();
+//         quartzDescription2 = cleanText(quartzDescription2);
+
+//         hasFirstQuartzHalf = false;
+//     });
+// })();
+
+
+// let quartzDescription3 = '';
+// (function () { // Second half
+//     const quartzDescription3Sig = '01 b3 00 08 00 00 ?? 8b 4f 10';
+//     var results = Memory.scanSync(__e.base, __e.size, quartzDescription3Sig);
+//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+//     if (results.length === 0) {
+//         console.error('[quartzDescription3Pattern] Hook not found!');
+//         return;
+//     }
+
+//     const address = results[0].address.add(0x19);
+//     console.log('[quartzDescription3Pattern] Found hook', address);
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: quartzDescription3");
+
+//         const quartzDescriptionAddress = this.context.r9;
+//         quartzDescription3 = quartzDescriptionAddress.readUtf8String();
+//         quartzDescription3 = cleanText(quartzDescription3);
+//     });
+// })();
+
+
+(function () { 
+    const quartzDescriptionSig = '74 ?? ?? 8d ?? ?? 30 e8 ?? ?? ?? ?? 90';
+    var results = Memory.scanSync(__e.base, __e.size, quartzDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[quartzDescription2Pattern] Hook not found!');
+        console.error('[quartzDescriptionPattern] Hook not found!');
         return;
     }
 
-    const address = results[0].address;
-    console.log('[quartzDescription2Pattern] Found hook', address);
+    const address = results[0].address.add(0x7);
+    console.log('[quartzDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: quartzDescription2");
-
-        if(hasFirstQuartzHalf === false) // Sometimes the function is called when it shouldn't
-            return;
+        // console.warn("in: quartzDescription");
 
         const quartzDescriptionAddress = this.context.rdx;
-        quartzDescription2 = quartzDescriptionAddress.readUtf8String();
-        quartzDescription2 = cleanText(quartzDescription2);
+        let quartzDescription = quartzDescriptionAddress.readUtf8String();
+        quartzDescription = cleanText(quartzDescription);
 
-        hasFirstQuartzHalf = false;
+        secondHandler(inventoryName + '\n' + quartzDescription);
     });
 })();
 
 
-let quartzDescription3 = '';
-(function () { // Second half
-    const quartzDescription3Sig = '01 b3 00 08 00 00 ?? 8b 4f 10';
-    var results = Memory.scanSync(__e.base, __e.size, quartzDescription3Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+// let itemDescription = '';
+// (function () { // books and key items
+//     const itemDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b d8 8b 97 00 08 00 00 03 d0 81 fa 00 08 00 00 72 ?? ?? 8d 0d ?? ?? ?? ?? ?? b8 42 01 00 00 ?? 8d 15 ?? ?? ?? ?? b9 03 00 00 00 e8 ?? ?? ?? ?? eb ?? ?? 8b c3 ?? 8b d6 ?? 8b cf e8 ?? ?? ?? ?? 01 9f 00 08 00 00 e9 ?? ?? ?? ?? ?? 8d ?? 40 20 00 00';
+//     var results = Memory.scanSync(__e.base, __e.size, itemDescriptionSig);
+//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-    if (results.length === 0) {
-        console.error('[quartzDescription3Pattern] Hook not found!');
-        return;
-    }
+//     if (results.length === 0) {
+//         console.error('[itemDescriptionPattern] Hook not found!');
+//         return;
+//     }
 
-    const address = results[0].address.add(0x19);
-    console.log('[quartzDescription3Pattern] Found hook', address);
-    Interceptor.attach(address, function (args) {
-        // console.warn("in: quartzDescription3");
+//     const address = results[0].address;
+//     console.log('[itemDescriptionPattern] Found hook', address);
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: itemDescription");
 
-        const quartzDescriptionAddress = this.context.r9;
-        quartzDescription3 = quartzDescriptionAddress.readUtf8String();
-        quartzDescription3 = cleanText(quartzDescription3);
-    });
-})();
-
-
-let itemDescription = '';
-(function () { // books and key items
-    const itemDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b d8 8b 97 00 08 00 00 03 d0 81 fa 00 08 00 00 72 ?? ?? 8d 0d ?? ?? ?? ?? ?? b8 42 01 00 00 ?? 8d 15 ?? ?? ?? ?? b9 03 00 00 00 e8 ?? ?? ?? ?? eb ?? ?? 8b c3 ?? 8b d6 ?? 8b cf e8 ?? ?? ?? ?? 01 9f 00 08 00 00 e9 ?? ?? ?? ?? ?? 8d ?? 40 20 00 00';
-    var results = Memory.scanSync(__e.base, __e.size, itemDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[itemDescriptionPattern] Hook not found!');
-        return;
-    }
-
-    const address = results[0].address;
-    console.log('[itemDescriptionPattern] Found hook', address);
-    Interceptor.attach(address, function (args) {
-        // console.warn("in: itemDescription");
-
-        const itemDescriptionAddress = this.context.rcx;
-        itemDescription = itemDescriptionAddress.readUtf8String();
-        itemDescription = cleanText(itemDescription);
-    });
-})();
+//         const itemDescriptionAddress = this.context.rcx;
+//         itemDescription = itemDescriptionAddress.readUtf8String();
+//         itemDescription = cleanText(itemDescription);
+//     });
+// })();
 
 
 (function () {
@@ -944,7 +1014,7 @@ let itemDescription = '';
 
 
 (function () { 
-    const optionDescriptionSig = 'e8 ?? ?? ?? ?? ?? bd fe ff ff ff';
+    const optionDescriptionSig = 'e8 ?? ?? ?? ?? ?? bf fe ff ff ff';
     var results = Memory.scanSync(__e.base, __e.size, optionDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
