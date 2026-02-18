@@ -1,7 +1,7 @@
 // @name         PCSX2 JIT Hooker
-// @version      2.2.0 -> 2.6.0
+// @version      2.2.0 -> 2.6.2
 // @author       logantgt, Mansive, based on work from [DC] and koukdw
-// @description  windows, linux, mac (x64)
+// @description  windows, linux, mac (x64), android (arm64)
 
 if (module.parent === null) {
     throw "I'm not a text hooker!";
@@ -11,11 +11,15 @@ const IS_DEBUG = false;
 const FORCE_PATTERN_FALLBACK = false;
 const IGNORE_SETUP_CACHE = false;
 
-const __e = Process.mainModule ?? Process.enumerateModules()[0];
-// console.log(JSON.stringify(Process.mainModule.enumerateSymbols(), null, 2));
+const isAndroid = Process.platform === "linux" && Process.arch === "arm64"
+const __e =
+    isAndroid
+        ? Process.getModuleByName("libemucore.so")
+        : Process.mainModule ?? Process.enumerateModules()[0];
 
 console.warn("[Compatibility]");
-console.warn("PCSX2 v2.2.0+");
+console.warn("PCSX2 2.2.0 -> 2.6.2");
+console.warn("ARMSX2 1.0.7");
 console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
 // #region Find Addresses
@@ -23,12 +27,10 @@ console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 /** @type {Object.<string, NativePointer>} */
 const addresses = Object.create(null);
 
-// enumerateSymbols() is a slow operation,
-// postpone it until we're sure there are no cached addresses in sessionStorage
 /** @type {ModuleSymbolDetails[]|null} */
 let symbols = null;
 
-const __ranges = __e.enumerateRanges("r-x");
+const __ranges = isAndroid ? [] : __e.enumerateRanges("r-x");
 
 /**
  * @param {Object} settings
@@ -152,6 +154,9 @@ function getFunctionAddress({ name, pattern, lookbackSize = 0x100, protection = 
 
 /** @param {string} symbolName */
 function findSymbol(symbolName) {
+    if (symbols === null) {
+        symbols = __e.enumerateSymbols();
+    }
     const symbol = symbols.find((x) => x.name === symbolName);
 
     if (IS_DEBUG) console.log(`[${symbol.name}Symbol] @ ${symbol.address}`);
@@ -185,6 +190,23 @@ function setupAddressesThroughCache() {
     }
 }
 
+function setupAddressesThroughDebugAndroid() {
+    addresses.baseBlocksNew = findSymbol("_ZN10BaseBlocks3NewEjm").address;
+    addresses.recRecompile = findSymbol("_ZL12recRecompilej").address;
+    addresses.iopRecRecompile = findSymbol("_ZL15iopRecRecompilej").address;
+    addresses.recAddBreakpoint = findSymbol("_ZN12CBreakPoints13AddBreakPointE13BreakPointCpujbbb").address;
+    addresses.cpuRegs = findSymbol("g_cpuRegistersPack").address;
+    addresses.eeMem = findSymbol("EEmem").address;
+    addresses.psxRegs = addresses.cpuRegs.add(0x500); // what
+    addresses.iopMem = findSymbol("IOPmem").address;
+    addresses.dynarecCheckBreakpoint = findSymbol("_Z22dynarecCheckBreakpointv").address;
+    addresses.psxDynarecCheckBreakpoint = findSymbol("_ZL25psxDynarecCheckBreakpointv").address;
+}
+
+function setupAddressesThroughPatternAndroid() {
+    throw new Error("Android pattern scanning isn't implemented yet!");
+}
+
 // prettier-ignore
 function setupAddressesThroughDebug() {
     // ?New@BaseBlocks@@QEAAPEAUBASEBLOCKEX@@I_K@Z
@@ -192,10 +214,10 @@ function setupAddressesThroughDebug() {
     addresses.recRecompile = DebugSymbol.findFunctionsNamed("recRecompile")[0];
     addresses.iopRecRecompile = DebugSymbol.findFunctionsNamed("iopRecRecompile")[0];
     addresses.recAddBreakpoint = DebugSymbol.findFunctionsNamed("CBreakPoints::AddBreakPoint")[0];
-    addresses.cpuRegsPtr = findSymbol("_cpuRegistersPack").address;
-    addresses.eeMem = findSymbol("eeMem").address.readPointer();
-    addresses.psxRegsPtr = findSymbol("psxRegs").address;
-    addresses.iopMem = findSymbol("iopMem").address.readPointer();
+    addresses.cpuRegs = findSymbol("_cpuRegistersPack").address;
+    addresses.eeMem = findSymbol("eeMem").address;
+    addresses.psxRegs = findSymbol("psxRegs").address;
+    addresses.iopMem = findSymbol("iopMem").address;
     addresses.dynarecCheckBreakpoint = findSymbol("dynarecCheckBreakpoint").address;
     addresses.psxDynarecCheckBreakpoint = findSymbol("psxDynarecCheckBreakpoint").address;
 }
@@ -235,7 +257,7 @@ function setupAddressesThroughPattern() {
         });
         const ins = Instruction.parse(cpuRegsLoad); // lea rdx,[pcsx2-qt._cpuRegistersPack]
 
-        addresses.cpuRegsPtr = calculateLeaAddress(ins);
+        addresses.cpuRegs = calculateLeaAddress(ins);
     }
 
     {
@@ -248,11 +270,11 @@ function setupAddressesThroughPattern() {
         let ins = Instruction.parse(psxRegsLoad); // movsxd  rcx,r8d
         ins = Instruction.parse(ins.next); // lea rdx,[pcsx2-qt.psxRegs]
 
-        addresses.psxRegsPtr = calculateLeaAddress(ins);
+        addresses.psxRegs = calculateLeaAddress(ins);
     }
 
-    addresses.eeMem = findSymbol("EEmem").address.readPointer();
-    addresses.iopMem = findSymbol("IOPmem").address.readPointer();
+    addresses.eeMem = findSymbol("EEmem").address;
+    addresses.iopMem = findSymbol("IOPmem").address;
 
     addresses.dynarecCheckBreakpoint = getFunctionAddress({
         name: "dynarecCheckBreakpoint",
@@ -262,7 +284,7 @@ function setupAddressesThroughPattern() {
     });
     addresses.psxDynarecCheckBreakpoint = getFunctionAddress({
         name: "psxDynarecCheckBreakpoint",
-        pattern: "B9 03000000 E8 ???????? 48 8B 05 ???????? FF 50 28 40",
+        pattern: "B9 03000000 E8 ???????? 48 8B 05 ???????? FF 50 28 40 B7",
         //       "83 C0 FE 83 F8 02 77 16 48 8D 0D DE489400 E8 4126BFFF B9 03000000 E8 9761DBFF 48 8B 05 88CC9E02 FF 50 28 40 B7 01 EB 02 31 FF 89 F8 48 83 C4 58 5B"; // v2.6.0
         //       "83 C0 FE 83 F8 02 77 16 48 8D 0D AD197F00 E8 5D3FC0FF B9 03000000 E8 137DDBFF 48 8B 05 F4178802 FF 50 28 40 B7 01 EB 02 31 FF 89 F8 48 83 C4 30 5B"; // v2.2.0
         lookbackSize: 0x300,
@@ -278,27 +300,31 @@ if (sessionStorage.getItem("PCSX2_ADDRESSES") && IGNORE_SETUP_CACHE === false) {
 
     setupAddressesThroughCache();
 } else {
-    symbols = __e.enumerateSymbols();
+    const setup = {};
+    if (isAndroid) {
+        setup.hasSymbols = !!findSymbol("_ZN10BaseBlocks3NewEjm");
+        setup.setupAddressesThroughDebug = setupAddressesThroughDebugAndroid;
+        setup.setupAddressesThroughPattern = setupAddressesThroughPatternAndroid;
+    } else {
+        // windows, linux, mac?
+        setup.hasSymbols = DebugSymbol.findFunctionsNamed("BaseBlocks::New").length >= 1;
+        setup.setupAddressesThroughDebug = setupAddressesThroughDebug;
+        setup.setupAddressesThroughPattern = setupAddressesThroughPattern;
+    }
 
-    if (
-        DebugSymbol.findFunctionsNamed("BaseBlocks::New").length >= 1 &&
-        FORCE_PATTERN_FALLBACK === false
-    ) {
+    if (setup.hasSymbols && !FORCE_PATTERN_FALLBACK ) {
         console.warn("Using debug symbols");
-
-        setupAddressesThroughDebug();
+        setup.setupAddressesThroughDebug();
     } else {
         console.warn("Using pattern scanning");
-
         try {
-            setupAddressesThroughPattern();
+            setup.setupAddressesThroughPattern();
         } catch (err) {
             console.error(`
                 \rFailed pattern scanning!
-                \rInstall debug symbols to make PCSX2 hooking work,
+                \rInstall debug symbols to make hooking work,
                 \ror wait for someone to fix the patterns.
             `);
-
             throw err;
         }
     }
@@ -328,9 +354,9 @@ const baseBlocksNew = addresses.baseBlocksNew;
 const recRecompile = addresses.recRecompile;
 const iopRecRecompile = addresses.iopRecRecompile;
 const recAddBreakpoint = addresses.recAddBreakpoint;
-const cpuRegsPtr = addresses.cpuRegsPtr;
+const cpuRegs = addresses.cpuRegs;
 const eeMem = addresses.eeMem;
-const psxRegsPtr = addresses.psxRegsPtr;
+const psxRegs = addresses.psxRegs;
 const iopMem = addresses.iopMem;
 const dynarecCheckBreakpoint = addresses.dynarecCheckBreakpoint;
 const psxDynarecCheckBreakpoint = addresses.psxDynarecCheckBreakpoint;
@@ -413,200 +439,200 @@ function jitAttachIOP(startpc, recPtr, op) {
 const eeContext = {
     mem: eeMem,
     r0(view) {
-        return view(cpuRegsPtr.readByteArray(16));
+        return view(cpuRegs.readByteArray(16));
     },
     at(view) {
-        return view(cpuRegsPtr.add(16).readByteArray(16));
+        return view(cpuRegs.add(16).readByteArray(16));
     },
     v0(view) {
-        return view(cpuRegsPtr.add(32).readByteArray(16));
+        return view(cpuRegs.add(32).readByteArray(16));
     },
     v1(view) {
-        return view(cpuRegsPtr.add(48).readByteArray(16));
+        return view(cpuRegs.add(48).readByteArray(16));
     },
     a0(view) {
-        return view(cpuRegsPtr.add(64).readByteArray(16));
+        return view(cpuRegs.add(64).readByteArray(16));
     },
     a1(view) {
-        return view(cpuRegsPtr.add(80).readByteArray(16));
+        return view(cpuRegs.add(80).readByteArray(16));
     },
     a2(view) {
-        return view(cpuRegsPtr.add(96).readByteArray(16));
+        return view(cpuRegs.add(96).readByteArray(16));
     },
     a3(view) {
-        return view(cpuRegsPtr.add(112).readByteArray(16));
+        return view(cpuRegs.add(112).readByteArray(16));
     },
     t0(view) {
-        return view(cpuRegsPtr.add(128).readByteArray(16));
+        return view(cpuRegs.add(128).readByteArray(16));
     },
     t1(view) {
-        return view(cpuRegsPtr.add(144).readByteArray(16));
+        return view(cpuRegs.add(144).readByteArray(16));
     },
     t2(view) {
-        return view(cpuRegsPtr.add(160).readByteArray(16));
+        return view(cpuRegs.add(160).readByteArray(16));
     },
     t3(view) {
-        return view(cpuRegsPtr.add(176).readByteArray(16));
+        return view(cpuRegs.add(176).readByteArray(16));
     },
     t4(view) {
-        return view(cpuRegsPtr.add(192).readByteArray(16));
+        return view(cpuRegs.add(192).readByteArray(16));
     },
     t5(view) {
-        return view(cpuRegsPtr.add(208).readByteArray(16));
+        return view(cpuRegs.add(208).readByteArray(16));
     },
     t6(view) {
-        return view(cpuRegsPtr.add(224).readByteArray(16));
+        return view(cpuRegs.add(224).readByteArray(16));
     },
     t7(view) {
-        return view(cpuRegsPtr.add(240).readByteArray(16));
+        return view(cpuRegs.add(240).readByteArray(16));
     },
     s0(view) {
-        return view(cpuRegsPtr.add(256).readByteArray(16));
+        return view(cpuRegs.add(256).readByteArray(16));
     },
     s1(view) {
-        return view(cpuRegsPtr.add(272).readByteArray(16));
+        return view(cpuRegs.add(272).readByteArray(16));
     },
     s2(view) {
-        return view(cpuRegsPtr.add(288).readByteArray(16));
+        return view(cpuRegs.add(288).readByteArray(16));
     },
     s3(view) {
-        return view(cpuRegsPtr.add(304).readByteArray(16));
+        return view(cpuRegs.add(304).readByteArray(16));
     },
     s4(view) {
-        return view(cpuRegsPtr.add(320).readByteArray(16));
+        return view(cpuRegs.add(320).readByteArray(16));
     },
     s5(view) {
-        return view(cpuRegsPtr.add(336).readByteArray(16));
+        return view(cpuRegs.add(336).readByteArray(16));
     },
     s6(view) {
-        return view(cpuRegsPtr.add(352).readByteArray(16));
+        return view(cpuRegs.add(352).readByteArray(16));
     },
     s7(view) {
-        return view(cpuRegsPtr.add(368).readByteArray(16));
+        return view(cpuRegs.add(368).readByteArray(16));
     },
     t8(view) {
-        return view(cpuRegsPtr.add(384).readByteArray(16));
+        return view(cpuRegs.add(384).readByteArray(16));
     },
     t9(view) {
-        return view(cpuRegsPtr.add(400).readByteArray(16));
+        return view(cpuRegs.add(400).readByteArray(16));
     },
     k0(view) {
-        return view(cpuRegsPtr.add(416).readByteArray(16));
+        return view(cpuRegs.add(416).readByteArray(16));
     },
     k1(view) {
-        return view(cpuRegsPtr.add(432).readByteArray(16));
+        return view(cpuRegs.add(432).readByteArray(16));
     },
     gp(view) {
-        return view(cpuRegsPtr.add(448).readByteArray(16));
+        return view(cpuRegs.add(448).readByteArray(16));
     },
     sp(view) {
-        return view(cpuRegsPtr.add(464).readByteArray(16));
+        return view(cpuRegs.add(464).readByteArray(16));
     },
     s8(view) {
-        return view(cpuRegsPtr.add(480).readByteArray(16));
+        return view(cpuRegs.add(480).readByteArray(16));
     },
     ra(view) {
-        return view(cpuRegsPtr.add(496).readByteArray(16));
+        return view(cpuRegs.add(496).readByteArray(16));
     },
 };
 
 const iopContext = {
     mem: iopMem,
     r0(view) {
-        return view(psxRegsPtr.readByteArray(4));
+        return view(psxRegs.readByteArray(4));
     },
     at(view) {
-        return view(psxRegsPtr.add(4).readByteArray(4));
+        return view(psxRegs.add(4).readByteArray(4));
     },
     v0(view) {
-        return view(psxRegsPtr.add(8).readByteArray(4));
+        return view(psxRegs.add(8).readByteArray(4));
     },
     v1(view) {
-        return view(psxRegsPtr.add(12).readByteArray(4));
+        return view(psxRegs.add(12).readByteArray(4));
     },
     a0(view) {
-        return view(psxRegsPtr.add(16).readByteArray(4));
+        return view(psxRegs.add(16).readByteArray(4));
     },
     a1(view) {
-        return view(psxRegsPtr.add(20).readByteArray(4));
+        return view(psxRegs.add(20).readByteArray(4));
     },
     a2(view) {
-        return view(psxRegsPtr.add(24).readByteArray(4));
+        return view(psxRegs.add(24).readByteArray(4));
     },
     a3(view) {
-        return view(psxRegsPtr.add(28).readByteArray(4));
+        return view(psxRegs.add(28).readByteArray(4));
     },
     t0(view) {
-        return view(psxRegsPtr.add(32).readByteArray(4));
+        return view(psxRegs.add(32).readByteArray(4));
     },
     t1(view) {
-        return view(psxRegsPtr.add(36).readByteArray(4));
+        return view(psxRegs.add(36).readByteArray(4));
     },
     t2(view) {
-        return view(psxRegsPtr.add(40).readByteArray(4));
+        return view(psxRegs.add(40).readByteArray(4));
     },
     t3(view) {
-        return view(psxRegsPtr.add(44).readByteArray(4));
+        return view(psxRegs.add(44).readByteArray(4));
     },
     t4(view) {
-        return view(psxRegsPtr.add(48).readByteArray(4));
+        return view(psxRegs.add(48).readByteArray(4));
     },
     t5(view) {
-        return view(psxRegsPtr.add(52).readByteArray(4));
+        return view(psxRegs.add(52).readByteArray(4));
     },
     t6(view) {
-        return view(psxRegsPtr.add(56).readByteArray(4));
+        return view(psxRegs.add(56).readByteArray(4));
     },
     t7(view) {
-        return view(psxRegsPtr.add(60).readByteArray(4));
+        return view(psxRegs.add(60).readByteArray(4));
     },
     s0(view) {
-        return view(psxRegsPtr.add(64).readByteArray(4));
+        return view(psxRegs.add(64).readByteArray(4));
     },
     s1(view) {
-        return view(psxRegsPtr.add(68).readByteArray(4));
+        return view(psxRegs.add(68).readByteArray(4));
     },
     s2(view) {
-        return view(psxRegsPtr.add(72).readByteArray(4));
+        return view(psxRegs.add(72).readByteArray(4));
     },
     s3(view) {
-        return view(psxRegsPtr.add(76).readByteArray(4));
+        return view(psxRegs.add(76).readByteArray(4));
     },
     s4(view) {
-        return view(psxRegsPtr.add(80).readByteArray(4));
+        return view(psxRegs.add(80).readByteArray(4));
     },
     s5(view) {
-        return view(psxRegsPtr.add(84).readByteArray(4));
+        return view(psxRegs.add(84).readByteArray(4));
     },
     s6(view) {
-        return view(psxRegsPtr.add(88).readByteArray(4));
+        return view(psxRegs.add(88).readByteArray(4));
     },
     s7(view) {
-        return view(psxRegsPtr.add(92).readByteArray(4));
+        return view(psxRegs.add(92).readByteArray(4));
     },
     t8(view) {
-        return view(psxRegsPtr.add(96).readByteArray(4));
+        return view(psxRegs.add(96).readByteArray(4));
     },
     t9(view) {
-        return view(psxRegsPtr.add(100).readByteArray(4));
+        return view(psxRegs.add(100).readByteArray(4));
     },
     k0(view) {
-        return view(psxRegsPtr.add(104).readByteArray(4));
+        return view(psxRegs.add(104).readByteArray(4));
     },
     k1(view) {
-        return view(psxRegsPtr.add(108).readByteArray(4));
+        return view(psxRegs.add(108).readByteArray(4));
     },
     gp(view) {
-        return view(psxRegsPtr.add(112).readByteArray(4));
+        return view(psxRegs.add(112).readByteArray(4));
     },
     sp(view) {
-        return view(psxRegsPtr.add(116).readByteArray(4));
+        return view(psxRegs.add(116).readByteArray(4));
     },
     s8(view) {
-        return view(psxRegsPtr.add(120).readByteArray(4));
+        return view(psxRegs.add(120).readByteArray(4));
     },
     ra(view) {
-        return view(psxRegsPtr.add(124).readByteArray(4));
+        return view(psxRegs.add(124).readByteArray(4));
     },
 };
 
@@ -622,14 +648,26 @@ const iopContext = {
     Interceptor.replace(psxDynarecCheckBreakpoint, new NativeCallback(() => { return; }, "void", []));
 }
 
+const addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
+function addBreakpoint(cpu, temp, enabled, stepping) {
+    try{
+        addBp(cpu, temp, enabled, stepping)
+    } catch (e) {
+        if (e.message.includes("access violation")) {
+            // safe
+        } else {
+            console.error(e.stack);
+        }
+    }
+}
+
 // prettier-ignore
-async function setHookEE(object) {
+function setHookEE(object) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
-            const addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
-            addBp(0x01, parseInt(key), 0x00, 0x01);
+            addBreakpoint(0x01, parseInt(key), 0x00, 0x01);
         }
     }
 
@@ -649,13 +687,12 @@ async function setHookEE(object) {
 }
 
 // prettier-ignore
-async function setHookIOP(object) {
+function setHookIOP(object) {
     for (const key in object) {
         if (Object.hasOwnProperty.call(object, key)) {
             const element = object[key];
             operations[key] = element;
-            const addBp = new NativeFunction(recAddBreakpoint, "void", ["uint8", "uint32", "bool", "bool"]);
-            addBp(0x02, parseInt(key), 0x00, 0x01);
+            addBreakpoint(0x02, parseInt(key), 0x00, 0x01);
         }
     }
 
@@ -675,7 +712,7 @@ async function setHookIOP(object) {
 }
 
 function asPsxPtr(bytes) {
-    return eeContext.mem.add(ptr(new Uint32Array(bytes)[0]));
+    return eeContext.mem.readPointer().add(ptr(new Uint32Array(bytes)[0]));
 }
 
 function asRawPtr(bytes) {
@@ -690,4 +727,3 @@ module.exports = exports = {
 };
 
 // #endregion
-
