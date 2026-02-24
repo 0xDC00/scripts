@@ -15,7 +15,7 @@ console.warn('[Known issue] You may have to detach from the game manually when e
 
 let currentLines = {};
 let flushTimer = null;
-const FLUSH_DELAY = 250; // this was tested with dialogue set to fast, adjsut as necessary
+const FLUSH_DELAY = 250; // this was tested with dialogue set to fast, adjust as necessary
 
 Mono.perform(() => {
     Mono.setHook('Unity.TextMeshPro', 'TMPro.TextMeshProUGUI', 'set_text', -1, {
