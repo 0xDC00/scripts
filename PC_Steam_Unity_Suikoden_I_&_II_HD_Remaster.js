@@ -13,11 +13,18 @@ const handleLine = trans.send((s) => s, '250+');
 
 console.warn('[Known issue] You may have to detach from the game manually when exiting, otherwise it might not close.\n');
 
+// cache unity methods for performance
+let get_gameObject, get_name;
+
 let currentLines = {};
 let flushTimer = null;
 const FLUSH_DELAY = 250; // this was tested with dialogue set to fast, adjust as necessary
 
 Mono.perform(() => {
+    // resolve methods once outside the hook
+    get_gameObject = Mono.use('UnityEngine', 'UnityEngine.Component').get_gameObject;
+    get_name = Mono.use('UnityEngine', 'UnityEngine.Object').get_name;
+
     Mono.setHook('Unity.TextMeshPro', 'TMPro.TextMeshProUGUI', 'set_text', -1, {
         onEnter(args) {
             // return early if pointer is null
@@ -26,8 +33,8 @@ Mono.perform(() => {
             if (!textPtr || textPtr.isNull()) return;
 
             // get unity object name to filter dialogue lines
-            const gameObject = Mono.use('UnityEngine', 'UnityEngine.Component').get_gameObject.call(tmproPtr);
-            const name = Mono.use('UnityEngine', 'UnityEngine.Object').get_name.call(gameObject).readMonoString();
+            const gameObject = get_gameObject.call(tmproPtr);
+            const name = get_name.call(gameObject).readMonoString();
 
             // whitelist dialogue objects
             if (!name.startsWith('Txt_Command0')) return;
@@ -39,7 +46,7 @@ Mono.perform(() => {
             currentLines[name] = update;
 
             // remove alignment tags
-            if (flushTimer) clearTimeout(flushTimer);
+            clearTimeout(flushTimer);
             flushTimer = setTimeout(() => {
                 // combine lines 1, 2, and 3 in order
                 let fullText = Object.keys(currentLines).sort().map(k => currentLines[k]).join('\n');
