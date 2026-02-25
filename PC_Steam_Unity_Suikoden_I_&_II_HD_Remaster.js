@@ -13,30 +13,19 @@ const handleLine = trans.send((s) => s, '250+');
 
 console.warn('[Known issue] You may have to detach from the game manually when exiting, otherwise it might not close.\n');
 
-// cache unity methods for performance
-let get_gameObject, get_name;
-
 let currentLines = {};
 let flushTimer = null;
 const FLUSH_DELAY = 250; // this was tested with dialogue set to fast, adjust as necessary
 
 Mono.perform(() => {
-    const UnityObject = Mono.use('UnityEngine', 'UnityEngine.Object');
-    get_name = UnityObject.get_name;
-
-    const UnityComponent = Mono.use('UnityEngine', 'UnityEngine.Component');
-    get_gameObject = UnityComponent.get_gameObject;
-	
     Mono.setHook('Unity.TextMeshPro', 'TMPro.TextMeshProUGUI', 'set_text', -1, {
         onEnter(args) {
             // return early if pointer is null
-            const tmproPtr = args[0];
             const textPtr = args[1];
             if (!textPtr || textPtr.isNull()) return;
 
             // get unity object name to filter dialogue lines
-            const gameObject = get_gameObject.call(tmproPtr);
-            const name = get_name.call(gameObject).readMonoString();
+            const name = args[0].wrap().name.readMonoString();
 
             // whitelist dialogue objects
             if (!name.startsWith('Txt_Command0')) return;
@@ -59,7 +48,7 @@ Mono.perform(() => {
                 }
                 
                 currentLines = {};
-            }, FLUSH_DELAY);
+             }, FLUSH_DELAY);
         }
     });
 });
