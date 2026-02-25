@@ -21,10 +21,12 @@ let flushTimer = null;
 const FLUSH_DELAY = 250; // this was tested with dialogue set to fast, adjust as necessary
 
 Mono.perform(() => {
-    // resolve methods once outside the hook
-    get_gameObject = Mono.use('UnityEngine', 'UnityEngine.Component').get_gameObject;
-    get_name = Mono.use('UnityEngine', 'UnityEngine.Object').get_name;
+    const UnityObject = Mono.use('UnityEngine', 'UnityEngine.Object');
+    get_name = UnityObject.get_name;
 
+    const UnityComponent = Mono.use('UnityEngine', 'UnityEngine.Component');
+    get_gameObject = UnityComponent.get_gameObject;
+	
     Mono.setHook('Unity.TextMeshPro', 'TMPro.TextMeshProUGUI', 'set_text', -1, {
         onEnter(args) {
             // return early if pointer is null
