@@ -154,35 +154,33 @@ function getDoJitAddress() {
 
 // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_jitstate.h
 function createFunction_buildRegs() {
+    let regs, base, table;
+    if (arch === 'x64') {
+        regs = 'context.r15';
+        base = 'context.r13';
+        table = 'context.r14';
+    } else if (arch === 'arm64') {
+        regs = 'context.x28.add(24)';
+        base = 'context.x25';
+        table = 'context.x24';
+    }
+
     let body = '';
 
-    if (arch === 'x64') {
-        // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
-        body += 'const regs = context.r15;';
-    } else if (arch === 'arm64') {
-        body += 'const regs = context.x28.add(24);';
-    }
+    // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
+    body += `const regs = ${regs};`;
 
     let getValue = '';
     if (isFastMem === true) {
         /* fastmem */
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
-        if (arch === 'x64') {
-            body += 'const base = context.r13;';
-        } else if (arch === 'arm64') {
-            body += 'const base = context.x25;';
-        }
-
+        body += `const base = ${base};`;
         getValue = `get value() { return base.add(this._vm); },`; // host address
     }
     else {
         /* pageTable */
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L45
-        if (arch === 'x64') {
-            body += 'const table = context.r14;';
-        } else if (arch === 'arm64') {
-            body += 'const table = context.x24;';
-        }
+        body += `const table = ${table};`;
 
         const page_bits = 12 // 0xC
         const page_mask = (1 << page_bits) - 1; // 0xFFF
