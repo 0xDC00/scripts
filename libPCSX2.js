@@ -19,7 +19,7 @@ const __e =
 
 console.warn("[Compatibility]");
 console.warn("PCSX2 2.2.0 -> 2.6.2");
-console.warn("ARMSX2 1.0.7");
+console.warn("ARMSX2 1.0.8+");
 console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
 // #region Find Addresses
