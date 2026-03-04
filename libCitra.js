@@ -175,6 +175,7 @@ function createFunction_buildRegs() {
         /* fastmem */
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
         body += `const base = ${base};`;
+
         getValue = `get value() { return base.add(this._vm); },`; // host address
     }
     else {
