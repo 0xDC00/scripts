@@ -11,6 +11,7 @@ console.warn('[Compatibility]');
 console.warn('Azahar 2120.1+');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
+const arch = Process.arch;
 const isFastMem = false;
 const DoJitPtr = getDoJitAddress();
 const buildRegs = createFunction_buildRegs();
@@ -23,7 +24,7 @@ const operations = Object.create(null);
 // EmitX64::BlockDescriptor EmitX64::RegisterBlock(const IR::LocationDescriptor& descriptor, CodePtr entrypoint, CodePtr entrypoint_far, size_t size)
 // EmitX64::BlockDescriptor EmitX64::RegisterBlock(const IR::LocationDescriptor& descriptor, CodePtr entrypoint, size_t size)
 
-const isVirtual = Process.arch === 'x64' && Process.platform === 'windows';
+const isVirtual = arch === 'x64' && Process.platform === 'windows';
 const idxDescriptor = isVirtual === true ? 2 : 1;
 const idxEntrypoint = idxDescriptor + 1;
 Interceptor.attach(DoJitPtr, {
@@ -35,7 +36,13 @@ Interceptor.attach(DoJitPtr, {
         //const entrypoint_far = args[4]; // rsp+28
         //const size = args[5]; // rsp+30
 
-        const em_address = descriptor.readU32();
+        let em_address;
+        if (arch === 'x64') {
+            em_address = descriptor.readU32();
+        } else if (arch === 'arm64') {
+            em_address = descriptor.toUInt32();
+        }
+
         const op = operations[em_address];
         if (op !== undefined) {
             console.log('Attach:', ptr(em_address), entrypoint);
@@ -53,19 +60,30 @@ Interceptor.attach(DoJitPtr, {
 
 function getDoJitAddress() {
     if (Process.platform !== 'windows') {
-        // Unix
-        // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm.cold
-        const names = [
-            "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm", // linux 64 new
-            "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m", // linux x64
-            // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
-            "Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)", // macOS x64 (demangle)
-        ];
-        for (const name of names) {
-            const addresses = DebugSymbol.findFunctionsNamed(name);
-            if (addresses.length !== 0) {
-                return addresses[0];
+        if (arch === 'x64') {
+            // Unix
+            // not _ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm.cold
+            const names = [
+                "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvm", // linux 64 new
+                "_ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m", // linux x64
+                // __ZN8Dynarmic7Backend3X647EmitX6413RegisterBlockERKNS_2IR18LocationDescriptorEPKvS8_m
+                "Dynarmic::Backend::X64::EmitX64::RegisterBlock(Dynarmic::IR::LocationDescriptor const&, void const*, unsigned long)", // macOS x64 (demangle)
+            ];
+            for (const name of names) {
+                const addresses = DebugSymbol.findFunctionsNamed(name);
+                if (addresses.length !== 0) {
+                    return addresses[0];
+                }
             }
+        } else if (arch === 'arm64') {
+            // Android
+            const __e = Process.findModuleByName('libcitra-android.so');
+            const name = '_ZN8Dynarmic7Backend5Arm6412AddressSpace19RelinkForDescriptorENS_2IR18LocationDescriptorEPSt4byte';
+            const address = __e.getExportByName(name);
+            console.log('ARM64 RelinkForDescriptor:', address);
+            return address;
+        } else {
+            console.warn('Unknown architecture:', arch);
         }
     }
     else {
@@ -138,21 +156,33 @@ function getDoJitAddress() {
 function createFunction_buildRegs() {
     let body = '';
 
-    // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
-    body += 'const regs = context.r15;';
+    if (arch === 'x64') {
+        // https://github.com/merryhime/dynarmic/blob/0c12614d1a7a72d778609920dde96a4c63074ece/src/dynarmic/backend/x64/a64_emit_x64.cpp#L481
+        body += 'const regs = context.r15;';
+    } else if (arch === 'arm64') {
+        body += 'const regs = context.x28.add(24);';
+    }
 
     let getValue = '';
     if (isFastMem === true) {
         /* fastmem */
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L48
-        body += 'const base = context.r13;';
+        if (arch === 'x64') {
+            body += 'const base = context.r13;';
+        } else if (arch === 'arm64') {
+            body += 'const base = context.x25;';
+        }
 
         getValue = `get value() { return base.add(this._vm); },`; // host address
     }
     else {
         /* pageTable */
         // https://github.com/merryhime/dynarmic/blob/master/src/dynarmic/backend/x64/a32_interface.cpp#L45
-        body += 'const table = context.r14;';
+        if (arch === 'x64') {
+            body += 'const table = context.r14;';
+        } else if (arch === 'arm64') {
+            body += 'const table = context.x24;';
+        }
 
         const page_bits = 12 // 0xC
         const page_mask = (1 << page_bits) - 1; // 0xFFF
