@@ -24,7 +24,8 @@ const operations = Object.create(null);
 // EmitX64::BlockDescriptor EmitX64::RegisterBlock(const IR::LocationDescriptor& descriptor, CodePtr entrypoint, CodePtr entrypoint_far, size_t size)
 // EmitX64::BlockDescriptor EmitX64::RegisterBlock(const IR::LocationDescriptor& descriptor, CodePtr entrypoint, size_t size)
 
-const isVirtual = arch === 'x64' && Process.platform === 'windows';
+const isX64 = arch === 'x64';
+const isVirtual = isX64 && Process.platform === 'windows';
 const idxDescriptor = isVirtual === true ? 2 : 1;
 const idxEntrypoint = idxDescriptor + 1;
 Interceptor.attach(DoJitPtr, {
@@ -37,9 +38,10 @@ Interceptor.attach(DoJitPtr, {
         //const size = args[5]; // rsp+30
 
         let em_address;
-        if (arch === 'x64') {
+        if (isX64) {
             em_address = descriptor.readU32();
-        } else if (arch === 'arm64') {
+        } else {
+            // ARM64
             em_address = descriptor.toUInt32();
         }
 
