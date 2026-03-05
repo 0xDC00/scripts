@@ -27,7 +27,6 @@ function handleHook(thiz, hookName, noDedup = false) {
   if (s.startsWith("NOT USED:")) return;  // this appears in some quest text
   if (!noDedup && lastSent[ctx] === s) return;
   lastSent[ctx] = s;
-  if (lastHook && lastHook !== hookName) handlerLine("");
   lastHook = hookName;
   handlerLine(s);
 }
