@@ -138,8 +138,8 @@ let previousMenusDescription1 = '';
 })();
 
 
-let previousCraftDescription = '';
-(function () {
+let previousDescription = '';
+(function () { // Also quartz description
     const craftDescriptionSig = 'e8 cf 72 0c 00 ?? 83 c4 48 c3 cc';
     var results = Memory.scanSync(__e.base, __e.size, craftDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
@@ -154,19 +154,31 @@ let previousCraftDescription = '';
     Interceptor.attach(address, function (args) {
         // console.warn("in: craftDescription");
 
-        const craftDescriptionAddress = this.context.rbx;
-
         try {
+            const craftDescriptionAddress = this.context.rbx;
             let craftDescription = craftDescriptionAddress.readShiftJisString();
 
-            if (craftDescription !== previousCraftDescription && craftDescription.length >= 5) { // Hook is called every frame
-                previousCraftDescription = craftDescription;
+            if (craftDescription !== previousDescription && craftDescription.length >= 5) { // Hook is called every frame
+                previousDescription = craftDescription;
                 craftDescription = cleanText(craftDescription);
 
                 secondHandler(craftDescription);
             }
         }
         catch (e) { /* This is purely to remove the error in a specific part of the menu */ }
+
+        try {
+            const craftDescriptionAddress = this.context.r9;
+            let craftDescription = craftDescriptionAddress.readShiftJisString();
+
+            if (craftDescription !== previousDescription && craftDescription.length >= 5) { // Hook is called every frame
+                previousDescription = craftDescription;
+                craftDescription = cleanText(craftDescription);
+
+                secondHandler(craftDescription);
+            }
+        }
+        catch (e) { /* I don't think this is necessary but just in case */ }
     });
 })();
 
@@ -265,39 +277,39 @@ let previousMasterQuartzAbility = '';
 })();
 
 
-let previousQuartzDescription = '';
-(function () {
-    const quartzDescriptionSig = '66 66 66 0f 1f 84 00 00 00 00 00 ?? 0f b6 04 12 88 04';
-    var results = Memory.scanSync(__e.base, __e.size, quartzDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+// let previousQuartzDescription = '';
+// (function () {
+//     const quartzDescriptionSig = '66 66 66 0f 1f 84 00 00 00 00 00 ?? 0f b6 04 12 88 04';
+//     var results = Memory.scanSync(__e.base, __e.size, quartzDescriptionSig);
+//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-    if (results.length === 0) {
-        console.error('[quartzDescriptionPattern] Hook not found!');
-        return;
-    }
+//     if (results.length === 0) {
+//         console.error('[quartzDescriptionPattern] Hook not found!');
+//         return;
+//     }
 
-    const address = results[0].address.add(0xb);
-    console.log('[quartzDescriptionPattern] Found hook', address);
+//     const address = results[0].address.add(0xb);
+//     console.log('[quartzDescriptionPattern] Found hook', address);
 
-    Interceptor.attach(address, function (args) {
-        // console.warn("in: quartzDescription");
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: quartzDescription");
 
-        const quartzDescriptionAddress = this.context.rax;
+//         const quartzDescriptionAddress = this.context.rax;
 
-        try {
-            let quartzDescription = quartzDescriptionAddress.readShiftJisString();
+//         try {
+//             let quartzDescription = quartzDescriptionAddress.readShiftJisString();
 
-            if (quartzDescription !== previousQuartzDescription) { // Hook is called every frame
-                previousQuartzDescription = quartzDescription;
-                previousMasterQuartzName = '';
-                quartzDescription = cleanText(quartzDescription);
+//             if (quartzDescription !== previousQuartzDescription) { // Hook is called every frame
+//                 previousQuartzDescription = quartzDescription;
+//                 previousMasterQuartzName = '';
+//                 quartzDescription = cleanText(quartzDescription);
 
-                secondHandler(quartzDescription);
-            }
-        }
-        catch (e) { /* This is purely to remove the error in a specific part of the menu */ }
-    });
-})();
+//                 secondHandler(quartzDescription);
+//             }
+//         }
+//         catch (e) { /* This is purely to remove the error in a specific part of the menu */ }
+//     });
+// })();
 
 
 let previousItemDescription = '';
