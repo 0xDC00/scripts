@@ -19,7 +19,7 @@ console.warn("- There's a bit of lag when flipping back a page of a book/newspap
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send(s => s, '200+');
 const secondHandler = trans.send(s => s, 200);
-const thirdHandler = trans.send(s => s, '50+');
+const thirdHandler = trans.send(s => s, '25+');
 
 let name = '';
 (function () {
@@ -136,97 +136,128 @@ let previousMenusDescription1 = '';
 })();
 
 
-let previousMenusDescription2 = '';
-(function () {
-    const menuDescription2Sig = 'e8 ?? ?? ?? ?? ?? 8b bc ?? ?? ?? ?? ?? ?? 8b b4 ?? ?? ?? ?? ?? ?? 8b 9c';
-    var results = Memory.scanSync(__e.base, __e.size, menuDescription2Sig);
+let previousDescription = '';
+(function () { // Various item description from the menu (e.g. equipment, quartz, inventory), art description and craft description in battle 
+    const itemDescriptionSig = '38 1f 0f 84 ?? ?? ?? ?? ?? 89';
+    var results = Memory.scanSync(__e.base, __e.size, itemDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
     if (results.length === 0) {
-        console.error('[menuDescription2Pattern] Hook not found!');
+        console.error('[itemDescriptionPattern] Hook not found!');
         return;
     }
 
     const address = results[0].address;
-    console.log('[menuDescription2Pattern] Found hook', address);
+    console.log('[itemDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: menuDescription2");
-
-        const menuDescription2Address = this.context.rax;
+        // console.warn("in: itemDescription");
 
         try {
-            let menuDescription2 = menuDescription2Address.readShiftJisString();
+            const battleCraftAddress = this.context.rdi;
+            let battleCraftDescription = battleCraftAddress.readShiftJisString();
 
-            if (menuDescription2 !== previousMenusDescription2) { // Hook is called every frame
-                previousMenusDescription2 = menuDescription2;
-                menuDescription2 = cleanText(menuDescription2);
+            if (battleCraftDescription !== previousDescription && battleCraftDescription.length > 8) { // Hook is called every frame
+                previousDescription = battleCraftDescription;
+                battleCraftDescription = cleanText(battleCraftDescription);
 
-                secondHandler(menuDescription2);
+                thirdHandler(battleCraftDescription);
             }
         }
-        catch (e) { /* This is purely to remove the error in a specific part of the menu */ }
+        catch(e) { /* I don't think it's necessary but just in case */ }
     });
-})();
+})(); 
 
 
-let previousArtsDescription = '';
-(function () {
-    const artsDescriptionSig = '90 ?? 0f b6 04 10 88 04 ?? ?? 8d 52 01 84 c0 75';
-    var results = Memory.scanSync(__e.base, __e.size, artsDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+// let previousMenusDescription2 = '';
+// (function () { // Causes the game to crash on Linux
+//     const menuDescription2Sig = 'e8 ?? ?? ?? ?? ?? 8b bc ?? ?? ?? ?? ?? ?? 8b b4 ?? ?? ?? ?? ?? ?? 8b 9c';
+//     var results = Memory.scanSync(__e.base, __e.size, menuDescription2Sig);
+//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-    if (results.length === 0) {
-        console.error('[artsDescriptionPattern] Hook not found!');
-        return;
-    }
+//     if (results.length === 0) {
+//         console.error('[menuDescription2Pattern] Hook not found!');
+//         return;
+//     }
 
-    const address = results[0].address.add(0x1);
-    console.log('[artsDescriptionPattern] Found hook', address);
+//     const address = results[0].address;
+//     console.log('[menuDescription2Pattern] Found hook', address);
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: menuDescription2");
 
-    Interceptor.attach(address, function (args) {
-        // console.warn("in: artsDescription");
+//         const menuDescription2Address = this.context.rax;
 
-        const artsDescriptionAddress = this.context.r8;
-        let artsDescription = artsDescriptionAddress.readShiftJisString();
+//         try {
+//             let menuDescription2 = menuDescription2Address.readShiftJisString();
 
-        if (artsDescription !== previousArtsDescription) { // Hook is called every frame
-            previousArtsDescription = artsDescription;
-            artsDescription = cleanText(artsDescription);
+//             if (menuDescription2 !== previousMenusDescription2) { // Hook is called every frame
+//                 previousMenusDescription2 = menuDescription2;
+//                 menuDescription2 = cleanText(menuDescription2);
 
-            secondHandler(artsDescription);
-        }
-    });
-})();
+//                 secondHandler(menuDescription2);
+//             }
+//         }
+//         catch (e) { /* This is purely to remove the error in a specific part of the menu */ }
+//     });
+// })(); 
 
 
-let previousQuartzDescription = '';
-(function () {
-    const quartzDescriptionSig = '0f 1f 00 ?? 0f b6 04 12 88 04 11 ?? 8d';
-    var results = Memory.scanSync(__e.base, __e.size, quartzDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+// (function () {
+//     const artsDescriptionSig = '90 ?? 0f b6 04 10 88 04 ?? ?? 8d 52 01 84 c0 75';
+//     var results = Memory.scanSync(__e.base, __e.size, artsDescriptionSig);
+//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-    if (results.length === 0) {
-        console.error('[quartzDescriptionPattern] Hook not found!');
-        return;
-    }
+//     if (results.length === 0) {
+//         console.error('[artsDescriptionPattern] Hook not found!');
+//         return;
+//     }
 
-    const address = results[0].address.add(0x3);
-    console.log('[quartzDescriptionPattern] Found hook', address);
+//     const address = results[0].address.add(0x1);
+//     console.log('[artsDescriptionPattern] Found hook', address);
 
-    Interceptor.attach(address, function (args) {
-        // console.warn("in: quartzDescription");
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: artsDescription");
 
-        const quartzDescriptionAddress = this.context.r10;
-        let quartzDescription = quartzDescriptionAddress.readShiftJisString();
+//         const artsDescriptionAddress = this.context.r8;
+//         let artsDescription = artsDescriptionAddress.readShiftJisString();
 
-        if (quartzDescription !== previousQuartzDescription) { // Hook is called every frame
-            previousQuartzDescription = quartzDescription;
-            quartzDescription = cleanText(quartzDescription);
+//         if (artsDescription !== previousDescription) { // Hook is called every frame
+//             previousDescription = artsDescription;
+//             artsDescription = cleanText(artsDescription);
 
-            secondHandler(quartzDescription);
-        }
-    });
-})();
+//             thirdHandler(artsDescription);
+//         }
+//     });
+// })();
+
+
+// let previousQuartzDescription = '';
+// (function () {
+//     const quartzDescriptionSig = '0f 1f 00 ?? 0f b6 04 12 88 04 11 ?? 8d';
+//     var results = Memory.scanSync(__e.base, __e.size, quartzDescriptionSig);
+//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+//     if (results.length === 0) {
+//         console.error('[quartzDescriptionPattern] Hook not found!');
+//         return;
+//     }
+
+//     const address = results[0].address.add(0x3);
+//     console.log('[quartzDescriptionPattern] Found hook', address);
+
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: quartzDescription");
+
+//         const quartzDescriptionAddress = this.context.r10;
+//         let quartzDescription = quartzDescriptionAddress.readShiftJisString();
+
+//         if (quartzDescription !== previousQuartzDescription) { // Hook is called every frame
+//             previousQuartzDescription = quartzDescription;
+//             quartzDescription = cleanText(quartzDescription);
+
+//             secondHandler(quartzDescription);
+//         }
+//     });
+// })();
 
 
 let previousQuestName = '';
