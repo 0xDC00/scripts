@@ -280,7 +280,8 @@ function tryGetAslrOffset() {
         onEnter(args) {
             // GetVersionString() is called multiple times when the emulator opens,
             // so putting it inside this Interceptor makes it easier to get the correct
-            // version for the game
+            // version for the game.
+            // there might be a race condition...
             checkVersionMatch();
 
             // 1 for MingW, 2 for MSVC
@@ -288,44 +289,50 @@ function tryGetAslrOffset() {
 
             const textBytes = '41 70 70 6c 69 63 61 74 69 6f 6e 00'; // Application
             const results = Memory.scanSync(CreateProcessParameter, 0x15, textBytes);
+
+            let safeAddress = NULL;
             if (results.length !== 0) {
-                const safeAddress = results[0].address;
-                const titleId = "0" + safeAddress.add(0x10).readU64().toString(16).toUpperCase();
-                const codeAddress = safeAddress.add(0x18).readPointer(); // already has applied offset
-
-                // only used for reattaching NCE for now
-                sessionStorage.setItem('Initialize_Params', {
-                    codeAddress: codeAddress.toString(10),
-                    titleId: titleId,
-                });
-
-                const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
-                const aslrOffsetHex = codeAddress.sub(baseAddress);
-
-                // codeAddress on Dynarmic is around 0x80004000,
-                // but on NCE it's like 0x18be72fbd4
-                if (aslrOffsetHex.compare(ptr(0x80000000)) > 0) {
-                    console.warn(`High code address ${codeAddress}, using NCE hooks...`);
-                    sessionStorage.setItem('NCE', true);
-                    
-                    const RunAddress = __e.getExportByName('_ZN6Kernel8KProcess3RunEim');
-                    const runHook = Interceptor.attach(RunAddress, {
-                        onLeave() {
-                            runHook.detach();
-                            hookNce(codeAddress, titleId);
-                        }
-                    })
-
-                    // doesn't need ASLR calculations
-                    return true;
-                }
-
-                console.log('ASLR Offset:', aslrOffsetHex);
-                aslrOffset = aslrOffsetHex.toUInt32();
-                sessionStorage.setItem('ASLR_Offset', aslrOffset);
+                safeAddress = results[0].address;
             } else {
-                throw new Error('Missing string?');
+                // "Rings" on Persona 5 Royal?
+                safeAddress = CreateProcessParameter;
+                console.warn(`Unexpected CreateProcessParameter:
+                    \r${hexdump(CreateProcessParameter, { header: false, ansi: false, length: 0x20 })}`);
             }
+
+            const titleId = "0" + safeAddress.add(0x10).readU64().toString(16).toUpperCase();
+            const codeAddress = safeAddress.add(0x18).readPointer(); // already has applied offset
+
+            // only used for reattaching NCE for now
+            sessionStorage.setItem('Initialize_Params', {
+                codeAddress: codeAddress.toString(10),
+                titleId: titleId,
+            });
+
+            const baseAddress = IS_32 ? ptr(0x200000) : ptr(0x80000000);
+            const aslrOffsetHex = codeAddress.sub(baseAddress);
+
+            // codeAddress on Dynarmic is around 0x80004000,
+            // but on NCE it's like 0x18be72fbd4
+            if (aslrOffsetHex.compare(ptr(0x80000000)) > 0) {
+                console.warn(`High code address ${codeAddress}, using NCE hooks...`);
+                sessionStorage.setItem('NCE', true);
+                
+                const RunAddress = __e.getExportByName('_ZN6Kernel8KProcess3RunEim');
+                const runHook = Interceptor.attach(RunAddress, {
+                    onLeave() {
+                        runHook.detach();
+                        hookNce(codeAddress, titleId);
+                    }
+                })
+
+                // doesn't need ASLR calculations
+                return true;
+            }
+
+            console.log('ASLR Offset:', aslrOffsetHex);
+            aslrOffset = aslrOffsetHex.toUInt32();
+            sessionStorage.setItem('ASLR_Offset', aslrOffset);
         }
     });
 }
