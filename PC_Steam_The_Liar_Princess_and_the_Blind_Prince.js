@@ -36,7 +36,7 @@ function attach(name, pattern, handler) {
     return;
   }
   const address = results[0].address;
-  console.log(`\x1b[32m[${name}] @ ${address}${colors.Reset}\x1b[0m`);
+  console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
 
   Breakpoint.add(address, function () {
     // console.log("onEnter:", name);
