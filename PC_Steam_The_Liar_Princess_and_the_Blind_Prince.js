@@ -37,6 +37,9 @@ function attach(name, pattern, handler) {
   }
   const address = results[0].address;
   console.log(`\x1b[32m[${name}] @ ${address}\x1b[0m`);
+  if (results.length > 1) {
+    console.warn(`[${name}] has ${results.length} results`);
+  }
 
   Breakpoint.add(address, function () {
     // console.log("onEnter:", name);
