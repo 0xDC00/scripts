@@ -12,6 +12,7 @@
 const __e = Process.enumerateModules()[0];
 const sendText = trans.send((s) => s, "200+");
 
+// both of these are hot hooks
 const hooks = {
   CutsceneDialogue: {
     // pattern: "E8 5D 81 FE FF",
@@ -71,12 +72,20 @@ function cutsceneDialogueHandler({ name }) {
   sendText(text);
 }
 
-const previousTexts = [, , , , , , , , , ,]; // behold, javascript!
+const previousTexts = [, , , , , , , , , , , , , , ,]; // behold, javascript!
 function whateverHandler() {
+  /** @type {string} */
   const text = this.context.rdx.readUtf8String();
   if (previousTexts.includes(text)) {
     return;
   }
+
+  // super lazy number check, but should be fast in a hot loop
+  const firstChar = text[0];
+  if ((firstChar >= "0" && firstChar <= "9") === true) {
+    return;
+  }
+
   previousTexts.push(text);
   previousTexts.shift();
 
