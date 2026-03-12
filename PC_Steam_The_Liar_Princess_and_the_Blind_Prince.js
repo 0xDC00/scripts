@@ -14,12 +14,14 @@ const sendText = trans.send((s) => s, "200+");
 
 const hooks = {
   CutsceneDialogue: {
-    pattern: "E8 5D 81 FE FF",
+    // pattern: "E8 5D 81 FE FF",
+    pattern: "e8 ?? ?? ?? ?? 4? b0 ?? 4? 8d 55 80",
     handler: cutsceneDialogueHandler,
   },
   Hover: {
     // overworld, trophy, popups
-    pattern: "E8 AB 41 23 00",
+    // pattern: "E8 AB 41 23 00",
+    pattern: "e8 ?? ?? ?? ?? 8b ce 0f 28",
     handler: whateverHandler,
   },
 };
