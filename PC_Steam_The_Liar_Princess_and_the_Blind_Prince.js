@@ -10,40 +10,72 @@
 // ==/UserScript==
 
 const __e = Process.enumerateModules()[0];
-const handler = trans.send((s) => s, "200+");
+const sendText = trans.send((s) => s, "200+");
 
-attach("DialogueHot", "E8 5D 81 FE FF"); // tied to framerate
-// attach("DialogueEnd", "E8 6A 31 FE FF"); // unreliable, doesn't work sometimes
+const hooks = {
+  CutsceneDialogue: {
+    pattern: "E8 5D 81 FE FF",
+    handler: cutsceneDialogueHandler,
+  },
+  Hover: {
+    // overworld, trophy, popups
+    pattern: "E8 AB 41 23 00",
+    handler: whateverHandler,
+  },
+};
 
-let previousText = "";
+for (const name in hooks) {
+  const { pattern, handler } = hooks[name];
+  attach(name, pattern, handler);
+}
 
-function attach(name, pattern, register) {
+function attach(name, pattern, handler) {
   const results = Memory.scanSync(__e.base, __e.size, pattern);
   if (results.length === 0) {
     console.error(`[${name}] Hook not found!`);
     return;
   }
   const address = results[0].address;
-  console.log(`[${name}] @ ${address}`);
+  console.log(`\x1b[32m[${name}] @ ${address}${colors.Reset}\x1b[0m`);
 
-  Interceptor.attach(address, function (args) {
+  Breakpoint.add(address, function () {
     // console.log("onEnter:", name);
-
-    /** @type {NativePointer} */
-    const length = this.context.r8;
-
-    // game's button check?
-    // PrincessAndPrince.exe+9A92 - 49 83 F8 0F           - cmp r8,0F
-    if (length.compare(0x0f) <= 0) {
-      return;
-    }
-
-    const text = this.context.rdx.readUtf8String();
-    if (text === previousText) {
-      return;
-    }
-    previousText = text;
-
-    handler(text);
+    handler.call(this, { name });
   });
+}
+
+let previousCutsceneDialogue = "";
+function cutsceneDialogueHandler({ name }) {
+  /** @type {NativePointer} */
+  const length = this.context.r8;
+
+  // game's button check?
+  // PrincessAndPrince.exe+9A92 - 49 83 F8 0F           - cmp r8,0F
+  if (length.compare(0x0f) <= 0) {
+    return;
+  }
+
+  const text = this.context.rdx.readUtf8String();
+  if (text === previousCutsceneDialogue) {
+    return;
+  }
+  previousCutsceneDialogue = text;
+
+  // console.warn("onFinish:", name);
+
+  sendText(text);
+}
+
+const previousTexts = [, , , , , , , , , ,]; // behold, javascript!
+function whateverHandler() {
+  const text = this.context.rdx.readUtf8String();
+  if (previousTexts.includes(text)) {
+    return;
+  }
+  previousTexts.push(text);
+  previousTexts.shift();
+
+  // console.warn("onFinish:", name, JSON.stringify(text));
+
+  sendText(text);
 }
