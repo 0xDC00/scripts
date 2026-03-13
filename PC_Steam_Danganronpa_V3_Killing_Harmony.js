@@ -14,6 +14,7 @@ const handler = trans.send(s => s, '100+');
 (function () {
     attach('DialoguePattern', 'E8 BB?????? 48 ?? ?? ?? ?? 48 ?? ?? E8 7E?????? 0F28 ?? ?? ?? 48 ?? ?? ?? 5B', 'rcx', 0);
     attach('TrialDialogue', '48 8D 8B 6A 09 00 00 E8 ?? ?? ?? ?? 48 8B 4C 24', 'rcx', 7);
+	attach('VirtualWorldDialogue', '48 8B 93 38 0A 00 00 48 8D 8B 52 06 00 00 E8 ?? ?? ?? ?? 48 8B 4C 24 50 48 33 CC', 'rcx', 14);
     
     function attach(name, pattern, register, offset) {
         const results = Memory.scanSync(__e.base, __e.size, pattern);
