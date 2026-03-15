@@ -357,9 +357,29 @@ Mono.setHook("", "MB_ItemGetDialog", "OpenTreasure", -1, {
   }
 });
 
+// the devs made a typo
+Mono.setHook("", "UIRoot.GuideMenu", "DispUpadte", -1, {
+  onEnter(args) {
+    console.log("onEnter: UIRoot.GuideMenu.DispUpadte");
+    this.thiz = args[0].wrap();
+  },
+  onLeave() {
+    console.log("onLeave: UIRoot.GuideMenu.DispUpadte");
+    // _Guide_Title (GameObject)
+    //   - UnityEngine.RectTransform
+    //   - UnityEngine.CanvasRenderer
+    //   - TMPro.TextMeshProUGUI <- need this
+    //   - UnityEngine.UI.Layout
+    const text = readString(this.thiz._Guide_Title.wrap().GetComponentByName("TextMeshProUGUI").wrap().text);
+    positionTopHandler(text);
+  }
+});
+
+// opening the guide window for an ability
 // private void TextSet(GameObject obj, string[] text, int start, int end, bool hideParent)
 Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
   onEnter(args) {
+    console.log("onEnter: UIRoot.GuideMenu.SetText");
     const stringArray = args[2].value; // string[]
     const length = stringArray.length;
     
@@ -374,7 +394,7 @@ Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
       lines[i] = stringArray[i];
     }
     const text = lines.join("\n");
-    handler(text);
+    positionMiddleHandler(text);
   },
 });
 
