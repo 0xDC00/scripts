@@ -380,6 +380,7 @@ Mono.setHook("", "UIRoot.GuideMenu", "DispUpadte", -1, {
 Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
   onEnter(args) {
     console.log("onEnter: UIRoot.GuideMenu.SetText");
+
     const stringArray = args[2].value; // string[]
     const length = stringArray.length;
     
@@ -396,6 +397,25 @@ Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
     const text = lines.join("\n");
     positionMiddleHandler(text);
   },
+});
+
+Mono.setHook("", "UIRoot.Ability", "JobCharacteristicsUpdate", -1, {
+  onEnter(args) {
+    console.log("onEnter: UIRoot.Ability.JobCharacteristicsUpdate");
+    this.thiz = args[0].wrap();
+    this.hook = SetText.attach({
+      onEnter(args) {
+        this.thiz = args[0].wrap();
+      },
+      onLeave() {
+        const text = readString(this.thiz.text);
+        positionTopHandler(text, true);
+      }
+    });
+  },
+  onLeave() {
+    this.hook.detach();
+  }
 });
 
 //#endregion
