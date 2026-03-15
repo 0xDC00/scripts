@@ -340,7 +340,7 @@ Mono.setHook("", "MB_FieldDialog", "OpenImpl", 2, {
     console.log("onEnter: MB_FieldDialog.Open");
     const str = args[1];
     // const bNoClose = args[2];
-    const text = readString(str).replace(/<[^>]+>/g, "");
+    const text = readString(str);
     handler(text);
   },
 })
@@ -355,6 +355,27 @@ Mono.setHook("", "MB_ItemGetDialog", "OpenTreasure", -1, {
     logText(text);
     handler(text);
   }
+})
+
+// private void TextSet(GameObject obj, string[] text, int start, int end, bool hideParent)
+Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
+  onEnter(args) {
+    const stringArray = args[2].value; // string[]
+    const length = stringArray.length;
+    
+    // check if it's just outputting the mp cost
+    const firstLine = stringArray[0];
+    if (length === 1 && (firstLine >= "0" && firstLine <= "9")) {
+      return;
+    }
+    
+    const lines = [firstLine];
+    for (let i = 1; i < length; i++) {
+      lines[i] = stringArray[i];
+    }
+    const text = lines.join("\n");
+    handler(text);
+  },
 })
 
 //#endregion
@@ -380,6 +401,8 @@ trans.replace((/** @type {string} */s) => {
 
   // s = s.replace(/\[PCM1\]/g, "ティズ");
   // s = s.replace(/\[PCF1\]/g, "アニエス");
+  s = s.replace(/<sprite[^>]+>/g, "▢");
+  s = s.replace(/<[^>]+>/g, "");
 
   return s.trim();
 });
