@@ -16,6 +16,7 @@ const BACKTRACE = false;
 
 const SETTINGS = {
   characterNames: true,
+  filterSeenText: false,
   debugLogs: false,
 };
 
