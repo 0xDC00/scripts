@@ -3,7 +3,7 @@
 // @version      1.0.0
 // @author       Mansive
 // @description  Steam
-// * Square Enix, Cattle Call Inc. 
+// * Square Enix, Cattle Call Inc.
 //
 // https://store.steampowered.com/app/2833580/BRAVELY_DEFAULT_FLYING_FAIRY_HD_Remaster/
 // ==/UserScript==
@@ -39,7 +39,7 @@ if (BACKTRACE === true) {
   //     const text = args[0].wrap().text.readMonoString();
   //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
   //     console.warn(JSON.stringify(text));
-  //     console.log("callstack:", callstack.splice(0, 8), "\n");   
+  //     console.log("callstack:", callstack.splice(0, 8), "\n");
   //   }
   // });
   return;
@@ -215,8 +215,8 @@ const talkController = {
       trans.send(text);
       this.clear();
     }, 50);
-  }
-}
+  },
+};
 
 //#endregion
 
@@ -232,10 +232,10 @@ Mono.setHook("", "MB_Title", "NewGameInfoText", -1, {
     this.thiz = args[0].wrap();
   },
   onLeave() {
-    const text = this.thiz.o_newGameInfoText.wrap().text.value
+    const text = this.thiz.o_newGameInfoText.wrap().text.value;
     logText(text);
     positionMiddleHandler(text);
-  }
+  },
 });
 
 const subtitles = new Set();
@@ -251,7 +251,7 @@ Mono.setHook("", "SubtitlesRenderer", "SetSubtitleText", -1, {
 
     console.log("onEnter: SubTitlesRenderer.SetSubtitleText");
     handler(text);
-  }
+  },
 });
 
 // Mono.setHook("", "MB_BalloonMsg", "SetString", 4, {
@@ -287,7 +287,7 @@ Mono.setHook("", "MB_BustUpMessage", "SetString", -1, {
     // const result = (name + "\n" + text).trim();
     logText(name);
     talkController.nameHandler(name);
-  }
+  },
 });
 
 // just message, but accurate timing
@@ -296,7 +296,7 @@ Mono.setHook("", "MessageFeed", "Set", -1, {
     console.log("onEnter: MessageFeed.Set");
     const text = readString(args[1]);
     talkController.messageHandler(text);
-  }
+  },
 });
 
 // gets called for both name and message and other stuff
@@ -307,7 +307,7 @@ Mono.setHook("", "MessageFeed", "Set", -1, {
 //     // const esc = args[1];
 //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
 //     console.warn(JSON.stringify(text));
-//     console.log("callstack:", callstack.splice(0, 8), "\n");   
+//     console.log("callstack:", callstack.splice(0, 8), "\n");
 //     // handler(text);
 //   }
 // });
@@ -321,7 +321,7 @@ Mono.setHook("", "UIRoot.ShopManager", "GetMasterText", -1, {
     console.log("onLeave: UIRoot.ShopManager.GetMasterText");
     const text = readString(retval);
     positionTopHandler(text);
-  }
+  },
 });
 
 // the little strip at the bottom with a message
@@ -330,7 +330,7 @@ Mono.setHook("", "UIRoot.MainMenu$Guide", "SetText", -1, {
     console.log("onEnter: UIRoot.MainMenu$Guide.SetText");
     const text = readString(args[0]);
     positionMiddleHandler("\n" + text);
-  }
+  },
 });
 
 // popup dialogs
@@ -353,7 +353,7 @@ Mono.setHook("", "MB_ItemGetDialog", "OpenTreasure", -1, {
     const text = this.thiz.m_text.wrap().text.value;
     logText(text);
     handler(text);
-  }
+  },
 });
 
 // the devs made a typo
@@ -369,9 +369,11 @@ Mono.setHook("", "UIRoot.GuideMenu", "DispUpadte", -1, {
     //   > UnityEngine.CanvasRenderer
     //   > TMPro.TextMeshProUGUI <- need this
     //   > UnityEngine.UI.Layout
-    const text = readString(this.thiz._Guide_Title.wrap().GetComponentByName("TextMeshProUGUI").wrap().text);
+    const text = readString(
+      this.thiz._Guide_Title.wrap().GetComponentByName("TextMeshProUGUI").wrap().text,
+    );
     positionTopHandler(text);
-  }
+  },
 });
 
 // opening the guide window for an ability
@@ -382,13 +384,13 @@ Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
 
     const stringArray = args[2].value; // string[]
     const length = stringArray.length;
-    
+
     // check if it's just outputting the mp cost
     const firstLine = stringArray[0];
-    if (length === 1 && (firstLine >= "0" && firstLine <= "9")) {
+    if (length === 1 && firstLine >= "0" && firstLine <= "9") {
       return;
     }
-    
+
     const lines = [firstLine];
     for (let i = 1; i < length; i++) {
       lines[i] = stringArray[i];
@@ -413,7 +415,7 @@ Mono.setHook("", "UIRoot.Ability", "JobCharacteristicsUpdate", -1, {
   },
   onLeave() {
     this.hook.detach();
-  }
+  },
 });
 
 //#endregion
@@ -421,7 +423,7 @@ Mono.setHook("", "UIRoot.Ability", "JobCharacteristicsUpdate", -1, {
 //#region trans.replace
 
 let previous = "";
-trans.replace((/** @type {string} */s) => {
+trans.replace((/** @type {string} */ s) => {
   if (s === previous) {
     return null;
   }
