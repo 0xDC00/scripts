@@ -226,6 +226,8 @@ const talkController = {
 //#region Wasteland
 
 // const SetText = Mono.use("Unity.TextMeshPro", "TMPro.TMP_Text").ParseInputText;
+
+// set_text doesn't appear in dnspy, only in cheat engine?
 const SetText = Mono.use("Unity.TextMeshPro", "TMPro.TMP_Text").set_text;
 
 Mono.setHook("", "MB_Title", "NewGameInfoText", -1, {
@@ -330,7 +332,7 @@ Mono.setHook("", "UIRoot.MainMenu$Guide", "SetText", -1, {
   onEnter(args) {
     console.log("onEnter: UIRoot.MainMenu$Guide.SetText");
     const text = readString(args[0]);
-    positionMiddleHandler(text);
+    positionMiddleHandler("\n" + text);
   }
 });
 
@@ -366,10 +368,10 @@ Mono.setHook("", "UIRoot.GuideMenu", "DispUpadte", -1, {
   onLeave() {
     console.log("onLeave: UIRoot.GuideMenu.DispUpadte");
     // _Guide_Title (GameObject)
-    //   - UnityEngine.RectTransform
-    //   - UnityEngine.CanvasRenderer
-    //   - TMPro.TextMeshProUGUI <- need this
-    //   - UnityEngine.UI.Layout
+    //   > UnityEngine.RectTransform
+    //   > UnityEngine.CanvasRenderer
+    //   > TMPro.TextMeshProUGUI <- need this
+    //   > UnityEngine.UI.Layout
     const text = readString(this.thiz._Guide_Title.wrap().GetComponentByName("TextMeshProUGUI").wrap().text);
     positionTopHandler(text);
   }
