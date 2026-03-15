@@ -289,7 +289,7 @@ Mono.setHook("", "MB_BustUpMessage", "SetString", -1, {
     logText(name);
     talkController.nameHandler(name);
   }
-})
+});
 
 // just message, but accurate timing
 Mono.setHook("", "MessageFeed", "Set", -1, {
@@ -323,7 +323,7 @@ Mono.setHook("", "UIRoot.ShopManager", "GetMasterText", -1, {
     const text = readString(retval);
     positionTopHandler(text);
   }
-})
+});
 
 // the little strip at the bottom with a message
 Mono.setHook("", "UIRoot.MainMenu$Guide", "SetText", -1, {
@@ -332,7 +332,7 @@ Mono.setHook("", "UIRoot.MainMenu$Guide", "SetText", -1, {
     const text = readString(args[0]);
     positionMiddleHandler(text);
   }
-})
+});
 
 // popup dialogs
 Mono.setHook("", "MB_FieldDialog", "OpenImpl", 2, {
@@ -343,7 +343,7 @@ Mono.setHook("", "MB_FieldDialog", "OpenImpl", 2, {
     const text = readString(str);
     handler(text);
   },
-})
+});
 
 Mono.setHook("", "MB_ItemGetDialog", "OpenTreasure", -1, {
   onEnter(args) {
@@ -355,7 +355,7 @@ Mono.setHook("", "MB_ItemGetDialog", "OpenTreasure", -1, {
     logText(text);
     handler(text);
   }
-})
+});
 
 // private void TextSet(GameObject obj, string[] text, int start, int end, bool hideParent)
 Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
@@ -376,7 +376,7 @@ Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
     const text = lines.join("\n");
     handler(text);
   },
-})
+});
 
 //#endregion
 
