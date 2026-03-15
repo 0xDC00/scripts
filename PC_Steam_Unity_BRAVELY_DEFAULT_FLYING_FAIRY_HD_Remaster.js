@@ -27,14 +27,11 @@ if (BACKTRACE === true) {
   console.warn("STARTING TRACER");
   Mono.setHook("Unity.TextMeshPro", "TMPro.TMP_Text", "set_text", -1, {
     onEnter(args) {
-      this.thiz = args[0].wrap();
-    },
-    onLeave() {
-      const text = this.thiz.text.readMonoString();
+      const text = args[1].value;
       const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
       console.warn(JSON.stringify(text));
       console.log("callstack:", callstack.splice(0, 8), "\n");
-    }
+    },
   });
 
   // Mono.setHook("Unity.TextMeshPro", "TMPro.TMP_Text", "ParseInputText", -1, {
@@ -401,18 +398,17 @@ Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
   },
 });
 
+// called once
 Mono.setHook("", "UIRoot.Ability", "JobCharacteristicsUpdate", -1, {
   onEnter(args) {
     console.log("onEnter: UIRoot.Ability.JobCharacteristicsUpdate");
-    this.thiz = args[0].wrap();
+
+    // called twice, once for title and another for info
     this.hook = SetText.attach({
       onEnter(args) {
-        this.thiz = args[0].wrap();
-      },
-      onLeave() {
-        const text = readString(this.thiz.text);
+        const text = readString(args[1]);
         positionTopHandler(text, true);
-      }
+      },
     });
   },
   onLeave() {
