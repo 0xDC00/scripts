@@ -244,8 +244,7 @@ Mono.setHook("", "MB_Title", "NewGameInfoText", -1, {
     this.thiz = args[0].wrap();
   },
   onLeave() {
-    const text = this.thiz.o_newGameInfoText.wrap().text.value;
-    logText(text);
+    const text = readString(this.thiz.o_newGameInfoText.wrap().text);
     positionMiddleHandler(text);
   },
 });
@@ -294,10 +293,9 @@ Mono.setHook("", "MB_BustUpMessage", "SetString", -1, {
 
     /** @type {Mono.NativePointerMono} */
     const thiz = this.thiz;
-    const name = thiz.namePlate.wrap().text.value;
-    // const text = thiz.m_feed.wrap().m_text.value;
+    const name = readString(thiz.namePlate.wrap().text);
+    // const text = readString(thiz.m_feed.wrap().m_text);
     // const result = (name + "\n" + text).trim();
-    logText(name);
     talkController.nameHandler(name);
   },
 });
@@ -362,8 +360,7 @@ Mono.setHook("", "MB_ItemGetDialog", "OpenTreasure", -1, {
   },
   onLeave() {
     console.log("onLeave: MB_ItemGetDialog");
-    const text = this.thiz.m_text.wrap().text.value;
-    logText(text);
+    const text = readString(this.thiz.m_text.wrap().text);
     handler(text);
   },
 });
