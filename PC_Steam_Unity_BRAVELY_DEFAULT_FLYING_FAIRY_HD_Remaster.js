@@ -15,6 +15,7 @@ const Mono = require("./libMono.js");
 const BACKTRACE = false;
 
 const SETTINGS = {
+  singleSentence: false,
   characterNames: true,
   filterSeenText: false,
   debugLogs: false,
@@ -119,7 +120,12 @@ function readString(address) {
 
   SETTINGS.debugLogs && logText(text);
 
-  return text;
+  return toSingleSentence(text);
+}
+
+/** @param {string} text */
+function toSingleSentence(text) {
+  return SETTINGS.singleSentence ? text.replace(/([^。…？！])\n/g, "$1") : text;
 }
 
 const handler = genericHandler;
@@ -401,7 +407,8 @@ Mono.setHook("", "UIRoot.GuideMenu", "TextSet", -1, {
     for (let i = 1; i < length; i++) {
       lines[i] = stringArray[i];
     }
-    const text = lines.join("\n");
+    const text = toSingleSentence(lines.join("\n"));
+
     positionMiddleHandler(text);
   },
 });
