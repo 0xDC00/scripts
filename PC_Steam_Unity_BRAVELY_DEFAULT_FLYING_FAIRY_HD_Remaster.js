@@ -30,11 +30,16 @@ if (BACKTRACE === true) {
     onEnter(args) {
       const text = args[1].value;
       const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
+      const firstChar = text[0];
+      if (firstChar >= "0" && firstChar <= "9") {
+        return;
+      }
       console.warn(JSON.stringify(text));
       console.log("callstack:", callstack.splice(0, 8), "\n");
     },
   });
 
+  // the callstacks from this sucks
   // Mono.setHook("Unity.TextMeshPro", "TMPro.TMP_Text", "ParseInputText", -1, {
   //   onEnter(args) {
   //     const text = args[0].wrap().text.readMonoString();
