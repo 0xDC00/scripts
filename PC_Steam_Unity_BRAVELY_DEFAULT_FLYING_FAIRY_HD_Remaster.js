@@ -428,6 +428,88 @@ Mono.setHook("", "UIRoot.Ability", "JobCharacteristicsUpdate", -1, {
   },
 });
 
+// gets all tutorial quest info, not sure how to refine
+// Mono.setHook("", "TutorialQuestData", "get_isRewardEnd", -1, {
+//   onEnter(args) {
+//     console.log("onEnter: TutorialQuestData.get_isRewardEnd");
+//     const thiz = args[0].wrap();
+//     console.log(thiz.pInfo.value); // text
+//     // console.warn(thiz.pTitle.value) // title
+//   }
+// });
+
+// tutorial page/window
+Mono.setHook("", "MB_TutorialDialog", "LoadPageImpl", -1, {
+  onEnter(args) {
+    this.thiz = args[0].wrap();
+    // const page = args[1]; // int
+  },
+  onLeave() {
+    console.log("onLeave: MB_TutorialDialog.LoadPageImpl");
+
+    const title = readString(this.thiz.m_title.wrap().text);
+    const subtitle = readString(this.thiz.m_subTitle.wrap().text);
+    const text = readString(this.thiz.m_text.wrap().text);
+
+    const result = [title, "\n\n", subtitle, "\n", text].join("");
+
+    handler(result);
+  }
+});
+
+// works, but is there something better?
+// let previousTitle = ""
+// Mono.setHook("", "PartyChatManager", "Update", -1, {
+//   onEnter(args) {
+//     const title = args[0].wrap().m_layout.wrap().m_title.wrap().text.value;
+//     if (title === previousTitle) {
+//       return;
+//     }
+//     previousTitle = title;
+
+//     console.log("onEnter: PartyChatManager.Update");
+
+//     logText(title);
+//     positionTopHandler(title);
+//   },
+// })
+
+// called for each character
+let PartyChatLayoutLoadTimer = -1;
+Mono.setHook("", "PartyChatLayout", "Load", -1, {
+  onEnter(args) {
+    console.log("onEnter: PartyChatLayout.Load");
+
+    const thiz = args[0].wrap();
+    // const slot = args[1];
+    // const name = readString(args[2]); // character names
+    // const path = readString(args[3]);
+
+    // the title is wrong when immediately extracting, so wait a bit
+    clearTimeout(PartyChatLayoutLoadTimer);
+    PartyChatLayoutLoadTimer = setTimeout(() => {
+      const title = readString(thiz.m_title.wrap().text);
+      trans.send(title);
+    }, 200)
+  },
+});
+
+// never called?
+// Mono.setHook("", "PartyChatLayout", "StartTitle", -1, {
+//   onEnter(args) {
+//     console.log("onEnter: PartyChatLayout.StartTitle");
+//   }
+// });
+
+Mono.setHook("", "DialogLayout2Ex", "SetString", -1, {
+  onEnter(args) {
+    const pwString = readString(args[1]);
+    // const pPaneName = readString(args[2]); // Text01
+
+    handler(pwString);
+  }
+});
+
 //#endregion
 
 //#region trans.replace
