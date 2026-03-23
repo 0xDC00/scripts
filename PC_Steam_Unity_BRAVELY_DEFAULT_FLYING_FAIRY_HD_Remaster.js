@@ -511,16 +511,16 @@ Mono.setHook("", "DialogLayout2Ex", "SetString", -1, {
 
 // wtf
 // <SelectDevice>d__75.MoveNext
-let MoveNextInnerHook = null;
+let SelectDeviceMoveNextInnerHook = null;
 Mono.setHook("", "MB_MiniGameEntrance$<SelectDevice>d__75", "MoveNext", -1, {
   onEnter(args) {
     // spammed every frame; stop attaching inner hook if it's already attached
-    if (MoveNextInnerHook !== null) {
+    if (SelectDeviceMoveNextInnerHook !== null) {
       return;
     }
     console.log("onEnter: MB_MiniGameEntrance$<SelectDevice>d__75.MoveNext");
 
-    MoveNextInnerHook = SetText.attach({
+    SelectDeviceMoveNextInnerHook = SetText.attach({
       onEnter(args) {
         const text = readString(args[1]);
 
@@ -532,8 +532,8 @@ Mono.setHook("", "MB_MiniGameEntrance$<SelectDevice>d__75", "MoveNext", -1, {
         positionMiddleHandler(text);
       },
       onLeave(args) {
-        MoveNextInnerHook.detach();
-        MoveNextInnerHook = null;
+        SelectDeviceMoveNextInnerHook.detach();
+        SelectDeviceMoveNextInnerHook = null;
       }
     });
   }
@@ -593,6 +593,83 @@ Mono.setHook("", "CruiseSelect", "CursorChange", -1, {
     console.log("onLeave: CruiseSelect.CursorChange");
     const text = readString(this.thiz.mDescriptionText.wrap().text);
     positionMiddleHandler(text);
+  }
+});
+
+Mono.setHook("", "DanceGame$StageUI", "Music_Select_DispUpdate", -1, {
+  onEnter() {
+    console.log("onEnter: DanceGame$StageUI.Music_Select_DispUpdate");
+    
+    this.hook = SetText.attach({
+      onEnter(args) {
+        const text = readString(args[1]);
+
+        const firstChar = text[0];
+        const lastChar = text.at(-1);
+        if (firstChar >= "0" && firstChar <= "9" && lastChar >= "0" && lastChar <= "9") {
+          return;
+        }
+
+        handler(text);
+      }
+    });
+  },
+  onLeave() {
+    this.hook.detach();
+  }
+});
+
+// called when you select a character, but used to get the static guide text
+let CharaSelect_DispUpdateInnerHook = null;
+Mono.setHook("", "DanceGame$StageUI", "CharaSelect_DispUpdate", -1, {
+  onEnter(args) {
+    console.log("onEnter: DanceGame$StageUI.CharaSelect_DispUpdate");
+    
+    // SetText is called outside, need to detach the leftover hook
+    if (CharaSelect_DispUpdateInnerHook !== null) {
+      CharaSelect_DispUpdateInnerHook.detach();
+    }
+
+    CharaSelect_DispUpdateInnerHook = SetText.attach({
+      onEnter(args) {
+        CharaSelect_DispUpdateInnerHook.detach();
+        CharaSelect_DispUpdateInnerHook = null;
+        const text = readString(args[1]);
+        if (text.length < 2) {
+          return;
+        }
+        handler(text);
+      },
+    });
+  }
+});
+
+Mono.setHook("", "DanceGame$StageUI", "SelectJobNameUpdate", -1, {
+  onEnter(args) {
+    console.log("onEnter: DaneGame$StageUI.SelectJobNameUpdate");
+
+    const hook = SetText.attach({
+      onEnter(args) {
+        hook.detach();
+        const text = readString(args[1]);
+        handler(text);
+      },
+    });
+  }
+});
+
+// get the message that shows up when you get a high score in dance minigame
+Mono.setHook("", "GlobalUserData", "UpdateHiScore", -1, {
+  onEnter(args) {
+    console.log("onEnter: GlobalUserData.UpdateHiScore");
+
+    const hook = SetText.attach({
+      onEnter(args) {
+        hook.detach();
+        const text = readString(args[1]);
+        handler(text);
+      }
+    });
   }
 });
 
