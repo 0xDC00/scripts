@@ -565,6 +565,16 @@ Mono.setHook("", "MB_MiniGameTutorial$TextImage", "On", -1, {
   }
 });
 
+// public void SetupCutIn(CruiseGame.CutInType type, string msg, int chara = -1, string motName = "", int eyeId = -1, int mouthId = -1)
+Mono.setHook("", "CruiseGame", "SetupCutIn", -1, {
+  onEnter(args) {
+    console.log("onEnter: CruiseGame.SetupCutIn");
+    
+    const msg = readString(args[2]);
+    handler(msg);
+  }
+});
+
 //#endregion
 
 //#region trans.replace
