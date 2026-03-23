@@ -509,33 +509,11 @@ Mono.setHook("", "DialogLayout2Ex", "SetString", -1, {
   }
 });
 
-// wtf
-// <SelectDevice>d__75.MoveNext
-let SelectDeviceMoveNextInnerHook = null;
-Mono.setHook("", "MB_MiniGameEntrance$<SelectDevice>d__75", "MoveNext", -1, {
+Mono.setHook("", "MB_MiniGameEntrance", "WaitMouceClick", -1, {
   onEnter(args) {
-    // spammed every frame; stop attaching inner hook if it's already attached
-    if (SelectDeviceMoveNextInnerHook !== null) {
-      return;
-    }
-    console.log("onEnter: MB_MiniGameEntrance$<SelectDevice>d__75.MoveNext");
-
-    SelectDeviceMoveNextInnerHook = SetText.attach({
-      onEnter(args) {
-        const text = readString(args[1]);
-
-        const firstChar = text[0];
-        if (firstChar >= "0" && firstChar <= "9") {
-          return;
-        }
-
-        positionMiddleHandler(text);
-      },
-      onLeave(args) {
-        SelectDeviceMoveNextInnerHook.detach();
-        SelectDeviceMoveNextInnerHook = null;
-      }
-    });
+    console.log("onEnter: MB_MiniGameEntrance.WaitMouceClick");
+    const text = readString(args[0].wrap().m_deviceWaitPushText.wrap().text);
+    handler(text);
   }
 });
 
