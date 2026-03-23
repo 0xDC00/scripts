@@ -575,6 +575,15 @@ Mono.setHook("", "CruiseGame", "SetupCutIn", -1, {
   }
 });
 
+Mono.setHook("", "CruiseOrderMsg", "SetMessage", -1, {
+  onEnter(args) {
+    console.log("onEnter: CruiseOrderMsg.SetMessage");
+
+    const msg = readString(args[1]);
+    handler(msg);
+  }
+});
+
 //#endregion
 
 //#region trans.replace
