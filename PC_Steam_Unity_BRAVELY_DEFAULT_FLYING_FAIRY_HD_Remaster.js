@@ -584,6 +584,18 @@ Mono.setHook("", "CruiseOrderMsg", "SetMessage", -1, {
   }
 });
 
+Mono.setHook("", "CruiseSelect", "CursorChange", -1, {
+  onEnter(args) {
+    console.log("onEnter: CruiseSelect.CursorChange");
+    this.thiz = args[0].wrap();
+  },
+  onLeave() {
+    console.log("onLeave: CruiseSelect.CursorChange");
+    const text = readString(this.thiz.mDescriptionText.wrap().text);
+    positionMiddleHandler(text);
+  }
+});
+
 //#endregion
 
 //#region trans.replace
