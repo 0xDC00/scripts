@@ -564,7 +564,7 @@ Mono.setHook("", "CruiseOrderMsg", "SetMessage", -1, {
 
 Mono.setHook("", "CruiseSelect", "CursorChange", -1, {
   onEnter(args) {
-    console.log("onEnter: CruiseSelect.CursorChange");
+    // console.log("onEnter: CruiseSelect.CursorChange");
     this.thiz = args[0].wrap();
   },
   onLeave() {
