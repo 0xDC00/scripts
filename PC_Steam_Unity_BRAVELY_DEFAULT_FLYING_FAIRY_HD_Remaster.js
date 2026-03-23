@@ -415,7 +415,7 @@ Mono.setHook("", "UIRoot.Ability", "JobCharacteristicsUpdate", -1, {
   onEnter(args) {
     console.log("onEnter: UIRoot.Ability.JobCharacteristicsUpdate");
 
-    // called twice, once for title and another for info
+    // called twice, once for title and another for info, so don't detach yet
     this.hook = SetText.attach({
       onEnter(args) {
         const text = readString(args[1]);
@@ -424,6 +424,7 @@ Mono.setHook("", "UIRoot.Ability", "JobCharacteristicsUpdate", -1, {
     });
   },
   onLeave() {
+    // ok we can detach now
     this.hook.detach();
   },
 });
@@ -453,7 +454,7 @@ Mono.setHook("", "MB_TutorialDialog", "LoadPageImpl", -1, {
 
     const result = [title, "\n\n", subtitle, "\n", text].join("");
 
-    handler(result);
+    positionMiddleHandler(result);
   }
 });
 
@@ -507,6 +508,62 @@ Mono.setHook("", "DialogLayout2Ex", "SetString", -1, {
     // const pPaneName = readString(args[2]); // Text01
 
     handler(pwString);
+  }
+});
+
+// wtf
+// <SelectDevice>d__75.MoveNext
+let MoveNextInnerHook = null;
+Mono.setHook("", "MB_MiniGameEntrance$<SelectDevice>d__75", "MoveNext", -1, {
+  onEnter(args) {
+    // spammed every frame; stop attaching inner hook if it's already attached
+    if (MoveNextInnerHook !== null) {
+      return;
+    }
+    console.log("onEnter: MB_MiniGameEntrance$<SelectDevice>d__75.MoveNext");
+
+    MoveNextInnerHook = SetText.attach({
+      onEnter(args) {
+        const text = readString(args[1]);
+
+        const firstChar = text[0];
+        if (firstChar >= "0" && firstChar <= "9") {
+          return;
+        }
+
+        positionMiddleHandler(text);
+      },
+      onLeave(args) {
+        MoveNextInnerHook.detach();
+        MoveNextInnerHook = null;
+      }
+    });
+  }
+});
+
+Mono.setHook("", "MB_MiniGameTutorial", "SetPage", -1, {
+  onEnter(args) {
+    console.log("onEnter: MB_MiniGameTutorial.SetPage");
+    this.thiz = args[0].wrap();
+  },
+  onLeave() {
+    console.log("onLeave: MB_MiniGameTutorial.SetPage");
+
+    const title = readString(this.thiz.title.wrap().text);
+    const subTitle = readString(this.thiz.subTitle.wrap().text);
+
+    const result = [title, "\n\n", subTitle].join("");
+
+    positionTopHandler(result);
+  }
+});
+
+Mono.setHook("", "MB_MiniGameTutorial$TextImage", "On", -1, {
+  onEnter(args) {
+    console.log("onEnter: MB_MiniGameTutorial$TextImage.On");
+
+    const text = readString(args[1]);
+    positionMiddleHandler(text);
   }
 });
 
