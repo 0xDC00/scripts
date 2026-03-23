@@ -378,9 +378,7 @@ Mono.setHook("", "UIRoot.GuideMenu", "DispUpadte", -1, {
     //   > UnityEngine.CanvasRenderer
     //   > TMPro.TextMeshProUGUI <- need this
     //   > UnityEngine.UI.Layout
-    const text = readString(
-      this.thiz._Guide_Title.wrap().GetComponentByName("TextMeshProUGUI").wrap().text,
-    );
+    const text = readString(this.thiz._Guide_Title.wrap().GetComponentByName("TextMeshProUGUI").wrap().text);
     positionTopHandler(text);
   },
 });
