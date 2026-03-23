@@ -603,7 +603,7 @@ Mono.setHook("", "DanceGame$StageUI", "CharaSelect_DispUpdate", -1, {
   onEnter(args) {
     console.log("onEnter: DanceGame$StageUI.CharaSelect_DispUpdate");
     
-    // SetText is called outside, need to detach the leftover hook
+    // SetText can be attached but never called and will leave zombie hooks
     if (CharaSelect_DispUpdateInnerHook !== null) {
       CharaSelect_DispUpdateInnerHook.detach();
     }
