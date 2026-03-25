@@ -141,7 +141,7 @@ function genericHandler(text, delay = 200) {
   }, delay);
 }
 
-function orderedHandler() {
+function orderedHandler(delay = 600) {
   clearTimeout(timer3);
   timer3 = setTimeout(() => {
     trans.send([...topTexts, ...middleTexts, ...bottomTexts, ...deepTexts].join("\n"));
@@ -150,7 +150,7 @@ function orderedHandler() {
     middleTexts.clear();
     bottomTexts.clear();
     deepTexts.clear();
-  }, 600);
+  }, delay);
 }
 
 /**
@@ -233,8 +233,6 @@ const talkController = {
 //#endregion
 
 //#region Wasteland
-
-// const SetText = Mono.use("Unity.TextMeshPro", "TMPro.TMP_Text").ParseInputText;
 
 // set_text doesn't appear in dnspy, only in cheat engine?
 const SetText = Mono.use("Unity.TextMeshPro", "TMPro.TMP_Text").set_text;
@@ -378,7 +376,9 @@ Mono.setHook("", "UIRoot.GuideMenu", "DispUpadte", -1, {
     //   > UnityEngine.CanvasRenderer
     //   > TMPro.TextMeshProUGUI <- need this
     //   > UnityEngine.UI.Layout
-    const text = readString(this.thiz._Guide_Title.wrap().GetComponentByName("TextMeshProUGUI").wrap().text);
+    const text = readString(
+      this.thiz._Guide_Title.wrap().GetComponentByName("TextMeshProUGUI").wrap().text,
+    );
     positionTopHandler(text);
   },
 });
@@ -453,7 +453,7 @@ Mono.setHook("", "MB_TutorialDialog", "LoadPageImpl", -1, {
     const result = [title, "\n\n", subtitle, "\n", text].join("");
 
     positionMiddleHandler(result);
-  }
+  },
 });
 
 // works, but is there something better?
@@ -489,7 +489,7 @@ Mono.setHook("", "PartyChatLayout", "Load", -1, {
     PartyChatLayoutLoadTimer = setTimeout(() => {
       const title = readString(thiz.m_title.wrap().text);
       trans.send(title);
-    }, 200)
+    }, 200);
   },
 });
 
@@ -506,7 +506,7 @@ Mono.setHook("", "DialogLayout2Ex", "SetString", -1, {
     // const pPaneName = readString(args[2]); // Text01
 
     handler(pwString);
-  }
+  },
 });
 
 Mono.setHook("", "MB_MiniGameEntrance", "WaitMouceClick", -1, {
@@ -514,7 +514,7 @@ Mono.setHook("", "MB_MiniGameEntrance", "WaitMouceClick", -1, {
     console.log("onEnter: MB_MiniGameEntrance.WaitMouceClick");
     const text = readString(args[0].wrap().m_deviceWaitPushText.wrap().text);
     handler(text);
-  }
+  },
 });
 
 Mono.setHook("", "MB_MiniGameTutorial", "SetPage", -1, {
@@ -531,7 +531,7 @@ Mono.setHook("", "MB_MiniGameTutorial", "SetPage", -1, {
     const result = [title, "\n\n", subTitle].join("");
 
     positionTopHandler(result);
-  }
+  },
 });
 
 Mono.setHook("", "MB_MiniGameTutorial$TextImage", "On", -1, {
@@ -540,17 +540,17 @@ Mono.setHook("", "MB_MiniGameTutorial$TextImage", "On", -1, {
 
     const text = readString(args[1]);
     positionMiddleHandler(text);
-  }
+  },
 });
 
 // public void SetupCutIn(CruiseGame.CutInType type, string msg, int chara = -1, string motName = "", int eyeId = -1, int mouthId = -1)
 Mono.setHook("", "CruiseGame", "SetupCutIn", -1, {
   onEnter(args) {
     console.log("onEnter: CruiseGame.SetupCutIn");
-    
+
     const msg = readString(args[2]);
     handler(msg);
-  }
+  },
 });
 
 Mono.setHook("", "CruiseOrderMsg", "SetMessage", -1, {
@@ -559,7 +559,7 @@ Mono.setHook("", "CruiseOrderMsg", "SetMessage", -1, {
 
     const msg = readString(args[1]);
     handler(msg);
-  }
+  },
 });
 
 Mono.setHook("", "CruiseSelect", "CursorChange", -1, {
@@ -571,13 +571,13 @@ Mono.setHook("", "CruiseSelect", "CursorChange", -1, {
     console.log("onLeave: CruiseSelect.CursorChange");
     const text = readString(this.thiz.mDescriptionText.wrap().text);
     positionMiddleHandler(text);
-  }
+  },
 });
 
 Mono.setHook("", "DanceGame$StageUI", "Music_Select_DispUpdate", -1, {
   onEnter() {
     console.log("onEnter: DanceGame$StageUI.Music_Select_DispUpdate");
-    
+
     this.hook = SetText.attach({
       onEnter(args) {
         const text = readString(args[1]);
@@ -589,12 +589,12 @@ Mono.setHook("", "DanceGame$StageUI", "Music_Select_DispUpdate", -1, {
         }
 
         handler(text);
-      }
+      },
     });
   },
   onLeave() {
     this.hook.detach();
-  }
+  },
 });
 
 // called when you select a character, but used to get the static guide text
@@ -602,7 +602,7 @@ let CharaSelect_DispUpdateInnerHook = null;
 Mono.setHook("", "DanceGame$StageUI", "CharaSelect_DispUpdate", -1, {
   onEnter(args) {
     console.log("onEnter: DanceGame$StageUI.CharaSelect_DispUpdate");
-    
+
     // SetText can be attached but never called and will leave zombie hooks
     if (CharaSelect_DispUpdateInnerHook !== null) {
       CharaSelect_DispUpdateInnerHook.detach();
@@ -619,7 +619,7 @@ Mono.setHook("", "DanceGame$StageUI", "CharaSelect_DispUpdate", -1, {
         handler(text);
       },
     });
-  }
+  },
 });
 
 Mono.setHook("", "DanceGame$StageUI", "SelectJobNameUpdate", -1, {
@@ -633,7 +633,7 @@ Mono.setHook("", "DanceGame$StageUI", "SelectJobNameUpdate", -1, {
         handler(text);
       },
     });
-  }
+  },
 });
 
 // get the message that shows up when you get a high score in dance minigame
@@ -646,9 +646,9 @@ Mono.setHook("", "GlobalUserData", "UpdateHiScore", -1, {
         hook.detach();
         const text = readString(args[1]);
         handler(text);
-      }
+      },
     });
-  }
+  },
 });
 
 //#endregion
