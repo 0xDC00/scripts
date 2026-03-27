@@ -3,7 +3,7 @@
 // @version      1.0.0, 1.1.0
 // @author       Mansive
 // @description
-// * MintLip & Edia Co., Ltd.
+// * MintLip
 // * Edia Co., Ltd.
 // *
 // ==/UserScript==
