@@ -816,7 +816,7 @@ trans.replace((/** @type {string} */ s) => {
 
 ui.title = "BRAVELY DEFAULT<br/>FLYING FAIRY";
 ui.description = /*html*/ `Configure text output and which hooks are enabled.`;
-ui.storage = false;
+// ui.storage = false;
 ui.options = [
   {
     id: "singleSentence",
