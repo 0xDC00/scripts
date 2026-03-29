@@ -10,13 +10,15 @@
 
 //#region Config
 
+const ui = require("./libUI.js");
 const Mono = require("./libMono.js");
 
 const BACKTRACE = false;
 
 const SETTINGS = {
   singleSentence: false,
-  characterNames: true,
+  speakerNames: true,
+  battleText: true,
   filterSeenText: false,
   debugLogs: true,
 };
@@ -283,7 +285,7 @@ Mono.setHook("", "MB_BustUpMessage", "SetString", -1, {
     this.thiz = args[0].wrap();
   },
   onLeave() {
-    if (!SETTINGS.characterNames) {
+    if (!SETTINGS.speakerNames) {
       logDim("skipped: MB_BustUpMessage.SetString");
       return;
     }
@@ -656,6 +658,10 @@ Mono.setHook("", "GlobalUserData", "UpdateHiScore", -1, {
 let previousBtlHelpLayoutSetMessageAddress = NULL;
 Mono.setHook("", "BtlHelpLayout", "SetMessage", 1, {
   onEnter(args) {
+    if (!SETTINGS.battleText) {
+      return;
+    }
+
     const address = args[1];
     if (address.equals(previousBtlHelpLayoutSetMessageAddress)) {
       return;
@@ -672,6 +678,10 @@ Mono.setHook("", "BtlHelpLayout", "SetMessage", 1, {
 // ability used during a turn
 Mono.setHook("", "BtlLytMessageCtrl", "OpenMessage", -1, {
   onEnter(args) {
+    if (!SETTINGS.battleText) {
+      return;
+    }
+
     console.log("onEnter: BtlLytMessageCtrl.OpenMessage");
 
     const text = readString(args[1]);
@@ -682,6 +692,10 @@ Mono.setHook("", "BtlLytMessageCtrl", "OpenMessage", -1, {
 // ability effect message up top
 Mono.setHook("", "BtlLytMessageCtrl", "OpenMessageFromTable", -1, {
   onEnter() {
+    if (!SETTINGS.battleText) {
+      return;
+    }
+
     console.log("onEnter: BtlLytMessageCtrl.OpenMessageFromTable");
 
     const hook = SetText.attach({
@@ -697,6 +711,10 @@ Mono.setHook("", "BtlLytMessageCtrl", "OpenMessageFromTable", -1, {
 // the message that appears during battle results screen
 Mono.setHook("", "BtlLowerResultLayout2", "SetMessage", -1, {
   onEnter(args) {
+    if (!SETTINGS.battleText) {
+      return;
+    }
+
     console.log("onEnter: BtlLowerResultLayout2.SetMessage");
 
     // const index = args[1]; // int
@@ -786,5 +804,72 @@ trans.replace((/** @type {string} */ s) => {
 
   return s;
 });
+
+//#endregion
+
+//#region UI Configuration
+
+ui.title = "BRAVELY DEFAULT<br/>FLYING FAIRY";
+ui.description = /*html*/ `Configure text output and which hooks are enabled.`;
+ui.storage = false;
+ui.options = [
+  {
+    id: "singleSentence",
+    type: "checkbox",
+    label: "Single Sentence Conversion",
+    help: `Attempt to convert sentences that span multiple lines into a single line.
+    Useful for external apps that parse sentences.
+    Disable if you want the text's original formatting.`,
+    defaultValue: SETTINGS.singleSentence,
+  },
+  {
+    id: "speakerNames",
+    type: "checkbox",
+    label: "Speaker Names",
+    help: "Output speaker names for dialogues.",
+    defaultValue: SETTINGS.speakerNames,
+  },
+  {
+    id: "battleText",
+    type: "checkbox",
+    label: "Battle Text",
+    help: "Enables text output from battles, including abilities used and guides.",
+    defaultValue: SETTINGS.battleText,
+  },
+  {
+    id: "filterSeenText",
+    type: "checkbox",
+    label: "Filter Seen Text",
+    help: `Ignores or skips text that has already been outputted.
+    Greatly reduces spam, but might prevent you from seeing your desired text.`,
+    defaultValue: SETTINGS.filterSeenText,
+  },
+  {
+    id: "debugLogs",
+    type: "checkbox",
+    label: "Debug Logs",
+    help: "For nerds.",
+    defaultValue: SETTINGS.debugLogs,
+  },
+];
+
+ui.onchange = (id, current, previous) => {
+  logDim(`UI: ${id} set to ${current}`);
+
+  if (SETTINGS[id] !== undefined) {
+    SETTINGS[id] = current;
+  } else {
+    console.error(`UI: Unknown setting ${id}`);
+    // throw new Error(`Unknown setting ${id}`); // doesn't actually throw???
+  }
+};
+
+ui.open()
+  .then(() => {
+    console.log("Started UI");
+  })
+  .catch((err) => {
+    console.error("Failed to start UI");
+  });
 
 //#endregion
