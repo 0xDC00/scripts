@@ -128,7 +128,7 @@ function readString(address) {
 
 /** @param {string} text */
 function toSingleSentence(text) {
-  return SETTINGS.singleSentence ? text.replace(/([^。…？！])\n/g, "$1") : text;
+  return SETTINGS.singleSentence ? text.replace(/([^。…？！）\n])\n(?![\n・　])/g, "$1") : text;
 }
 
 const handler = genericHandler;
