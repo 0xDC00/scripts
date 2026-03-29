@@ -337,7 +337,7 @@ Mono.setHook("", "UIRoot.MainMenu$Guide", "SetText", -1, {
   onEnter(args) {
     console.log("onEnter: UIRoot.MainMenu$Guide.SetText");
     const text = readString(args[0]);
-    positionMiddleHandler("\n" + text);
+    positionDeepHandler("\n" + text);
   },
 });
 
