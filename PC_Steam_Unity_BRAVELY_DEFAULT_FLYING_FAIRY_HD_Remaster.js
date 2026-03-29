@@ -21,7 +21,7 @@ const SETTINGS = {
   guideText: true,
   battleText: true,
   filterSeenText: false,
-  debugLogs: true,
+  debugLogs: false,
 };
 
 //#endregion
