@@ -736,6 +736,23 @@ Mono.setHook("", "BtlJobTutorialView", "UpdateView", -1, {
   },
 });
 
+Mono.setHook("", "UIRoot.R_Book", "SetTextAll", -1, {
+  onEnter(args) {
+    console.log("onEnter: D_Book.SetTextAll");
+
+    // const text = args[2].value; // List<string>
+    this.hook = SetText.attach({
+      onEnter(args) {
+        const text = readString(args[1]);
+        positionMiddleHandler(text, true);
+      },
+    });
+  },
+  onLeave() {
+    this.hook.detach();
+  },
+});
+
 //#endregion
 
 //#region trans.replace
