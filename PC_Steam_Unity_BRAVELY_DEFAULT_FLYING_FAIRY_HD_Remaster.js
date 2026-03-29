@@ -609,6 +609,10 @@ Mono.setHook("", "DanceGame$StageUI", "Music_Select_DispUpdate", -1, {
 let CharaSelect_DispUpdateInnerHook = null;
 Mono.setHook("", "DanceGame$StageUI", "CharaSelect_DispUpdate", -1, {
   onEnter(args) {
+    if (!SETTINGS.guideText) {
+      return;
+    }
+
     console.log("onEnter: DanceGame$StageUI.CharaSelect_DispUpdate");
 
     // SetText can be attached but never called and will leave zombie hooks
@@ -632,6 +636,10 @@ Mono.setHook("", "DanceGame$StageUI", "CharaSelect_DispUpdate", -1, {
 
 Mono.setHook("", "DanceGame$StageUI", "SelectJobNameUpdate", -1, {
   onEnter(args) {
+    if (!SETTINGS.guideText) {
+      return;
+    }
+
     console.log("onEnter: DaneGame$StageUI.SelectJobNameUpdate");
 
     const hook = SetText.attach({
@@ -816,7 +824,7 @@ trans.replace((/** @type {string} */ s) => {
 
 ui.title = "BRAVELY DEFAULT<br/>FLYING FAIRY";
 ui.description = /*html*/ `Configure text output and which hooks are enabled.`;
-ui.storage = false;
+// ui.storage = false;
 ui.options = [
   {
     id: "singleSentence",
