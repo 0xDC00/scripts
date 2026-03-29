@@ -651,6 +651,91 @@ Mono.setHook("", "GlobalUserData", "UpdateHiScore", -1, {
   },
 });
 
+// guide text at bottom during battle
+let previousBtlHelpLayoutSetMessageAddress = NULL;
+Mono.setHook("", "BtlHelpLayout", "SetMessage", 1, {
+  onEnter(args) {
+    const address = args[1];
+    if (address.equals(previousBtlHelpLayoutSetMessageAddress)) {
+      return;
+    }
+    previousBtlHelpLayoutSetMessageAddress = address;
+
+    console.log("onEnter: BtlHelpLayout.SetMessage");
+
+    const text = readString(address);
+    positionMiddleHandler(text);
+  },
+});
+
+// ability used during a turn
+Mono.setHook("", "BtlLytMessageCtrl", "OpenMessage", -1, {
+  onEnter(args) {
+    console.log("onEnter: BtlLytMessageCtrl.OpenMessage");
+
+    const text = readString(args[1]);
+    handler(text);
+  },
+});
+
+// ability effect message up top
+Mono.setHook("", "BtlLytMessageCtrl", "OpenMessageFromTable", -1, {
+  onEnter() {
+    console.log("onEnter: BtlLytMessageCtrl.OpenMessageFromTable");
+
+    const hook = SetText.attach({
+      onEnter(args) {
+        hook.detach();
+        const text = readString(args[1]);
+        handler(text);
+      },
+    });
+  },
+});
+
+// the message that appears during battle results screen
+Mono.setHook("", "BtlLowerResultLayout2", "SetMessage", -1, {
+  onEnter(args) {
+    // const index = args[1]; // int
+    const text = readString(args[2]); // string Insert
+    handler(text);
+  },
+});
+
+// "白魔道士"
+// "回復魔法や補助魔法で味方を支援！\n・白魔法が得意\n・オススメ武器は「杖」"
+// "自然治癒力"
+// "白魔法" <-- stop here
+// "1"
+// "3"
+// "Ｃ"
+// "Ａ"
+// ...
+Mono.setHook("", "BtlJobTutorialView", "UpdateView", -1, {
+  onEnter(args) {
+    console.log("onEnter: BtlJobTutorialView.UpdateView");
+
+    let count = 0;
+    const hook = SetText.attach({
+      onEnter(args) {
+        if (count > 3) {
+          hook.detach();
+          return;
+        }
+        count += 1;
+
+        const text = readString(args[1]);
+        const result = count === 1 ? text + "\n" : text;
+        handler(result);
+      },
+    });
+    this.hook = hook;
+  },
+  onLeave() {
+    this.hook.detach(); // just in case
+  },
+});
+
 //#endregion
 
 //#region trans.replace
