@@ -18,7 +18,7 @@ const SETTINGS = {
   singleSentence: false,
   characterNames: true,
   filterSeenText: false,
-  debugLogs: false,
+  debugLogs: true,
 };
 
 //#endregion
@@ -120,7 +120,8 @@ function readString(address) {
 
   SETTINGS.debugLogs && logText(text);
 
-  return toSingleSentence(text);
+  // return toSingleSentence(text);
+  return text;
 }
 
 /** @param {string} text */
@@ -696,6 +697,8 @@ Mono.setHook("", "BtlLytMessageCtrl", "OpenMessageFromTable", -1, {
 // the message that appears during battle results screen
 Mono.setHook("", "BtlLowerResultLayout2", "SetMessage", -1, {
   onEnter(args) {
+    console.log("onEnter: BtlLowerResultLayout2.SetMessage");
+
     // const index = args[1]; // int
     const text = readString(args[2]); // string Insert
     handler(text);
@@ -778,8 +781,10 @@ trans.replace((/** @type {string} */ s) => {
   // s = s.replace(/\[PCF1\]/g, "アニエス");
   s = s.replace(/<sprite[^>]+>/g, "▢");
   s = s.replace(/<[^>]+>/g, "");
+  s = s.trim();
+  s = toSingleSentence(s);
 
-  return s.trim();
+  return s;
 });
 
 //#endregion
