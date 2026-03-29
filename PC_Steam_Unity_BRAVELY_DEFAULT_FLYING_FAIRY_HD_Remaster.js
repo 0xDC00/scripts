@@ -18,6 +18,7 @@ const BACKTRACE = false;
 const SETTINGS = {
   singleSentence: false,
   speakerNames: true,
+  guideText: true,
   battleText: true,
   filterSeenText: false,
   debugLogs: true,
@@ -338,6 +339,10 @@ Mono.setHook("", "UIRoot.ShopManager", "GetMasterText", -1, {
 // the little strip at the bottom with a message
 Mono.setHook("", "UIRoot.MainMenu$Guide", "SetText", -1, {
   onEnter(args) {
+    if (!SETTINGS.guideText) {
+      return;
+    }
+
     console.log("onEnter: UIRoot.MainMenu$Guide.SetText");
     const text = readString(args[0]);
     positionBottomHandler("\n" + text);
@@ -828,6 +833,14 @@ ui.options = [
     label: "Speaker Names",
     help: "Output speaker names for dialogues.",
     defaultValue: SETTINGS.speakerNames,
+  },
+  {
+    id: "guideText",
+    type: "checkbox",
+    label: "Guide Text",
+    help: `Enables guide text,
+    the banner located at the bottom of screen that explains what you're hovering over.`,
+    defaultValue: SETTINGS.guideText,
   },
   {
     id: "battleText",
