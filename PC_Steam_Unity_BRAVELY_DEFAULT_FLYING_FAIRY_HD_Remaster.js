@@ -663,7 +663,7 @@ Mono.setHook("", "GlobalUserData", "UpdateHiScore", -1, {
 let previousBtlHelpLayoutSetMessageAddress = NULL;
 Mono.setHook("", "BtlHelpLayout", "SetMessage", 1, {
   onEnter(args) {
-    if (!SETTINGS.battleText) {
+    if (!SETTINGS.battleText || !SETTINGS.guideText) {
       return;
     }
 
