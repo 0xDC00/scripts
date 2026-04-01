@@ -81,7 +81,6 @@ function perChar(address, name, register, handler) {
       handler("\n");
       return;
     } else if (byte1 === 0x02 && byte2 === 0x43 /* byte3 === 0x02 */) {
-      // add elipses?
       handler("……");
       return;
     } else if (byte1 === 0x02 && byte2 === 0x2b && byte3 === 0x01) {
