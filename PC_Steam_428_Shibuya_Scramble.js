@@ -12,6 +12,7 @@
 const __e = Process.enumerateModules()[0];
 
 console.warn("For the Japanese version of the game, not the English one.");
+console.warn("Known issue: Guide hook prints all the text at once");
 
 const handler1 = trans.send((s) => s, "600++");
 const handler2 = trans.send((s) => s, "800+"); // appear after
