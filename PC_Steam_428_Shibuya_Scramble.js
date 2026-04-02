@@ -50,6 +50,7 @@ function once(address, name, register, handler) {
 
 function perChar(address, name, register, handler) {
   let previousAddress = NULL;
+  let skipNewLine = false;
   Interceptor.attach(address, function (args) {
     // console.log("onEnter:", name);
     // 02 1b 00 1E 00 01 | new line?
@@ -60,6 +61,13 @@ function perChar(address, name, register, handler) {
     // 02 1b 00 | text remaining...
     // 02 1e 00 01 | text remaining, inline
     // 02 2D 04 | midline pause
+    // 02 06 00 10 | new line?
+
+    // choice sequences (the engine seems to add a newline *if not already present in the previous sentence*):
+    // e3 80 80 02
+    // 02 0e 01 00
+    // e3 80 80 02
+    // 02 2d 04 00
 
     // dots
     // E3 80 8C 02 43 02 01 00 43 02 01 00 0F 01 08 01 E7 AC B9
@@ -76,22 +84,36 @@ function perChar(address, name, register, handler) {
     const byte1 = address.readU8();
     const byte2 = address.add(1).readU8();
     const byte3 = address.add(2).readU8();
+    const byte4 = address.add(3).readU8();
 
-    if ((byte1 === 0x02 && byte2 === 0x1b) || (byte1 === 0x02 && byte2 === 0x25)) {
+    if (byte1 === 0x02 && (byte2 === 0x06 || byte2 === 0x1b || byte2 === 0x25)) {
       handler("\n");
+      skipNewLine = true;
       return;
     } else if (byte1 === 0x02 && byte2 === 0x43 /* byte3 === 0x02 */) {
       handler("……");
+      skipNewLine = false;
       return;
     } else if (byte1 === 0x02 && byte2 === 0x2b && byte3 === 0x01) {
       handler("——");
+      skipNewLine = false;
+      return;
+    } else if (byte1 === 0x02 && byte2 === 0xe && byte3 === 0x01) {
+      if (skipNewLine) {
+        handler("(?) ");
+      }
+      else {
+        handler("\n(?) ");
+      }
+      skipNewLine = false;
+      return;
+    } else if (byte1 === 0xe3 && byte2 === 0x80 && byte3 === 0x80 && byte4 === 0x02) {
       return;
     }
 
-    const byte4 = address.add(3).readU8();
-
     const char = decoder.decode(Uint8Array.from([byte1, byte2, byte3, byte4]))[0];
-    // console.warn(ptr(byte1), ptr(byte2), ptr(byte3), ptr(byte4), char);
+    skipNewLine = false;
+    //console.warn(ptr(byte1), ptr(byte2), ptr(byte3), ptr(byte4), char);
 
     // actually a full-width whitespace
     // E4 BB 9D
