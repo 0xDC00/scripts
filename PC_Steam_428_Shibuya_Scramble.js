@@ -17,7 +17,6 @@ console.warn("Known issue: Guide hook prints all the text at once");
 const handler1 = trans.send((s) => s, "600++");
 const handler2 = trans.send((s) => s, "800+"); // appear after
 
-const encoder = new TextEncoder("utf-8");
 const decoder = new TextDecoder("utf-8");
 
 // attach("Dialogue1", "8A 0F 83 E8 00 74 2B 83 E8 02 BB 02 00 00 00 80", "edi", handler);
@@ -101,26 +100,22 @@ function perChar(address, name, register, handler) {
     } else if (byte1 === 0x02 && byte2 === 0xe && byte3 === 0x01) {
       if (skipNewLine) {
         handler("(?) ");
-      }
-      else {
+      } else {
         handler("\n(?) ");
       }
       skipNewLine = false;
       return;
     } else if (byte1 === 0xe3 && byte2 === 0x80 && byte3 === 0x80 && byte4 === 0x02) {
       return;
+    } else if (byte1 === 0xe4 && byte2 === 0xbb && byte3 === 0x9d) {
+      // "E4 BB 9D" is "仝" but gets rendered as full-width whitespace ingame
+      handler("　");
+      return;
     }
 
     const char = decoder.decode(Uint8Array.from([byte1, byte2, byte3, byte4]))[0];
     skipNewLine = false;
     //console.warn(ptr(byte1), ptr(byte2), ptr(byte3), ptr(byte4), char);
-
-    // actually a full-width whitespace
-    // E4 BB 9D
-    if (char === "仝") {
-      handler("　");
-      return;
-    }
 
     handler(char);
   });
