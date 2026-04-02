@@ -110,6 +110,7 @@ function perChar(address, name, register, handler) {
     } else if (byte1 === 0xe4 && byte2 === 0xbb && byte3 === 0x9d) {
       // "E4 BB 9D" is "仝" but gets rendered as full-width whitespace ingame
       handler("　");
+      skipNewLine = false;
       return;
     }
 
