@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         428: Shibuya Scramble (428 〜封鎖された渋谷で〜)
 // @version      1.0.0
-// @author       Mansive
+// @author       Mansive, AuroraWright
 // @description  Steam
 // * Spike Chunsoft Co., Ltd.
 // * Abstraction Games
