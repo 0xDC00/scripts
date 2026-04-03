@@ -38,36 +38,9 @@ const DEBUG_LOGS = true;
 //#region Backtrace
 
 if (BACKTRACE === true) {
-  // too much text
-  Mono.setHook("", "ART_TMProText", "SetText", -1, {
-    onEnter(args) {
-      args[0].wrap().console.log(args[1].readMonoString());
-      const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
-      console.warn("callstack:", callstack.splice(0, 8));
-    },
-  });
-  // WORKING
-  // ART_ScriptEngineTalkWindow
-  // public void SetText(string text)
-  // Mono.setHook("", "ART_ScriptEngineTalkWindow", "SetText", -1, {
-  //   onEnter(outerargs) {
-  //     console.log("onEnter: talk window set text");
-  //     // public void SetText(string text, bool enableTag = false, bool direct = true, FontSettingID fontSettingID = FontSettingID.LENGTH)
-  //     this.hook = Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
-  //       onEnter(args) {
-  //         const text = args[1].readMonoString();
-  //         console.log(text);
-  //       },
-  //     });
-  //   },
-  //   onLeave(retval) {
-  //     this.hook.detach();
-  //   },
-  // });
-
-  // Mono.setHook("", "ART_TMProTextSystem", "SetText", 4, {
+  // Mono.setHook("", "ART_TMProText", "SetText", -1, {
   //   onEnter(args) {
-  //     console.log(args[1].readMonoString());
+  //     args[0].wrap().console.log(args[1].readMonoString());
   //     const callstack = Thread.backtrace(this.context, Backtracer.ACCURATE);
   //     console.warn("callstack:", callstack.splice(0, 8));
   //   },
@@ -213,7 +186,14 @@ function positionDeepHandler(text, list = false) {
 //#endregion
 
 //#region Wasteland
-
+/**
+ * @param {string} imageName
+ * @param {string} className
+ * @param {string} methodName
+ * @param {number} argCount
+ * @param {Mono.InvocationListenerCallbacksMono|Mono.InstructionProbeCallbackMono} callbacks
+ * @returns {InvocationListener}
+ */
 function setHook(imageName, className, methodName, argCount, callbacks) {
   const callbacksWrapper = {};
   if (callbacks.onEnter instanceof Function === true) {
@@ -264,7 +244,7 @@ setHook("Broom", "Broom.UI.Title.TitleChooseProtagonistWindowView", "Init", -1, 
 const PopulateTextBackingArray = Mono.findMethod(
   "Unity.TextMeshPro",
   "TMPro.TMP_Text",
-  "PopulateTextBackingArray"
+  "PopulateTextBackingArray",
 ).overload("System.String", "System.Int32", "System.Int32");
 
 // PopulateTextBackingArray.attach({
@@ -301,7 +281,7 @@ setHook(
         },
       });
     },
-  }
+  },
 );
 
 // Cinematic dialogue
