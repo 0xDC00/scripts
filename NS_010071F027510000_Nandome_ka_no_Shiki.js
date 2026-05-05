@@ -17,15 +17,14 @@ const mainHandler = trans.send(handler, '200+');
 
 setHook({
     '1.0.0': {
-        [0x818ed15c - 0x80004000]: mainHandler, // text
+        [0x818ed15c - 0x80004000]: mainHandler.bind_(null, 0, "text")
 
 
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
-function handler(regs) {
-    const address = regs[0].value;
-    console.log('onEnter');
+function handler(regs, index, hookname) {
+    const address = regs[index].value;
 
     /* processString */
     const len = address.add(0x10).readU32() * 2;
