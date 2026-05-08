@@ -1,12 +1,12 @@
 // @name         RPCS3 LLVM Hooker
-// @version      0.0.20-13234+ - https://github.com/RPCS3/rpcs3-binaries-win/releases?q=0.0.20&expanded=true
+// @version      0.0.20-13234 -> 0.0.28-15144
 // @author       [DC]
 // @description  windows, TODO: linux, mac (arm64)
 
 if (module.parent === null) {
     throw "I'm not a text hooker!";
 }
-console.warn('RPCS3 0.0.20-13234+');
+console.warn('RPCS3 0.0.20-13234 -> 0.0.28-15144');
 console.log('[Mirror] Download: https://github.com/koukdw/emulators/releases');
 
 const __e = Process.enumerateModules()[0];

@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         [010068501FF9A000] UN:LOGICAL (UNLOGICAL)
-// @version      1.0.0 + 1.0.1
+// @version      1.0.0 + 1.0.1, 1.0.2
 // @author       Mansive
 // @description  Yuzu
 // * LicoBiTs
 // * Broccoli
 // ==/UserScript==
-const gameVer = "1.0.0";
+const gameVer = "1.0.2";
 const { setHook } = require("./libYuzu.js");
 
 let timer;
@@ -54,6 +54,16 @@ setHook(
       [0x81a69e38 - 0x80004000]: listHandler.bind_(null, 0, "note"),
       [0x81b68c30 - 0x80004000]: listHandler.bind_(null, 2, "rule"),
       // [0x81a10008 - 0x80004000]: mainHandler.bind_(null, 1, "prompt"),
+    },
+    "1.0.2": {
+      [0x818eb600 - 0x80004000]: mainHandler.bind_(null, 1, "dialogue"),
+      [0x81c0b938 - 0x80004000]: choiceDescHandler.bind_(null, 0, "choice desc"),
+      [0x818e30e4 - 0x80004000]: choiceOptionHandler.bind_(null, 1, "choice option"),
+      [0x81a1d138 - 0x80004000]: dictHandler.bind_(null, 0, "dict"),
+      [0x81a6a28c - 0x80004000]: mainHandler.bind_(null, 0, "news1"),
+      [0x81a6a2ec - 0x80004000]: mainHandler.bind_(null, 0, "news2"),
+      [0x81a6a368 - 0x80004000]: listHandler.bind_(null, 0, "note"),
+      [0x81b680d0 - 0x80004000]: listHandler.bind_(null, 2, "rule"),
     },
   }[(globalThis.gameVer = globalThis.gameVer ?? gameVer)],
 );
