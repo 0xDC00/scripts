@@ -61,6 +61,8 @@ function perChar(address, name, register, handler) {
     // 02 1e 00 01 | text remaining, inline
     // 02 2D 04 | midline pause
     // 02 06 00 10 | new line?
+    // 0x2 0x74 0x19 0x0 | separator in bad end screens after "No. XX"
+    // 0x2 0x18 0x0 0x1b | newline in hint screens after "ヒント"
 
     // choice sequences (the engine seems to add a newline *if not already present in the previous sentence*):
     // e3 80 80 02
@@ -85,7 +87,7 @@ function perChar(address, name, register, handler) {
     const byte3 = address.add(2).readU8();
     const byte4 = address.add(3).readU8();
 
-    if (byte1 === 0x02 && (byte2 === 0x06 || byte2 === 0x1b || byte2 === 0x25)) {
+    if (byte1 === 0x02 && (byte2 === 0x06 || byte2 === 0x1b || byte2 === 0x25 || byte2 === 0x18)) {
       handler("\n");
       skipNewLine = true;
       return;
@@ -95,6 +97,10 @@ function perChar(address, name, register, handler) {
       return;
     } else if (byte1 === 0x02 && byte2 === 0x2b && byte3 === 0x01) {
       handler("——");
+      skipNewLine = false;
+      return;
+    } else if (byte1 === 0x02 && byte2 === 0x74) {
+      handler(" ");
       skipNewLine = false;
       return;
     } else if (byte1 === 0x02 && byte2 === 0xe && byte3 === 0x01) {
@@ -111,6 +117,10 @@ function perChar(address, name, register, handler) {
       // "E4 BB 9D" is "仝" but gets rendered as full-width whitespace ingame
       handler("　");
       skipNewLine = false;
+      return;
+    } else if (byte1 === 0x2) { // other engine control characters we don't care about
+      skipNewLine = false;
+      //console.warn(ptr(byte1), ptr(byte2), ptr(byte3), ptr(byte4));
       return;
     }
 
