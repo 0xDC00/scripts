@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [0100E390145C8000] Koroshiya to Strawberry- Plus
+// @name         [0100E390145C8000] Koroshiya to Strawberry Plus (殺し屋とストロベリー Plus)
 // @version      1.0.0
 // @author       [zooo]
 // @description  Yuzu
