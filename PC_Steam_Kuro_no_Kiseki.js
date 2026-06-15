@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Kuro no Kiseki 
-// @version      1.3.5
+// @version      1.4.0
 // @author       Tom (tomrock645)
 // @description  Steam, GOG
 // * developer   Nihon Falcom
@@ -24,7 +24,7 @@ const fourthHandler = trans.send((s) => s, '25++');
 
 
 (function () {
-    const nameSig = 'e8 ?? ?? ?? ?? 89 83 00 01 00 00 85 c0 74 ?? ?? 8b c0 ?? 8b d7 ?? 8b cb e8 ?? ?? ?? ?? 8b 83 00 01 00 00 ?? 88 34 18 0f 28 74';
+    const nameSig = 'ff 15 ?? ?? ?? ?? 8b 83 00 01 00 00 ?? 88 34 18 0f 28 74';
     var results = Memory.scanSync(__e.base, __e.size, nameSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -38,7 +38,7 @@ const fourthHandler = trans.send((s) => s, '25++');
     Interceptor.attach(address, function (args) {
         // console.warn("in: name");
 
-        const nameAddress = this.context.rcx;
+        const nameAddress = this.context.rdx;
         let name = nameAddress.readUtf8String();
         mainHandler(name);
     });
@@ -46,7 +46,7 @@ const fourthHandler = trans.send((s) => s, '25++');
 
 
 (function () {
-    const dialogueSig = 'e8 ?? ?? ?? ?? ?? 01 b6 00 08';
+    const dialogueSig = 'ff 15 ?? ?? ?? ?? 01 bd 00 08 00 00 e9 ?? ?? ?? ?? 83';
     var results = Memory.scanSync(__e.base, __e.size, dialogueSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -99,7 +99,7 @@ const fourthHandler = trans.send((s) => s, '25++');
 
 
 (function () { 
-    const systemMessage1Sig = 'e8 ?? ?? ?? ?? ?? 8b 8e 98 00 00 00 ba 1d 80';
+    const systemMessage1Sig = 'e8 ?? ?? ?? ?? ?? 8b 8f 98 00 00 00 ba 1d 80 00 00 ?? 8b 01 ff 50 50 ?? 8b 8f 98 00 00 00 33 d2 e8 ?? ?? ?? ?? ?? 8b 86 c8 00 00 00';
     var results = Memory.scanSync(__e.base, __e.size, systemMessage1Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -122,28 +122,28 @@ const fourthHandler = trans.send((s) => s, '25++');
 })();
 
 
-(function () { 
-    const systemMessage2Sig = 'e8 ?? ?? ?? ?? ?? 8b 38 ?? 85 ff 74 ?? ?? 3b ?? ?? 74 ?? ?? 8b d5 ?? 8b cf e8 ?? ?? ?? ?? 8b d8 8b d0 ?? 8d ?? 17 e8 ?? ?? ?? ?? ?? 8b c3 ?? 8b d7 ?? 8b ?? 17 e8 ?? ?? ?? ?? ?? 8b ?? ?? c6 04 18 00 ?? 8b ?? ?? ?? 85 c9 74 ?? ?? 8d ?? 07';
-    var results = Memory.scanSync(__e.base, __e.size, systemMessage2Sig);
+// (function () { 
+//     const systemMessage2Sig = 'e8 ?? ?? ?? ?? ?? 8b 38 ?? 85 ff 74 ?? ?? 3b ?? ?? 74 ?? ?? 8b d5 ?? 8b cf e8 ?? ?? ?? ?? 8b d8 8b d0 ?? 8d ?? 17 e8 ?? ?? ?? ?? ?? 8b c3 ?? 8b d7 ?? 8b ?? 17 e8 ?? ?? ?? ?? ?? 8b ?? ?? c6 04 18 00 ?? 8b ?? ?? ?? 85 c9 74 ?? ?? 8d ?? 07';
+//     var results = Memory.scanSync(__e.base, __e.size, systemMessage2Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-    if (results.length === 0) {
-        console.error('[systemMessage2Pattern] Hook not found!');
-        return;
-    }
+//     if (results.length === 0) {
+//         console.error('[systemMessage2Pattern] Hook not found!');
+//         return;
+//     }
 
-    const address = results[0].address;
-    console.log('[systemMessage2Pattern] Found hook', address);
-    Interceptor.attach(address, function (args) {
+//     const address = results[0].address;
+//     console.log('[systemMessage2Pattern] Found hook', address);
+//     Interceptor.attach(address, function (args) {
         // console.warn("in: systemMessage2");
 
-        const systemMessageAddress = this.context.rdx;
-        let systemMessage = systemMessageAddress.readUtf8String();
-        systemMessage = cleanText(systemMessage);
+//         const systemMessageAddress = this.context.rdx;
+//         let systemMessage = systemMessageAddress.readUtf8String();
+//         systemMessage = cleanText(systemMessage);
 
-        mainHandler(systemMessage);
-    });
-})();
+//         mainHandler(systemMessage);
+//     });
+// })();
 
 
 (function () { 
@@ -242,7 +242,7 @@ const fourthHandler = trans.send((s) => s, '25++');
 
 
 (function () {
-    const choices2Sig = 'e8 ?? ?? ?? ?? 8b 87 80 00 00 00 c6 04 38 00 ?? 8b 7c';
+    const choices2Sig = 'ff 15 ?? ?? ?? ?? 8b 87 80 00 00 00 c6 04 38 00 ?? 8b 7c';
     var results = Memory.scanSync(__e.base, __e.size, choices2Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -293,7 +293,7 @@ const fourthHandler = trans.send((s) => s, '25++');
 
 
 (function () {
-    const craftDescriptionSig = 'e8 ?? ?? ?? ?? 83 a3 bc';
+    const craftDescriptionSig = 'e8 ?? ?? ?? ?? 83 a3 bc 00 00 00 fe c7 83 1c';
     var results = Memory.scanSync(__e.base, __e.size, craftDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -318,7 +318,7 @@ const fourthHandler = trans.send((s) => s, '25++');
 
 
 (function () {
-    const itemDescriptionSig = 'eb ?? ?? 8d 15 ?? ?? ?? ?? ?? 8b ce e8';
+    const itemDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8b 5c ?? ?? ?? 8b 6c ?? ?? ?? 83 c4 20 5e c3 cc ?? 83 ec 38 83 fa 0c 77';
     var results = Memory.scanSync(__e.base, __e.size, itemDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -327,7 +327,7 @@ const fourthHandler = trans.send((s) => s, '25++');
         return;
     }
 
-    const address = results[0].address.add(0xc);
+    const address = results[0].address;
     console.log('[itemDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
         // console.warn("in: itemDescription");
@@ -371,7 +371,7 @@ const fourthHandler = trans.send((s) => s, '25++');
 
 
 (function () {
-    const statusDescriptionSig = '8b 82 60 0c 00 00 ?? 8b b2 10 0c 00 00 ?? 8d 2c 80 ?? 8b 83 98 02';
+    const statusDescriptionSig = 'ba 01 00 00 00 ?? 8b d9 ?? 8b';
     var results = Memory.scanSync(__e.base, __e.size, statusDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -380,7 +380,7 @@ const fourthHandler = trans.send((s) => s, '25++');
         return;
     }
 
-    const address = results[0].address.add(0x75);
+    const address = results[0].address.add(0x89);
     console.log('[statusDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
         // console.warn("in: statusDescription");
@@ -396,7 +396,7 @@ const fourthHandler = trans.send((s) => s, '25++');
 
 let previousQuartzDescription = '';
 (function () {
-    const quartzDescription1Sig = 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? ?? 8d 15 ?? ?? ?? ?? e8 ?? ?? ?? ?? 83 bf f0 04 00 00 02 0f 85 ?? ?? ?? ?? ?? 8b 87 70 05 00 00 ?? 8b 90 80 00 00 00 ?? 85 d2 0f 84 ?? ?? ?? ?? ?? 63 87 ec 02 00 00 ?? 8d 0c 40 83 bc 8f b8 02 00 00 2a 0f 85 ?? ?? ?? ?? 33 f6 39 72 28 76 ?? ?? 39 72 28 75 ?? 8b ce eb ?? ?? 63 4a 3c ?? 8b 42 20 ?? 8b 0c c8 ?? 8b 01 ff 50 30 ?? 85 c0 0f 85 ?? ?? ?? ?? 8b 97 20 05 00 00 ?? b0 01 ?? 8b 0d ?? ?? ?? ?? e8 ?? ?? ?? ?? ?? 85 c0 74 ?? ?? 8b';
+    const quartzDescription1Sig = '74 ?? ?? 8b d6 e8 ?? ?? ?? ?? e9';
     var results = Memory.scanSync(__e.base, __e.size, quartzDescription1Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -405,7 +405,7 @@ let previousQuartzDescription = '';
         return;
     }
 
-    const address = results[0].address;
+    const address = results[0].address.add(0x5);
     console.log('[quartzDescription1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
         // console.warn("in: quartzDescription1");
@@ -501,14 +501,14 @@ let previousQuartzDescription = '';
         previousArtDescription = '';
         previousArtDriverDescription = '';
 
-        thirdHandler(shardSkillDescription);
+        thirdHandler(shardSkillDescription + "\n");
     });
 })();
 
 
 let previousArtDriverDescription = '';
 (function () {
-    const artDriverDescription1Sig = 'e8 ?? ?? ?? ?? f3 0f 10 15 ?? ?? ?? ?? ?? 8b cf e8';
+    const artDriverDescription1Sig = 'e8 ?? ?? ?? ?? f3 0f 10 15 ?? ?? ?? ?? ?? 8b cb ?? 8b 5c';
     var results = Memory.scanSync(__e.base, __e.size, artDriverDescription1Sig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -536,7 +536,7 @@ let previousArtDriverDescription = '';
 
         secondHandler(artDriverName + "\n" + artDriverDescription);
     });
-})();
+})(); 
 
 
 (function () {
@@ -570,7 +570,7 @@ let previousArtDriverDescription = '';
 
 let previousArtDescription = '';
 (function () {
-    const artDescriptionSig = 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? ?? 8d 15 ?? ?? ?? ?? e8 ?? ?? ?? ?? 83 bf f0 04 00 00 02 0f 85 ?? ?? ?? ?? ?? 8b 87 70 05 00 00 ?? 8b 90 80 00 00 00 ?? 85 d2 0f 84 ?? ?? ?? ?? ?? 63 87 ec 02 00 00 ?? 8d 0c 40 83 bc 8f b8 02 00 00 2a 0f 85 ?? ?? ?? ?? ?? 39';
+    const artDescriptionSig = 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? ?? 8d 15 ?? ?? ?? ?? e8 ?? ?? ?? ?? 83 bb f0 04 00 00 02 0f 85 ?? ?? ?? ?? ?? 8b 83 70 05 00 00 ?? 8b 90 80 00 00 00 ?? 85 d2 0f 84 ?? ?? ?? ?? ?? 63 83 ec 02 00 00 ?? 8d 0c 40 83 bc 8b b8 02 00 00 2a 0f 85 ?? ?? ?? ?? 39 6a 28 76';
     var results = Memory.scanSync(__e.base, __e.size, artDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -596,42 +596,43 @@ let previousArtDescription = '';
 
         previousSkillDescription = '';
         previousArtDriverDescription = '';
-        previousArtPlugInDescription = '';
+        // previousArtPlugInDescription = '';
 
         secondHandler(artName + "\n" + artDescription);
     });
 })();
 
 
-let previousArtPlugInDescription = '';
-(function () {
-    const artPlugInDescriptionSig = 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? ?? 8d 15 ?? ?? ?? ?? e8 ?? ?? ?? ?? 83 be f0 04';
-    var results = Memory.scanSync(__e.base, __e.size, artPlugInDescriptionSig);
+// let previousArtPlugInDescription = '';
+// (function () {
+//     const artPlugInDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8b 5c ?? ?? ?? 8b 6c ?? ?? ?? 83 c4 20 5e c3 cc ?? 83 ec 38 83 fa 0c 77';
+//     var results = Memory.scanSync(__e.base, __e.size, artPlugInDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-    if (results.length === 0) {
-        console.error('[artPlugInDescriptionPattern] Hook not found!');
-        return;
-    }
+//     if (results.length === 0) {
+//         console.error('[artPlugInDescriptionPattern] Hook not found!');
+//         return;
+//     }
 
-    const address = results[0].address;
-    console.log('[artPlugInDescriptionPattern] Found hook', address);
-    Interceptor.attach(address, function (args) {
+//     const address = results[0].address;
+//     console.log('[artPlugInDescriptionPattern] Found hook', address);
+//     Interceptor.attach(address, function (args) {
         // console.warn("in: artPlugInDescription");
 
-        const artPlugInDescriptionAddress = this.context.rdx;
-        let plugInName = readString(artPlugInDescriptionAddress, "plug-in");
-        let artPlugInDescription = artPlugInDescriptionAddress.readUtf8String();
-        artPlugInDescription = cleanText(artPlugInDescription);
+//         const artPlugInDescriptionAddress = this.context.rdx;
+//         let plugInName = readString(artPlugInDescriptionAddress, "plug-in");
+//         let artPlugInDescription = artPlugInDescriptionAddress.readUtf8String();
+//         plugInName = cleanText(plugInName);
+//         artPlugInDescription = cleanText(artPlugInDescription);
 
-        if (artPlugInDescription === previousArtPlugInDescription)
-            return;
+//         if (artPlugInDescription === previousArtPlugInDescription)
+//             return;
 
-        previousArtPlugInDescription = artPlugInDescription;
+//         previousArtPlugInDescription = artPlugInDescription;
 
-        secondHandler(plugInName + "\n" + artPlugInDescription);
-    });
-})();
+//         secondHandler(plugInName + "\n" + artPlugInDescription);
+//     });
+// })();
 
 
 let previousSkillDescription = '';
@@ -761,7 +762,7 @@ let prestoryName = '';
 
 
 (function () { 
-    const prestory2NameSig = 'e8 ?? ?? ?? ?? ?? 8b 55 18 ?? 8b cf e8';
+    const prestory2NameSig = 'e8 ?? ?? ?? ?? ?? 8b 57 18 ?? 8b cf e8 ?? ?? ?? ?? ?? 8b 6c';
     var results = Memory.scanSync(__e.base, __e.size, prestory2NameSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -807,7 +808,7 @@ let prestoryName = '';
 
 
 (function () { 
-    const prestory3NameSig = 'e8 ?? ?? ?? ?? ?? 8b 57 18 ?? 8b cf e8';
+    const prestory3NameSig = 'e8 ?? ?? ?? ?? ?? 8b 57 18 ?? 8b cf e8 ?? ?? ?? ?? ?? 0f b7 c4 ?? 0f b7 d6';
     var results = Memory.scanSync(__e.base, __e.size, prestory3NameSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -852,28 +853,28 @@ let prestoryName = '';
 })();
 
 
-(function () { 
-    const itemGetNameSig = 'e8 ?? ?? ?? ?? 90 ?? 8b 9e 40 02 00 00 ?? 8b 86 48 02 00 00 ?? 8d 3c c3 ?? 3b df 74 ?? ?? b1 01 ?? b8 fe ff ff 7f ?? 8d 15';
-    var results = Memory.scanSync(__e.base, __e.size, itemGetNameSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+// (function () { 
+//     const itemGetNameSig = 'e8 ?? ?? ?? ?? 90 ?? 8b 9e 40 02 00 00 ?? 8b 86 48 02 00 00 ?? 8d 3c c3 ?? 3b df 74 ?? ?? b1 01 ?? b8 fe ff ff 7f ?? 8d 15';
+//     var results = Memory.scanSync(__e.base, __e.size, itemGetNameSig);
+//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-    if (results.length === 0) {
-        console.error('[itemGetNamePattern] Hook not found!');
-        return;
-    }
+//     if (results.length === 0) {
+//         console.error('[itemGetNamePattern] Hook not found!');
+//         return;
+//     }
 
-    const address = results[0].address;
-    console.log('[itemGetNamePattern] Found hook', address);
-    Interceptor.attach(address, function (args) {
-        // console.warn("in: itemGetName");
+//     const address = results[0].address;
+//     console.log('[itemGetNamePattern] Found hook', address);
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: itemGetName");
 
-        const itemGetNameAddress = this.context.rdx;
-        let itemGetName = itemGetNameAddress.readUtf8String();
-        itemGetName = cleanText(itemGetName);
+//         const itemGetNameAddress = this.context.rdx;
+//         let itemGetName = itemGetNameAddress.readUtf8String();
+//         itemGetName = cleanText(itemGetName);
 
-        mainHandler(itemGetName);
-    });
-})();
+//         mainHandler(itemGetName);
+//     });
+// })();
 
 
 (function () { 
@@ -927,7 +928,7 @@ let prestoryName = '';
 let previousNoteTitle = '';
 let mainNoteText = '';
 (function () { 
-    const mainNoteTitleSig = 'e8 ?? ?? ?? ?? ?? 8b 56 10 ?? 8b cf e8';
+    const mainNoteTitleSig = 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8b ce ?? 8b 57 10 e8';
     var results = Memory.scanSync(__e.base, __e.size, mainNoteTitleSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -958,7 +959,7 @@ let mainNoteText = '';
 
 
 (function () { 
-    const mainNoteRequestDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 05 ?? ?? ?? ?? 0f b7 93 24 01 00 00';
+    const mainNoteRequestDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 05 ?? ?? ?? ?? ?? 0f b7 94';
     var results = Memory.scanSync(__e.base, __e.size, mainNoteRequestDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1002,7 +1003,7 @@ let mainNoteText = '';
 
 
 (function () { 
-    const mainNoteSurveyRecordDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 47 20 ?? 8b 98 40 02 00 00 ?? 8b 80 48 02 00 00 ?? 8d 34 c3';
+    const mainNoteSurveyRecordDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 46 20 ?? 8b 98 40 02 00 00 ?? 8b 80 48 02 00 00 ?? 8d 3c c3 ?? 3b';
     var results = Memory.scanSync(__e.base, __e.size, mainNoteSurveyRecordDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1029,7 +1030,7 @@ let mainNoteText = '';
 
 let questNoteText = '';
 (function () { 
-    const questNoteTitleSig = 'e8 ?? ?? ?? ?? ?? 8b 54 ?? 10 ?? 8b';
+    const questNoteTitleSig = 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8b 57 10 ?? 8b ce e8';
     var results = Memory.scanSync(__e.base, __e.size, questNoteTitleSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1056,11 +1057,11 @@ let questNoteText = '';
             secondHandler(questNoteTitle + questNoteText);
         }, 50);
     });
-})();
+})(); 
 
 
 (function () { 
-    const questNoteRequestDescriptionSig = 'e8 ?? ?? ?? ?? ?? 0f b7 14 ?? 66';
+    const questNoteRequestDescriptionSig = 'e8 ?? ?? ?? ?? ?? 0f b7 17 66 3b d6 0f 83';
     var results = Memory.scanSync(__e.base, __e.size, questNoteRequestDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1078,11 +1079,11 @@ let questNoteText = '';
         let questNoteRequestDescription = questNoteRequestDescriptionAddress.readUtf8String();
         questNoteText = "\n---------------------\n" + questNoteRequestDescription + "\n---------------------";
     });
-})();
+})(); 
 
 
 (function () { 
-    const questNoteSurveyRecordSig = '75 ?? ?? 8b c7 ?? 89 47 38';
+    const questNoteSurveyRecordSig = '75 ?? ?? 8b c7 ?? 89 46 38 ?? 8b 55 08';
     var results = Memory.scanSync(__e.base, __e.size, questNoteSurveyRecordSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1104,7 +1105,7 @@ let questNoteText = '';
 
 
 (function () { 
-    const questNoteSurveyRecordDescriptionSig = '75 ?? ?? 8b c7 ?? 89 47 40';
+    const questNoteSurveyRecordDescriptionSig = 'ff 15 ?? ?? ?? ?? 8b d8 8b d0 ?? 8d ?? df e8';
     var results = Memory.scanSync(__e.base, __e.size, questNoteSurveyRecordDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1113,12 +1114,12 @@ let questNoteText = '';
         return;
     }
 
-    const address = results[0].address.add(0x10);
+    const address = results[0].address;
     console.log('[questNoteSurveyRecordDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
         // console.warn("in: questNoteSurveyRecordDescription");
 
-        const questNoteSurveyRecordDescriptionAddress = this.context.rdx;
+        const questNoteSurveyRecordDescriptionAddress = this.context.rcx;
         let questNoteSurveyRecordDescription = questNoteSurveyRecordDescriptionAddress.readUtf8String();
 
         if (questNoteSurveyRecordDescription === "")
@@ -1126,12 +1127,12 @@ let questNoteText = '';
 
         questNoteText += questNoteSurveyRecordDescription + "\n";
     });
-})();
+})(); 
 
 
 let toDoListText = '';
 (function () { 
-    const toDoListTitleSig = 'e8 ?? ?? ?? ?? ?? 8b 46 38 ?? 8d 15 ?? ?? ?? ?? ?? 8d';
+    const toDoListTitleSig = 'e8 ?? ?? ?? ?? ?? 8b 45 38 ?? 8d 15 ?? ?? ?? ?? ?? 8d';
     var results = Memory.scanSync(__e.base, __e.size, toDoListTitleSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1255,7 +1256,7 @@ let toDoListText = '';
 
 
 (function () { 
-    const connectNoteTopicDescriptionSig = 'e8 ?? ?? ?? ?? ?? ff c6 ?? 83 c7 08 ?? 8b';
+    const connectNoteTopicDescriptionSig = 'e8 ?? ?? ?? ?? ff c5 ?? 83 c7 08 ?? 8b';
     var results = Memory.scanSync(__e.base, __e.size, connectNoteTopicDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1324,28 +1325,28 @@ let toDoListText = '';
 })();
 
 
-(function () { 
-    const achievementDescription3Sig = 'e8 ?? ?? ?? ?? ?? 8b 74 ?? ?? ?? 8b 87 38 03 00 00';
-    var results = Memory.scanSync(__e.base, __e.size, achievementDescription3Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+// (function () { 
+//     const achievementDescription3Sig = 'e8 ?? ?? ?? ?? ?? 8b 74 ?? ?? ?? 8b 87 38 03 00 00';
+//     var results = Memory.scanSync(__e.base, __e.size, achievementDescription3Sig);
+//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-    if (results.length === 0) {
-        console.error('[achievementDescription3Pattern] Hook not found!');
-        return;
-    }
+//     if (results.length === 0) {
+//         console.error('[achievementDescription3Pattern] Hook not found!');
+//         return;
+//     }
 
-    const address = results[0].address;
-    console.log('[achievementDescription3Pattern] Found hook', address);
-    Interceptor.attach(address, function (args) {
-        // console.warn("in: achievementDescription3");
+//     const address = results[0].address;
+//     console.log('[achievementDescription3Pattern] Found hook', address);
+//     Interceptor.attach(address, function (args) {
+//         // console.warn("in: achievementDescription3");
 
-        const achievementDescriptionAddress = this.context.rdx;
-        let achievementDescription = achievementDescriptionAddress.readUtf8String();
-        achievementDescription = cleanText(achievementDescription);
+//         const achievementDescriptionAddress = this.context.rdx;
+//         let achievementDescription = achievementDescriptionAddress.readUtf8String();
+//         achievementDescription = cleanText(achievementDescription);
 
-        fourthHandler(achievementDescription);
-    });
-})();
+//         fourthHandler(achievementDescription);
+//     });
+// })();
 
 
 (function () { // From the board when getting a new quest
@@ -1374,7 +1375,7 @@ let toDoListText = '';
 
 
 (function () {  // From the board when getting a new quest
-    const questDescriptionSig = 'e8 ?? ?? ?? ?? e8 ?? ?? ?? ?? 83 78 0c 01 75 ?? 8b 87 10 03';
+    const questDescriptionSig = 'e8 ?? ?? ?? ?? e8 ?? ?? ?? ?? 83 78 0c 01 75 ?? 8b';
     var results = Memory.scanSync(__e.base, __e.size, questDescriptionSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1443,7 +1444,7 @@ let toDoListText = '';
 
 
 (function () { 
-    const connectEventConfirmationPromptSig = 'e8 ?? ?? ?? ?? ?? 83 8d bc';
+    const connectEventConfirmationPromptSig = 'e8 ?? ?? ?? ?? ?? 83 8e bc 00 00 00 01 ?? 8b 44';
     var results = Memory.scanSync(__e.base, __e.size, connectEventConfirmationPromptSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1471,7 +1472,7 @@ const decoder = new TextDecoder('utf-8');
 function readString(address, hookName) {
     let bytes = [];
 
-    if (hookName === "craft" || hookName === "arts"|| hookName === "skill" || hookName === "plug-in") {
+    if (hookName === "craft" || hookName === "arts"|| hookName === "skill") { // } || hookName === "plug-in") {
         // Read bytes backwards to get the name of the craft, art, etc. after the first occurrence of null bytes
         let nullCount = 0;
         address = address.sub(2);
@@ -1541,5 +1542,6 @@ function cleanText(text) {
         .replace(/<^>+/g, '')
         .replace(/\b[a-zA-Z]+\d+_\d+\b/g, '')
         .replace(/%[a-zA-Z0-9]+/g, ' ')
+        .replace(/�/g, '')
         .trim();
 }
