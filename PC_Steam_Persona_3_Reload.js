@@ -113,7 +113,7 @@ function getDifficultySearchFallbackAddress() {
 
 let difficultySearchAddress = getDifficultySearchAddress();
 if (difficultySearchAddress === null) {
-    console.log("Trying fallback...");
+    console.log("[DifficultyPattern] trying fallback...");
 
     difficultySearchAddress = getDifficultySearchFallbackAddress();
     if (difficultySearchAddress === null) {
