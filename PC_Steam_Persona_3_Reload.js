@@ -22,8 +22,10 @@ var timerChoice;
 
 let patterns = {
     // Main text (dialogue, help text content, system prompt content, dictionnary etc..)
+    // 43 0F B6 14 08 85 D2 0F 84 FD 00 00 00 48 8D 3D D1 CD 16 04 90 41 FF C0 44 89 45 B7 81 FA FE 00 00 00 0F 85 A9 00 00 00 49 63 C8
     // mainText: "89 ?? ?? 43 0F B6 14 08",
-    mainText: "43 0FB6 14 08 85 D2", // moved forward one instruction
+    mainText1: "43 0F B6 14 08 85 D2", // moved forward one instruction
+    mainText2: "43 0F B6 14 08 85 D2 0F 84 FD", // hone into correct match
 
     // Secondary text (Title, Names, Headings)
     // secondaryText: "8B 15 ???????? 81 EA ???????? 48 89 ?? 24 ?? b9",
@@ -127,12 +129,19 @@ console.log('[DifficultyAddress] @ ' + difficultyAddress);
 
 
 (function () {
-    const dialogSig = patterns.mainText;
-    const results = Memory.scanSync(__e.base, __e.size, dialogSig);
+    const dialogSig2 = patterns.mainText2;
+    let results = Memory.scanSync(__e.base, __e.size, dialogSig2);
     if (results.length === 0) {
-        console.error('[MainTextPattern] no result!');
-        return;
+        console.log('[MainTextPattern] trying fallback...')
+
+        const dialogSig1 = patterns.mainText1;
+        results = Memory.scanSync(__e.base, __e.size, dialogSig1);
+        if (results.length === 0) {
+            console.error('[MainTextPattern] no result!');
+            return;
+        }
     }
+
     let hookAddress = results[results.length - 1].address
     console.log('[MainTextAddress] @ ' + hookAddress);
 
