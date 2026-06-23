@@ -32,7 +32,8 @@ let patterns = {
     secondaryText: "48 89 83 90 00 00 00 48 8B 0E", // moved forward after call in latest
 
     // Choice text (and variants)
-    choiceText: "48 89 43 20 48 89 D9",
+    choiceText1: "48 89 43 20 48 89 D9",
+    choiceText2: "48 89 43 20 48 8B CB 8B",
 
     // Used for inserting text
     difficulty1: "48 8d ?? ?? ?? ?? ?? 48 8b 3c c7", // lea
@@ -194,12 +195,19 @@ console.log('[DifficultyAddress] @ ' + difficultyAddress);
 
 
 (function () {
-    const choiceSig = patterns.choiceText;
-    const results = Memory.scanSync(__e.base, __e.size, choiceSig);
+    const choiceSig1 = patterns.choiceText1;
+    let results = Memory.scanSync(__e.base, __e.size, choiceSig1);
     if (results.length === 0) {
-        console.error('[ChoiceTextPattern] no result!');
-        return;
+        console.log('[ChoiceTextPattern] trying fallback...')
+
+        const choiceSig2 = patterns.choiceText2;
+        results = Memory.scanSync(__e.base, __e.size, choiceSig2);
+        if (results.length === 0) {
+            console.error('[ChoiceTextPattern] no result!');
+            return;
+        }
     }
+
     let hookAddress = results[results.length - 1].address
     console.log('[ChoiceTextAddress] @ ' + hookAddress);
 
