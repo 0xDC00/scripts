@@ -33,6 +33,7 @@ let patterns = {
 
     // Choice text (and variants)
     choiceText1: "48 89 43 20 48 89 D9",
+    // 48 89 43 20 48 8B CB 8B 05 3A F6 17 04 89 43 10 8B 84 24 98 00 00 00 89 43 44 89 73 30 66 C7 43 38 01 01 C7 43 3C FF FF FF FF C7 83 80 00 00 00 FF FF FF FF E8 D6 0E 01 00
     choiceText2: "48 89 43 20 48 8B CB 8B",
 
     // Used for inserting text
