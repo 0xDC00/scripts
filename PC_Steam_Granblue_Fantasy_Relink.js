@@ -43,12 +43,12 @@ const hooksStatus = {
 const hooks = [
   {
     name: "CutsceneDialogueName",
-    pattern: "E8 ???????? ?? 8B 8B ????0000 ?? ?? ?? 74 ?? ?? 89",
+    pattern: "E8 ???????? 48 8B 8B ????0000 48 85 C9 74 ?? 89 ?? 41 B8 FFFFFFFF",
     handler: mainHandler,
   }, // E8 72744101
   {
     name: "CutsceneDialogueText",
-    pattern: "E8 ???????? 8B 8B ????0000 31 C0",
+    pattern: "E8 ???????? 8B 8B ????0000 31 C0 81 F9",
     handler: mainHandler,
   }, // E8 58744101
   {
@@ -58,12 +58,12 @@ const hooks = [
   }, // 8E 94010000
   {
     name: "OverworldDialogueName",
-    pattern: "8B 95 ???????? 41 B8 FFFFFFFF E8 ???????? ?? 8B",
+    pattern: "8B 95 ???????? 41 B8 FFFFFFFF E8 ???????? 48 8B ?? ?? ?? ?? ?? 48 8B",
     handler: mainHandler,
   }, // E8 D7762000
   {
     name: "OverworldDialogueText",
-    pattern: "44 ?? ?? ?? ?? FFFFFFFF E8 ???????? 8B 87",
+    pattern: "44 89 E2 41 B8 FF FF FF FF E8 ?? ?? ?? ?? 48 8B",
     handler: mainHandler,
   }, // E8 BD762000
   {
@@ -79,7 +79,8 @@ const hooks = [
   }, // E8 BA928601
   {
     name: "ADVDialogueName",
-    pattern: "E8 ???????? 41 89 ?? ?? ????0000 ?? 8B ?? ???????? 89 DA",
+    pattern: "E8 ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 48 8B ?? ?? ?? ?? ?? 89 DA ?? ?? 01",
+    // 89 ?? ?? ?? FF FF FF FF E8 ?? ?? ?? ?? 89 ?? ?? ?? ?? ?? 48 8B ?? ?? ?? ?? ?? 89 ?? ?? ?? 01
     handler: ADVNameHandler,
   }, // E8 6F380100
   {
@@ -443,9 +444,20 @@ const hooks = [
 ];
 
 const hotHooks = {
+  // EARLY: {
+  //   name: "Early",
+  //   pattern: "48 8B 15 ???????? 8B 86 ???????? 8B",
+  //   address: null,
+  //   readString(args) {
+  //     return args[6].readUtf8String();
+  //   },
+  //   readStringFromRegs(regs) {
+  //     return regs.rcx.readUtf8String();
+  //   },
+  // }, // E8 E0815FFE, after
   EARLY: {
     name: "Early",
-    pattern: "48 8B 15 ???????? 8B 86 ???????? 8B",
+    pattern: "EB 44 41 89 E9 48 8D 54 24 38 4C 89 F1 41 89 F8 E8 11 99 8B FD",
     address: null,
     readString(args) {
       return args[6].readUtf8String();
@@ -453,29 +465,29 @@ const hotHooks = {
     readStringFromRegs(regs) {
       return regs.rcx.readUtf8String();
     },
-  }, // E8 E0815FFE, after
-  LATE: {
-    name: "Late",
-    pattern: "E8 ???????? 41 ?? ?? ?? 00 8B ?? ?? ?? 44",
-    address: null,
-    readString(args) {
-      return args[1].readUtf8String();
-    },
-    readStringFromRegs(regs) {
-      return regs.rdx.readUtf8String();
-    },
-  }, // E8 7AAD0102
-  SPECIAL: {
-    name: "Special",
-    pattern: "E8 ???????? ?? 89 ?? ???? 00 84 C0",
-    address: null,
-    readString(args) {
-      return args[1].readUtf8String();
-    },
-    readStringFromRegs(regs) {
-      return regs.rdx.readUtf8String();
-    },
-  }, // E8 36220000
+  },
+  // LATE: {
+  //   name: "Late",
+  //   pattern: "E8 ???????? 41 ?? ?? ?? 00 8B ?? ?? ?? 44",
+  //   address: null,
+  //   readString(args) {
+  //     return args[1].readUtf8String();
+  //   },
+  //   readStringFromRegs(regs) {
+  //     return regs.rdx.readUtf8String();
+  //   },
+  // }, // E8 7AAD0102
+  // SPECIAL: {
+  //   name: "Special",
+  //   pattern: "E8 ???????? ?? 89 ?? ???? 00 84 C0",
+  //   address: null,
+  //   readString(args) {
+  //     return args[1].readUtf8String();
+  //   },
+  //   readStringFromRegs(regs) {
+  //     return regs.rdx.readUtf8String();
+  //   },
+  // }, // E8 36220000
 };
 
 //#endregion
