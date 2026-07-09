@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Granblue Fantasy Relink
-// @version      1.3.2
+// @version      1.3.2 (Full), 2.0.2 (Partial)
 // @author       Mansive (thanks Koukdw)
 // @description  Steam
 // * Cygames, Inc.
