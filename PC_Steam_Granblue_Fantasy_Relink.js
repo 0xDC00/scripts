@@ -16,7 +16,7 @@ const size = 0x62da000; // executable size
 const BACKTRACE = false;
 const INSPECT_ARGS = false;
 
-const ASYNC_SCAN = true;
+const ASYNC_SCAN = false;
 const ON_ENTER = true;
 const ON_ENTER_EXTENDED = false;
 
