@@ -485,7 +485,9 @@ const hotHooks = {
 function getPatternAddress(name, pattern) {
   const results = Memory.scanSync(__e.base, size, pattern);
   if (results.length === 0) {
-    throw new Error(`[${name}] Hook not found!`);
+    // throw new Error(`[${name}] Hook not found!`);
+    console.error(`[${name}] Hook not found!`);
+    return null;
   }
 
   let address = results[0].address;
@@ -536,6 +538,9 @@ function attachHooks() {
   let count = 0;
   for (const hook of hooks) {
     const address = getPatternAddress(hook.name, hook.pattern);
+    if (address === null) {
+      continue;
+    }
 
     try {
       const skippedMessage = `\x1b[2mskipped: ${hook.name}\x1b[0m`;
@@ -671,7 +676,10 @@ function startTrace() {
   const previousTexts = new Set();
 
   Interceptor.attach(traceAddress, function (args) {
-    const text = traceTarget.readString(args);
+    let text;
+    try {
+      text = traceTarget.readString(args);
+    } catch (err) {}
 
     if (previousTexts.has(text)) {
       return null;
