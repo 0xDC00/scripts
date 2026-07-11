@@ -15,7 +15,7 @@ const dictHandler = trans.send(handler, 600); // pick last from dict scrolling
 setHook(
   {
     "1.0.0": {
-      // [0x81de2d98 - 0x80004000]: mainHandler.bind_(null, 0, "name"),
+      // [0x81de2d10 - 0x80004000]: mainHandler.bind_(null, 1, "name"),
       [0x81de2db0 - 0x80004000]: mainHandler.bind_(null, 0, "dialogue"),
       [0x81df5064 - 0x80004000]: dictHandler.bind_(null, 0, "dict popup"),
       [0x81d02308 - 0x80004000]: dictHandler.bind_(null, 0, "dict menu"),
