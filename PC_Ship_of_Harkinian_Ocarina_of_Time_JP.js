@@ -1,32 +1,14 @@
-"use strict";
-
 // ==UserScript==
 // @name         The Legend of Zelda: Ocarina of Time (Ship of Harkinian) [JP]
-// @version      1.0.0
+// @version      9.2.3
 // @author       Rafael Migon
-// @description  Extracts and normalizes Japanese Ocarina of Time text from Ship of Harkinian for Agent
-// @game         The Legend of Zelda: Ocarina of Time
-// @platform     Windows x64
-// @engine       Ship of Harkinian
-// @language     Japanese
+// @description  Ship of Harkinian 9.2.3, Japanese OoT ROM 1.0
 // ==/UserScript==
 
-const SCRIPT_VERSION = "1.0.0";
-const LOG_PREFIX = `[SoH/OoT JP v${SCRIPT_VERSION}]`;
+const LOG_PREFIX = `[SoH/OoT JP]`;
 
 const MODULE_NAME = "soh.exe";
 const DECODE_FUNCTION = "Message_DecodeJPN";
-const SAVE_CONTEXT_SYMBOL = "gSaveContext";
-
-/*
- * Function-address fallback for the currently supported build.
- */
-const FALLBACK_DECODE_RVA_9_2_3 = 0xE5F350;
-
-/*
- * Decoded-buffer layout fallback for the currently supported build.
- */
-const FALLBACK_DECODED_BUFFER_OFFSET_9_2_3 = 0x1AE9A;
 
 /*
  * Offsets relative to MessageContext::msgBufDecodedWide.
@@ -64,15 +46,27 @@ const FIELD_FROM_DECODED_BUFFER = Object.freeze({
 const OUTPUT_MODE = "translation";
 
 /*
- * Set to a string to force a specific player name.
- * Leave as null to read gSaveContext.playerName automatically.
+ * Japanese OoT normally uses リンク as the player name.
+ *
+ * Custom save names are intentionally not resolved because doing so
+ * would require another build-specific global or optional debug symbol.
  */
-const PLAYER_NAME_OVERRIDE = null;
-const PLAYER_NAME_FALLBACK = "リンク";
+const PLAYER_NAME = "リンク";
 
 /*
  * Suppress identical redraws only within this interval.
  * Reopening the same sign or dialogue later still produces output.
+ *
+ * The dedup key includes textId, textbox type, end type, choice count,
+ * and the decoded output text, so distinct pages are never suppressed
+ * even if they occur inside the same window.
+ *
+ * This value was chosen conservatively to cover repeated
+ * decoding/redraw calls for the same page, not measured against actual
+ * page-turn timing. A legitimate reopening of the exact same page
+ * within this window would still be suppressed; if that turns out to
+ * matter in practice, narrow this after observing how often SoH
+ * repeats the decoder callback for a single page.
  */
 const DUPLICATE_WINDOW_MS = 1000;
 
@@ -149,23 +143,262 @@ const CONTROL = Object.freeze({
 
 const gameModule = Process.getModuleByName(MODULE_NAME);
 
+/*
+ * Frida Memory.scanSync() pattern strings, shared across every
+ * signature-matching step below. "??" marks a wildcard byte.
+ *
+ *   BASE_PATTERN  -> local PlayState base adjustment
+ *   STORE_PATTERN -> displacement to msgBufDecodedWide from that base
+ */
+const BASE_PATTERN = "48 05 ?? ?? ?? ?? 48 89 44 24 30";
+/*
+ * Frida's Memory.scanSync() pattern syntax cannot start or end with a
+ * wildcard, so STORE_PATTERN only encodes the concrete opcode prefix.
+ * The four displacement bytes that follow (previously represented as
+ * trailing "?? ?? ?? ??") aren't part of the match at all — every call
+ * site reads them separately via match.address.add(4).readU32(),
+ * which lands in the same place either way.
+ */
+const STORE_PATTERN = "66 89 84 4A";
+
+/*
+ * Message_DecodeJPN handles many Japanese message-control values
+ * directly. Their little-endian constants help distinguish it from
+ * other functions that happen to use the same 16-bit indexed-store
+ * instruction.
+ */
+const JAPANESE_CONTROL_CONSTANT_PATTERNS = [
+    "70 81", // MESSAGE_END_JPN        0x8170
+    "A5 81", // MESSAGE_BOX_BREAK_JPN  0x81A5
+    "C7 86", // MESSAGE_SHIFT_JPN      0x86C7
+    "C9 86", // MESSAGE_TEXT_SPEED_JPN 0x86C9
+    "4F 87", // MESSAGE_NAME_JPN       0x874F
+    "F3 81", // MESSAGE_SFX_JPN        0x81F3
+    "BC 81", // MESSAGE_TWO_CHOICE_JPN 0x81BC
+    "B8 81"  // MESSAGE_THREE_CHOICE_JPN 0x81B8
+];
 
 function tryResolveSymbol(name) {
-    const symbol = DebugSymbol.fromName(name);
+    return DebugSymbol.fromName(name);
+}
 
-    if (!symbol.address.isNull()) {
-        return symbol;
+/*
+ * Windows x64 executables describe function boundaries in the PE
+ * exception directory (.pdata). This lets the script recover the
+ * beginning of the function containing a decoder-specific instruction,
+ * without depending on a compiler-generated function prologue.
+ */
+function getRuntimeFunctionTable() {
+    const moduleBase = gameModule.base;
+    const peHeaderOffset = moduleBase.add(0x3C).readU32();
+    const ntHeaders = moduleBase.add(peHeaderOffset);
+
+    if (ntHeaders.readU32() !== 0x00004550) {
+        throw new Error("invalid PE signature");
+    }
+
+    const optionalHeader = ntHeaders.add(0x18);
+    const optionalHeaderMagic = optionalHeader.readU16();
+
+    if (optionalHeaderMagic !== 0x20B) {
+        throw new Error(
+            "expected a 64-bit PE optional header"
+        );
     }
 
     /*
-     * Some Agent releases bundle a Frida runtime where loading a
-     * standalone PDB from debug\ is unsupported or unreliable.
-     *
-     * If soh.pdb is already discoverable by Windows/Frida, the lookup
-     * above succeeds. Otherwise the script continues with the verified
-     * build fallback instead of requiring users to move the PDB.
+     * IMAGE_OPTIONAL_HEADER64.DataDirectory starts at 0x70.
+     * IMAGE_DIRECTORY_ENTRY_EXCEPTION is directory index 3.
      */
-    return symbol;
+    const exceptionDirectory =
+        optionalHeader.add(0x70 + (3 * 8));
+
+    const tableRva = exceptionDirectory.readU32();
+    const tableSize = exceptionDirectory.add(4).readU32();
+
+    if (tableRva === 0 || tableSize < 12) {
+        throw new Error(
+            "the PE exception directory is unavailable"
+        );
+    }
+
+    return {
+        address: moduleBase.add(tableRva),
+        count: Math.floor(tableSize / 12)
+    };
+}
+
+function findEnclosingFunction(instructionAddress) {
+    const instructionRva = instructionAddress
+        .sub(gameModule.base)
+        .toUInt32();
+
+    const table = getRuntimeFunctionTable();
+
+    let low = 0;
+    let high = table.count - 1;
+
+    while (low <= high) {
+        const middle = (low + high) >>> 1;
+        const entry = table.address.add(middle * 12);
+        const beginRva = entry.readU32();
+        const endRva = entry.add(4).readU32();
+
+        if (instructionRva < beginRva) {
+            high = middle - 1;
+        } else if (instructionRva >= endRva) {
+            low = middle + 1;
+        } else {
+            return {
+                address: gameModule.base.add(beginRva),
+                size: endRva - beginRva
+            };
+        }
+    }
+
+    throw new Error(
+        `no runtime-function entry contains ${instructionAddress}`
+    );
+}
+
+function scoreDecodeFunctionCandidate(functionInfo) {
+    try {
+        const scanSize = Math.min(functionInfo.size, 0x1200);
+
+        const hasBasePattern = Memory.scanSync(
+            functionInfo.address,
+            scanSize,
+            BASE_PATTERN
+        ).length > 0;
+
+        const hasStorePattern = Memory.scanSync(
+            functionInfo.address,
+            scanSize,
+            STORE_PATTERN
+        ).length > 0;
+
+        if (!hasBasePattern || !hasStorePattern) {
+            return -1;
+        }
+
+        let score = 0;
+
+        for (const pattern of JAPANESE_CONTROL_CONSTANT_PATTERNS) {
+            const matches = Memory.scanSync(
+                functionInfo.address,
+                scanSize,
+                pattern
+            );
+
+            if (matches.length > 0) {
+                score += 2;
+            }
+        }
+
+        /*
+         * Prefer the full decoder over small helper functions or
+         * similarly-shaped message routines.
+         */
+        if (functionInfo.size >= 0x800) {
+            score += 3;
+        } else if (functionInfo.size >= 0x400) {
+            score += 1;
+        }
+
+        return score;
+    } catch (_) {
+        return -1;
+    }
+}
+
+function findDecodeFunctionByInstructionPattern() {
+    const candidates = new Map();
+    const ranges = gameModule.enumerateRanges("r-x");
+
+    for (const range of ranges) {
+        const matches = Memory.scanSync(
+            range.base,
+            range.size,
+            STORE_PATTERN
+        );
+
+        for (const match of matches) {
+            const instructionAddress = match.address;
+
+            let functionInfo;
+
+            try {
+                functionInfo = findEnclosingFunction(
+                    instructionAddress
+                );
+            } catch (_) {
+                continue;
+            }
+
+            const key = functionInfo.address.toString();
+
+            if (candidates.has(key)) {
+                continue;
+            }
+
+            const score =
+                scoreDecodeFunctionCandidate(functionInfo);
+
+            if (score < 0) {
+                continue;
+            }
+
+            candidates.set(key, {
+                address: functionInfo.address,
+                size: functionInfo.size,
+                score
+            });
+        }
+    }
+
+    const ranked = Array.from(candidates.values())
+        .sort((left, right) => right.score - left.score);
+
+    if (DEBUG) {
+        for (const candidate of ranked) {
+            console.log(
+                `${LOG_PREFIX} Decoder candidate ` +
+                `${candidate.address}, size=0x` +
+                `${candidate.size.toString(16)}, ` +
+                `score=${candidate.score}`
+            );
+        }
+    }
+
+    if (ranked.length === 0) {
+        return NULL;
+    }
+
+    if (
+        ranked.length > 1 &&
+        ranked[0].score === ranked[1].score
+    ) {
+        throw new Error(
+            `${LOG_PREFIX} Found multiple equally ranked ` +
+            `${DECODE_FUNCTION} candidates; refusing to choose ` +
+            `an ambiguous hook address. Enable DEBUG for details.`
+        );
+    }
+
+    /*
+     * Require evidence from several Japanese control constants. This
+     * prevents a weak structural match from being selected merely
+     * because it has the highest score among unrelated functions.
+     */
+    if (ranked[0].score < 7) {
+        throw new Error(
+            `${LOG_PREFIX} The best ${DECODE_FUNCTION} candidate ` +
+            `did not contain enough Japanese-decoder evidence. ` +
+            `Enable DEBUG for details.`
+        );
+    }
+
+    return ranked[0].address;
 }
 
 function resolveDecodeFunction() {
@@ -188,30 +421,37 @@ function resolveDecodeFunction() {
 
         return {
             address: symbol.address,
-            usedFallback: false
+            method: "symbol"
         };
     }
 
-    const fallback = gameModule.base.add(
-        FALLBACK_DECODE_RVA_9_2_3
-    );
+    const patternAddress =
+        findDecodeFunctionByInstructionPattern();
 
-    console.log(
-        `${LOG_PREFIX} Using the verified SoH 9.2.3 hook address: ` +
-        `${fallback}`
-    );
+    if (!patternAddress.isNull()) {
+        console.log(
+            `${LOG_PREFIX} Located ${DECODE_FUNCTION} from ` +
+            `decoder instructions: ${patternAddress}`
+        );
 
-    return {
-        address: fallback,
-        usedFallback: true
-    };
+        return {
+            address: patternAddress,
+            method: "instruction-pattern"
+        };
+    }
+
+    throw new Error(
+        `${LOG_PREFIX} Unsupported Ship of Harkinian build: ` +
+        `${DECODE_FUNCTION} could not be located through debug ` +
+        `symbols or validated decoder instructions.`
+    );
 }
 
 const decodeResolution = resolveDecodeFunction();
 const decodeAddress = decodeResolution.address;
 
 /*
- * The official 9.2.3 build initializes local pointers near the start
+ * Compatible builds initialize local pointers near the start
  * of Message_DecodeJPN like this:
  *
  *   play + <base adjustment>
@@ -222,94 +462,35 @@ const decodeAddress = decodeResolution.address;
  * The second yields the displacement to msgBufDecodedWide from that
  * adjusted base. Their sum is the decoded-buffer PlayState offset.
  */
-function readBytes(address, length) {
-    const arrayBuffer = address.readByteArray(length);
-
-    if (arrayBuffer === null) {
-        throw new Error(`could not read ${length} bytes at ${address}`);
-    }
-
-    return new Uint8Array(arrayBuffer);
-}
-
-function findBytePattern(bytes, pattern, startIndex = 0) {
-    outer:
-    for (
-        let index = startIndex;
-        index <= bytes.length - pattern.length;
-        index++
-    ) {
-        for (
-            let patternIndex = 0;
-            patternIndex < pattern.length;
-            patternIndex++
-        ) {
-            const expected = pattern[patternIndex];
-
-            if (
-                expected !== null &&
-                bytes[index + patternIndex] !== expected
-            ) {
-                continue outer;
-            }
-        }
-
-        return index;
-    }
-
-    return -1;
-}
-
-function readU32FromBytes(bytes, index) {
-    return (
-        bytes[index] |
-        (bytes[index + 1] << 8) |
-        (bytes[index + 2] << 16) |
-        (bytes[index + 3] << 24)
-    ) >>> 0;
-}
-
 function discoverDecodedBufferOffset(functionAddress) {
     try {
-        const bytes = readBytes(functionAddress, 0x200);
+        const scanSize = 0x200;
 
-        const basePattern = [
-            0x48, 0x05,
-            null, null, null, null,
-            0x48, 0x89, 0x44, 0x24, 0x30
-        ];
-
-        const storePattern = [
-            0x66, 0x89, 0x84, 0x4A,
-            null, null, null, null
-        ];
-
-        const baseIndex = findBytePattern(
-            bytes,
-            basePattern
+        const baseMatches = Memory.scanSync(
+            functionAddress,
+            scanSize,
+            BASE_PATTERN
         );
 
-        const storeIndex = findBytePattern(
-            bytes,
-            storePattern
+        const storeMatches = Memory.scanSync(
+            functionAddress,
+            scanSize,
+            STORE_PATTERN
         );
 
-        if (baseIndex < 0 || storeIndex < 0) {
+        if (baseMatches.length === 0 || storeMatches.length === 0) {
             throw new Error(
                 "decoder layout signatures were not found"
             );
         }
 
-        const baseAdjustment = readU32FromBytes(
-            bytes,
-            baseIndex + 2
-        );
+        const baseAdjustment = baseMatches[0].address
+            .add(2)
+            .readU32();
 
-        const decodedBufferDisplacement =
-            readU32FromBytes(
-                bytes,
-                storeIndex + 4
-            );
+        const decodedBufferDisplacement = storeMatches[0].address
+            .add(4)
+            .readU32();
 
         const result =
             baseAdjustment + decodedBufferDisplacement;
@@ -326,36 +507,18 @@ function discoverDecodedBufferOffset(functionAddress) {
             `0x${result.toString(16)}`
         );
 
-        return {
-            offset: result,
-            usedFallback: false
-        };
+        return result;
     } catch (error) {
-        if (DEBUG) {
-            console.log(
-                `${LOG_PREFIX} Layout recovery detail: ${error}`
-            );
-        }
-
-        console.log(
-            `${LOG_PREFIX} Using the verified SoH 9.2.3 ` +
-            `decoded-buffer offset: ` +
-            `0x${FALLBACK_DECODED_BUFFER_OFFSET_9_2_3.toString(16)}`
+        throw new Error(
+            `${LOG_PREFIX} Unsupported Ship of Harkinian build: ` +
+            `the Japanese decoded-buffer layout could not be recovered. ` +
+            `Details: ${error}`
         );
-
-        return {
-            offset:
-                FALLBACK_DECODED_BUFFER_OFFSET_9_2_3,
-            usedFallback: true
-        };
     }
 }
 
-const layoutResolution =
-    discoverDecodedBufferOffset(decodeAddress);
-
 const decodedBufferOffset =
-    layoutResolution.offset;
+    discoverDecodedBufferOffset(decodeAddress);
 
 function getFieldAddress(playState, relativeOffset) {
     return playState
@@ -363,173 +526,56 @@ function getFieldAddress(playState, relativeOffset) {
         .add(relativeOffset);
 }
 
-const kernel32 = Process.getModuleByName("kernel32.dll");
-const MultiByteToWideChar = new NativeFunction(
-    kernel32.getExportByName("MultiByteToWideChar"),
-    "int",
-    ["uint", "uint", "pointer", "int", "pointer", "int"]
-);
-
-function decodeCp932(bytes) {
+/*
+ * msgBufDecodedWide is not a normal Shift-JIS byte string: it contains
+ * 16-bit CP932 values interleaved with message control codes. Visible
+ * character bytes are rebuilt first, then Agent's built-in decoder is
+ * used for the final conversion.
+ */
+function decodeShiftJis(bytes, originalCode) {
     if (bytes.length === 0) {
         return "";
     }
 
-    const input = Memory.alloc(bytes.length);
+    const buffer = Memory.alloc(bytes.length + 1);
 
     for (let index = 0; index < bytes.length; index++) {
-        input.add(index).writeU8(bytes[index]);
+        buffer.add(index).writeU8(bytes[index]);
     }
 
-    const requiredLength = MultiByteToWideChar(
-        932,
-        0,
-        input,
-        bytes.length,
-        NULL,
-        0
-    );
+    buffer.add(bytes.length).writeU8(0);
 
-    if (requiredLength <= 0) {
+    try {
+        return buffer.readShiftJisString();
+    } catch (error) {
+        if (DEBUG) {
+            const codeHex = originalCode !== undefined
+                ? `0x${originalCode.toString(16).padStart(4, "0")}`
+                : "unknown";
+
+            const bytesHex = Array.from(bytes)
+                .map(byte => byte.toString(16).padStart(2, "0"))
+                .join(" ");
+
+            console.warn(
+                `${LOG_PREFIX} Shift-JIS decode failed for code=` +
+                `${codeHex} (bytes: ${bytesHex}): ${error}`
+            );
+        }
+
         return "�";
     }
-
-    const output = Memory.alloc((requiredLength + 1) * 2);
-    const writtenLength = MultiByteToWideChar(
-        932,
-        0,
-        input,
-        bytes.length,
-        output,
-        requiredLength
-    );
-
-    if (writtenLength <= 0) {
-        return "�";
-    }
-
-    output.add(writtenLength * 2).writeU16(0);
-
-    return output.readUtf16String(writtenLength);
 }
 
 function decodeCharacter(code) {
     if (code <= 0x00FF) {
-        return decodeCp932([code & 0xFF]);
+        return decodeShiftJis([code & 0xFF], code);
     }
 
-    return decodeCp932([
+    return decodeShiftJis([
         (code >>> 8) & 0xFF,
         code & 0xFF
-    ]);
-}
-
-/*
- * NTSC Japanese filename character table used by OoT.
- */
-const JAPANESE_NAME_TABLE = [
-    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-    "あ", "い", "う", "え", "お", "か", "き", "く", "け", "こ",
-    "さ", "し", "す", "せ", "そ", "た", "ち", "つ", "て", "と",
-    "な", "に", "ぬ", "ね", "の", "は", "ひ", "ふ", "へ", "ほ",
-    "ま", "み", "む", "め", "も", "や", "ゆ", "よ", "ら", "り",
-    "る", "れ", "ろ", "わ", "を", "ん", "ぁ", "ぃ", "ぅ", "ぇ",
-    "ぉ", "っ", "ゃ", "ゅ", "ょ", "が", "ぎ", "ぐ", "げ", "ご",
-    "ざ", "じ", "ず", "ぜ", "ぞ", "だ", "ぢ", "づ", "で", "ど",
-    "ば", "び", "ぶ", "べ", "ぼ", "ぱ", "ぴ", "ぷ", "ぺ", "ぽ",
-    "ア", "イ", "ウ", "エ", "オ", "カ", "キ", "ク", "ケ", "コ",
-    "サ", "シ", "ス", "セ", "ソ", "タ", "チ", "ツ", "テ", "ト",
-    "ナ", "ニ", "ヌ", "ネ", "ノ", "ハ", "ヒ", "フ", "ヘ", "ホ",
-    "マ", "ミ", "ム", "メ", "モ", "ヤ", "ユ", "ヨ", "ラ", "リ",
-    "ル", "レ", "ロ", "ワ", "ヲ", "ン", "ァ", "ィ", "ゥ", "ェ",
-    "ォ", "ッ", "ャ", "ュ", "ョ", "ガ", "ギ", "グ", "ゲ", "ゴ",
-    "ザ", "ジ", "ズ", "ゼ", "ゾ", "ダ", "ヂ", "ヅ", "デ", "ド",
-    "バ", "ビ", "ブ", "ベ", "ボ", "パ", "ピ", "プ", "ペ", "ポ",
-    "ヴ"
-];
-
-function decodeJapaneseFilenameCharacter(code) {
-    if (code < JAPANESE_NAME_TABLE.length) {
-        return JAPANESE_NAME_TABLE[code];
-    }
-
-    if (code >= 171 && code < 197) {
-        return String.fromCharCode(code - 171 + 65);
-    }
-
-    if (code >= 197 && code < 223) {
-        return String.fromCharCode(code - 197 + 97);
-    }
-
-    if (code === 223) {
-        return " ";
-    }
-
-    if (code === 228) {
-        return "-";
-    }
-
-    if (code === 234) {
-        return ".";
-    }
-
-    return "";
-}
-
-let cachedPlayerName = null;
-
-function readPlayerName() {
-    if (PLAYER_NAME_OVERRIDE !== null) {
-        return PLAYER_NAME_OVERRIDE;
-    }
-
-    if (cachedPlayerName !== null) {
-        return cachedPlayerName;
-    }
-
-    const saveContext = tryResolveSymbol(
-        SAVE_CONTEXT_SYMBOL
-    );
-
-    if (saveContext.address.isNull()) {
-        cachedPlayerName = PLAYER_NAME_FALLBACK;
-        return cachedPlayerName;
-    }
-
-    try {
-        const playerNameAddress = saveContext.address.add(0x24);
-        const characters = [];
-
-        for (let index = 0; index < 8; index++) {
-            const code = playerNameAddress.add(index).readU8();
-
-            if (code === 0xDF) {
-                break;
-            }
-
-            const character =
-                decodeJapaneseFilenameCharacter(code);
-
-            if (character.length > 0) {
-                characters.push(character);
-            }
-        }
-
-        cachedPlayerName =
-            characters.length > 0
-                ? characters.join("")
-                : PLAYER_NAME_FALLBACK;
-    } catch (error) {
-        if (DEBUG) {
-            console.log(
-                `${LOG_PREFIX} Player-name read failed: ${error}`
-            );
-        }
-
-        cachedPlayerName = PLAYER_NAME_FALLBACK;
-    }
-
-    return cachedPlayerName;
+    ], code);
 }
 
 function readMetadata(playState) {
@@ -559,6 +605,33 @@ function readMetadata(playState) {
             FIELD_FROM_DECODED_BUFFER.CHOICE_NUM
         ).readU8()
     };
+}
+
+/*
+ * FIELD_FROM_DECODED_BUFFER's offsets are fixed constants derived from
+ * the observed MessageContext layout — unlike decodeAddress and
+ * decodedBufferOffset, they are not re-derived from signatures on
+ * each run. A future SoH build could keep the decoder instructions
+ * this script signature-matches on while still moving these nearby
+ * fields, which would let resolveDecodeFunction succeed while
+ * metadata is silently read from the wrong offsets.
+ *
+ * This is a plausibility check, not a correctness guarantee: a
+ * shifted offset could still coincidentally land on values that pass.
+ * Its purpose is to catch the common case — an offset landing in
+ * clearly wrong territory — and fail loudly instead of feeding
+ * corrupted metadata into cleanTranslationText.
+ */
+function isMetadataPlausible(metadata) {
+    const knownTextBoxTypes = Object.values(TEXTBOX_TYPE);
+    const knownEndTypes = Object.values(TEXTBOX_END_TYPE);
+
+    return (
+        knownTextBoxTypes.includes(metadata.textBoxType) &&
+        knownEndTypes.includes(metadata.textboxEndType) &&
+        metadata.choiceNum <= 3 &&
+        metadata.decodedTextLen <= MAX_REASONABLE_DECODED_LENGTH
+    );
 }
 
 function getReadLimit(decodedTextLen) {
@@ -595,7 +668,7 @@ function readDecodedPage(playState, metadata) {
                 break;
 
             case CONTROL.NAME:
-                output.push(readPlayerName());
+                output.push(PLAYER_NAME);
 
                 while (
                     index + 1 < readLimit &&
@@ -808,6 +881,15 @@ function cleanTranslationText(text, metadata) {
         case TEXTBOX_TYPE.OCARINA:
         case TEXTBOX_TYPE.NONE_BOTTOM:
         case TEXTBOX_TYPE.NONE_NO_SHADOW:
+
+        /*
+         * CREDITS was verified against a full playthrough of the
+         * ending (post-Ganon dialogue through Zelda sending Link
+         * back). It shares NONE_BOTTOM/NONE_NO_SHADOW's layout
+         * handling correctly. The English credits scroll itself
+         * isn't routed through Message_DecodeJPN, so it produces no
+         * output — that's expected, not a missed case.
+         */
         case TEXTBOX_TYPE.CREDITS:
             return normalizeLayoutSensitiveText(lines);
 
@@ -845,9 +927,7 @@ function isDuplicateWithinWindow(key) {
     return false;
 }
 
-const sendText = trans.send(function (text) {
-    return text;
-}, "200+");
+const sendText = trans.send(s => s);
 
 Interceptor.attach(decodeAddress, {
     onEnter(args) {
@@ -864,6 +944,20 @@ Interceptor.attach(decodeAddress, {
 
         try {
             const metadata = readMetadata(this.playState);
+
+            if (!isMetadataPlausible(metadata)) {
+                console.warn(
+                    `${LOG_PREFIX} Implausible metadata (textBoxType=` +
+                    `${metadata.textBoxType}, endType=` +
+                    `${metadata.textboxEndType}, choiceNum=` +
+                    `${metadata.choiceNum}, decodedTextLen=` +
+                    `${metadata.decodedTextLen}) — MessageContext ` +
+                    `layout may have shifted for this build. Skipping ` +
+                    `this callback.`
+                );
+                return;
+            }
+
             const rawText = readDecodedPage(
                 this.playState,
                 metadata
@@ -902,10 +996,6 @@ Interceptor.attach(decodeAddress, {
                 );
 
                 console.log(
-                    `${LOG_PREFIX} Player name: ${readPlayerName()}`
-                );
-
-                console.log(
                     `${LOG_PREFIX} Raw:\n` +
                     `${cleanDisplayText(rawText)}`
                 );
@@ -938,13 +1028,3 @@ console.log(
 console.log(
     `${LOG_PREFIX} Output mode: ${OUTPUT_MODE}`
 );
-
-if (
-    decodeResolution.usedFallback ||
-    layoutResolution.usedFallback
-) {
-    console.log(
-        `${LOG_PREFIX} Compatibility mode: official Windows x64 ` +
-        "Ship of Harkinian 9.2.3."
-    );
-}
