@@ -47,3 +47,10 @@ Mono.setHook('', 'SilverMessage.SilverString', 'Draw', [], {
         flushTimer = setTimeout(flush, 250);
     }
 });
+
+Mono.setHook('', 'SilverMessage.SilverScrollMail', 'SetText', -1, {
+    onEnter(args) {
+        let text = args[1].readMonoString().replace(/\\k(\\c)?|＄/g, "");
+        handler(text);
+    }
+});
