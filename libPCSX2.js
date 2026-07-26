@@ -253,8 +253,9 @@ function setupAddressesThroughPattern() {
         // could get from DynarecCheckBreakpoint instead
         const cpuRegsLoad = getPatternAddress({
             name: "cpuRegsLoad",
-            pattern: "48 8D 15 ???????? 89 84 8A F0030000",
-            //       "48 8D 15 4F607A02 89 84 8A F0030000" v2.2.0
+            pattern: "48 8D 15 ???????? 89 84 8A 20020000",
+            //       "48 8D 15 64607A02 89 84 8A 20020000" v2.2.0
+            //       "48 8D 15 44AA9402 89 84 8A 20020000" v2.7.494
         });
         const ins = Instruction.parse(cpuRegsLoad); // lea rdx,[pcsx2-qt._cpuRegistersPack]
 
