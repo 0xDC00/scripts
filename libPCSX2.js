@@ -236,8 +236,9 @@ function setupAddressesThroughPattern() {
     });
     addresses.iopRecRecompile = getFunctionAddress({
         name: "iopRecRecompile",
-        pattern: "81 F9 30160000 0F 84 8A000000 81 FE 90080000",
+        pattern: "81 F? 30160000 0F 84 8A000000 81 FE 90080000",
         //       "81 F9 30160000 0F 84 8A000000 81 FE 90080000" v2.2.0
+        //       "81 FE 30160000 0F 84 8A000000 81 FE 90080000" v2.7.494
     });
     addresses.recAddBreakpoint = getFunctionAddress({
         name: "recAddBreakpoint",
