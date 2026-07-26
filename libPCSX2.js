@@ -51,6 +51,9 @@ function scanRanges({ ranges, pattern, protection }) {
         try {
             rangeMatches = Memory.scanSync(range.base, range.size, pattern);
         } catch (err) {
+            if (err.message.includes("invalid match pattern")) {
+                throw err;
+            }
             continue;
         }
 
