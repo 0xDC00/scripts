@@ -280,9 +280,10 @@ function setupAddressesThroughPattern() {
 
     addresses.dynarecCheckBreakpoint = getFunctionAddress({
         name: "dynarecCheckBreakpoint",
-        pattern: "8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000",
-        //       "8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000 E8 06030D00 8D 4F 02" v2.2.0
-        //       "8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000 E8 46F30C00 8D 4F 02" v2.6.0
+        pattern: "48 01 C8 0F B6 FB 8B 40 14 3D 18040000 74 ?? 3D 20040000 74 ?? A9 00040000 74 ?? 8? ?6 04 B9 01000000",
+        //       "48 01 C8 0F B6 FB 8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000" v2.2.0
+        //       "48 01 C8 0F B6 FB 8B 40 14 3D 18040000 74 27 3D 20040000 74 20 A9 00040000 74 19 83 C6 04 B9 01000000" v2.7.494
+        lookbackSize: 0x200,
     });
     addresses.psxDynarecCheckBreakpoint = getFunctionAddress({
         name: "psxDynarecCheckBreakpoint",
