@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         [SLPM66994] Mana Khemia: Alchemists of Al-Revis (Gust Best Price) / マナケミア～学園の錬金術士たち～(ガストベストプライス)
+// @name         [SLPM66994] Mana Khemia: Alchemists of Al-Revis / マナケミア～学園の錬金術士たち～
 // @version      0.1
 // @author       Mansive
 // @description  PCSX2 x64
