@@ -41,7 +41,7 @@ function handler(regs, index, hookname) {
 
   if (len === 0) {
     // no name, don't bother processing
-    return;
+    return null;
   }
 
   let text = address.add(0x14).readUtf16String(len);
