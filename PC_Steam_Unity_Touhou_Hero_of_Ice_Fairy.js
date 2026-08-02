@@ -23,5 +23,6 @@ Mono.setHook("", "DialogueMgr", "UpdateContent", 2, {
 
 trans.replace((s) => {
     s = s.replace(/【[^】]+】/g, "");
+    s = s.replace(/\<\/?color[^>]*>|KKK|\|/g, ""); // I said before, I'm |<color=#e92988>KKKClownpieceKKK</color>|.
     return s;
 });
