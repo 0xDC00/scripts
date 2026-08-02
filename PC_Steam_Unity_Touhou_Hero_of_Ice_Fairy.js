@@ -16,7 +16,7 @@ Mono.setHook("", "DialogueMgr", "UpdateContent", 2, {
     onEnter(args) {
         console.log("onEnter: DialogueMgr.UpdateContent");
         const text = args[1].readMonoString();
-        console.warn(JSON.stringify(text));
+        // console.warn(JSON.stringify(text));
         handler(text);
     },
 });
