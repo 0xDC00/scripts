@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Touhou Hero of Ice Fairy
+// @name         Touhou Hero of Ice Fairy / 东方冰之勇者记
 // @version      0.1
 // @author       Mansive
 // @description  Steam
