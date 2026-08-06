@@ -124,9 +124,8 @@ function getInitializeAddress() {
     }
 
     console.log('Looking for MSVC Initialize...');
-    // doesnt support 1616
     MSVC: {
-        const InitializeSig = '4? 8b 4? ?? 4? 89 4c ?? ?? 4? 89 ?? ?? ?? 4? 8b 4? ?? 4? 89 4c ?? ?? 4? 8b 8?'
+        const InitializeSig = '4C 89 4D 18 4C 89 C7 48 89 D6 49 89 CE 44 8B BD D8 00 00 00 48 8B 9D D0 00 00 00';
         const InitializeSigResults = scanAttempt(__e.base, __e.size, InitializeSig);
         if (InitializeSigResults.length === 0) {
             // console.log('Failed to find MSVC Initialize');
@@ -456,6 +455,24 @@ function getDoJitAddress() {
         }
     }
     else {
+        // Windows MSVC 2022, Eden 0.2.1
+        const RegisterBlockSig4 = '48 8B ?? 48 89 44 ?? ?? 48 8B ?? 48 89 44 ?? ?? 48 8B ?? ?? 48 89 44 ?? ?? 48 8D 54';
+        const RegisterBlockMatches4 = Memory.scanSync(__e.base, __e.size, RegisterBlockSig4);
+        if (RegisterBlockMatches4.length > 1) {
+            console.warn(RegisterBlockMatches4.length, 'signature matches found?');
+        }
+        const RegisterBlock4 = RegisterBlockMatches4[0];
+        if (RegisterBlock4) {
+            console.log('MSVC RegisterBlock4:', RegisterBlock4.address);
+            const beginSubSig1 = 'CC 41 5? 41 5? 5?';
+            const lookbackSize = 0x400;
+            const address = RegisterBlock4.address.sub(lookbackSize);
+            const subs = Memory.scanSync(address, lookbackSize, beginSubSig1);
+            if (subs.length !== 0) {
+                return subs[subs.length - 1].address.add(1);
+            }
+        }
+
         // Windows MingW Clang
         //                         e8 ba 94 2f 00 48 89 f9 48 89 da 4d 89 f0 e8 54 00 00 00 4c 89 36 4c 89 7e 08 48 83 c7 18 48 8b 03 48 89 44 24 20 48 8b 06 48 89 44 24 28 48 8b 46 08 48 89 44 24 30 48 8d 4c 24 40 4c 8d 44 24 20 48 89 fa e8 de 97 4a 00 // clang 0.0.4-rc3
         //                         E8 E2 6F E5 01 48 89 F9 48 89 DA 4D 89 F0 E8 54 00 00 00 4C 89 36 4C 89 7E 08 48 83 C7 18 48 8B 03 48 89 44 24 20 48 8B 06 48 89 44 24 28 48 8B 46 08 48 89 44 24 30 48 8D 4C 24 40 4C 8D 44 24 20 48 89 FA E8 1E 07 00 00 48 89 F0 48 83 C4 50 5B 5F 5E 41 5E 41 5F C3 // clang 0.0.4
@@ -479,8 +496,7 @@ function getDoJitAddress() {
         }
 
         // Windows MinGW GCC
-        //	e8 f9 fc ff ff 48 8b 6e 20 4c 8b 7e 28 4c 89 2b 4c 89 73 08 48 8b 3f 4c 39 fd 0f 84 8e 01 00 00 
-        const RegisterBlockSig2 = 'e8 ?? ?? ?? ?? 4? 8b ?? ?? 4? 8b ?? ?? 4? 89 ?? 4? 89 ?? ?? 4? 8b ?? 4? 39';
+        const RegisterBlockSig2 = '48 89 FA 4? 89 E8 48 89 F1 E8 ?? ?? ?? ?? 4? 8B ?? 20 4? 8B ?? 28 4? 89 2B';
         const RegisterBlockMatches = Memory.scanSync(__e.base, __e.size, RegisterBlockSig2);
         if (RegisterBlockMatches.length > 1) {
             console.warn(RegisterBlockMatches.length, 'signature matches found?');
