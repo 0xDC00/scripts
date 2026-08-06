@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Granblue Fantasy Relink
-// @version      1.3.2 (Full), 2.0.2 (Partial)
+// @version      1.3.2 (Full), 2.0.3 (Partial)
 // @author       Mansive (thanks Koukdw)
 // @description  Steam
 // * Cygames, Inc.
@@ -457,7 +457,7 @@ const hotHooks = {
   // }, // E8 E0815FFE, after
   EARLY: {
     name: "Early",
-    pattern: "EB 44 41 89 E9 48 8D 54 24 38 4C 89 F1 41 89 F8 E8 11 99 8B FD",
+    pattern: "EB ?? 41 89 E9 48 8D 54 24 38 4C 89 F1 41 89 F8 E8",
     address: null,
     readString(args) {
       return args[6].readUtf8String();
