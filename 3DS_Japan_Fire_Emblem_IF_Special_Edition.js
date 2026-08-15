@@ -9,8 +9,7 @@ const { setHook } = require("./libCitra.js");
 const mainHandler = trans.send(handler.bind_(null, 1), '200+'); // join 200ms
 
 setHook({ 
-      // 1.0 0x190af4: mainHandler, // dialogue only
-     0x190ff4:mainHandler
+     0x190ff4:mainHandler, //Dialogue
 });
 
 function handler(regs, index) {
@@ -35,4 +34,3 @@ function handler(regs, index) {
     return s;
 }
 
-//大丈夫か、カムイ_ぼんやりしていたようだが
