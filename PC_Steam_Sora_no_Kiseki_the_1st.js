@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Sora no Kiseki the 1st / 空の軌跡 the 1st
-// @version      1.06.2
+// @version      1.07
 // @author       Tom (tomrock645)
 // @description  Steam
 // * developer   Nihon Falcom
@@ -569,27 +569,27 @@ let inventoryName = '';
 })();
 
 
-// let itemDescription = '';
-// (function () { // books and key items
-//     const itemDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b d8 8b 97 00 08 00 00 03 d0 81 fa 00 08 00 00 72 ?? ?? 8d 0d ?? ?? ?? ?? ?? b8 42 01 00 00 ?? 8d 15 ?? ?? ?? ?? b9 03 00 00 00 e8 ?? ?? ?? ?? eb ?? ?? 8b c3 ?? 8b d6 ?? 8b cf e8 ?? ?? ?? ?? 01 9f 00 08 00 00 e9 ?? ?? ?? ?? ?? 8d ?? 40 20 00 00';
-//     var results = Memory.scanSync(__e.base, __e.size, itemDescriptionSig);
-//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+(function () { // During battle
+    const itemDescriptionSig = 'e8 ?? ?? ?? ?? 90 ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 50 08 00 00 5f c3 cc cc cc cc cc cc cc cc cc cc ?? 8d 05';
+    var results = Memory.scanSync(__e.base, __e.size, itemDescriptionSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
-//     if (results.length === 0) {
-//         console.error('[itemDescriptionPattern] Hook not found!');
-//         return;
-//     }
+    if (results.length === 0) {
+        console.error('[itemDescriptionPattern] Hook not found!');
+        return;
+    }
 
-//     const address = results[0].address;
-//     console.log('[itemDescriptionPattern] Found hook', address);
-//     Interceptor.attach(address, function (args) {
-//         // console.warn("in: itemDescription");
+    const address = results[0].address;
+    console.log('[itemDescriptionPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: itemDescription");
 
-//         const itemDescriptionAddress = this.context.rcx;
-//         itemDescription = itemDescriptionAddress.readUtf8String();
-//         itemDescription = cleanText(itemDescription);
-//     });
-// })();
+        const itemDescriptionAddress = this.context.rdx;
+        let itemDescription = itemDescriptionAddress.readUtf8String();
+        itemDescription = cleanText(itemDescription);
+        secondHandler(itemDescription);
+    });
+})();
 
 
 (function () {
@@ -873,7 +873,7 @@ let inventoryName = '';
 
 
 (function () {
-    const bookSig = 'e8 ?? ?? ?? ?? ?? 8b 46 08 ?? 8b 80 a0 00 00 00 ?? 8b 98 58 02';
+    const bookSig = 'e8 ?? ?? ?? ?? ?? 8b 46 08 ?? 8b 80 a8 00 00 00 ?? 8b 98 58 02';
     var results = Memory.scanSync(__e.base, __e.size, bookSig);
     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
 
@@ -1057,6 +1057,30 @@ let inventoryName = '';
         difficultyDescription = cleanText(difficultyDescription);
 
         secondHandler(difficultyDescription);
+    });
+})();
+
+
+(function () { // Craft and arts description in battle
+    const attackDescriptionSig = 'e8 ?? ?? ?? ?? 90 ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 50 08 00 00 5f c3 cc cc cc cc cc cc cc cc cc cc cc cc cc';
+    var results = Memory.scanSync(__e.base, __e.size, attackDescriptionSig);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error('[attackDescriptionPattern] Hook not found!');
+        return;
+    }
+
+    const address = results[0].address;
+    console.log('[attackDescriptionPattern] Found hook', address);
+    Interceptor.attach(address, function (args) {
+        // console.warn("in: attackDescription");
+
+        const attackDescriptionAddress = this.context.rdx;
+        let attackDescription = attackDescriptionAddress.readUtf8String();
+        attackDescription = cleanText(attackDescription);
+
+        secondHandler(attackDescription);
     });
 })();
 
