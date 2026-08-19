@@ -29,7 +29,7 @@
         const options = {
             method: "GET",
         };
-        let url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + from + "&tl=" + to + "&hl=en-US&dt=t&dt=bd&dj=1&source=icon&tk=" + tkk;
+        let url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + encodeURIComponent(from) + "&tl=" + encodeURIComponent(to) + "&hl=en-US&dt=t&dt=bd&dj=1&source=icon&tk=" + tkk;
         let q = "q=" + encodeURIComponent(str);
         if (2000 > url.length + q.length) {
             url += '&' + q; q = '';
