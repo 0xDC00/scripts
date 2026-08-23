@@ -10,7 +10,7 @@
 // ==/UserScript==
 
 
-console.warn("Know issues: \n- The first quartz's name won't have its name extracted when you open an orbment.");
+console.warn("Know issue: \n- The first quartz's name won't have its name extracted when you open an orbment.");
 
 
 const __e = Process.enumerateModules()[0];
@@ -177,9 +177,17 @@ let systemMessage = '';
 
 
 (function () { 
-    const address = getAddressPattern("pokerRules", 'e8 ?? ?? ?? ?? eb ?? ?? 8b 53 08 ?? 8d ?? ?? 70 e8 ?? ?? ?? ?? ?? b8 ec 13 00 00 ?? 8b d0 ?? 8d ?? e0 27 00 00 e8 ?? ?? ?? ?? ?? 8d ?? e0 27 00 00 ?? 8b cf e8 ?? ?? ?? ?? ?? 8b 95 08 02 00');
+    const address = getAddressPattern("pokerRules1", 'e8 ?? ?? ?? ?? eb ?? ?? 8b 53 08 ?? 8d ?? ?? 70 e8 ?? ?? ?? ?? ?? b8 ec 13 00 00 ?? 8b d0 ?? 8d ?? e0 27 00 00 e8 ?? ?? ?? ?? ?? 8d ?? e0 27 00 00 ?? 8b cf e8 ?? ?? ?? ?? ?? 8b 95 08 02 00');
     Interceptor.attach(address, function (args) {
-        processText(this.context.rdx, "main", "pokerRules");
+        processText(this.context.rdx, "main", "pokerRules1");
+    });
+})();
+
+
+(function () { 
+    const address = getAddressPattern("pokerRules2", 'c6 84 05 f0 13 00 00 00 80 7b 10 00 0f 84 ?? ?? ?? ?? ?? 8b 85 58 05 00 00', 0xb0);
+    Interceptor.attach(address, function (args) {
+        processText(this.context.rdx, "main", "pokerRules2");
     });
 })();
 
@@ -369,6 +377,14 @@ let statusOverdriveName = '';
     const address = getAddressPattern("locationName2", 'e8 ?? ?? ?? ?? ?? 8b 83 98 00 00 00 ?? 8b 93 90 00 00 00 8b 88 70');
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "locationName2");
+    });
+})();
+
+
+(function () { // Courtesy of RaikoHorikawa (rhgroyper)
+    const address = getAddressPattern("cutsceneLocationName", 'e8 ?? ?? ?? ?? 32 c0 ?? 8b df');
+    Interceptor.attach(address, function (args) {
+        processText(this.context.rdx, "main", "cutsceneLocationName");
     });
 })();
 
