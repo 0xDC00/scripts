@@ -9,19 +9,17 @@
 // * Hooks:
 // * - Story dialogue and speaker names
 // * - Tutorials, system prompts, options and controls
-// * - Mission information and briefings
+// * - Briefings, victory/defeat conditions and mission info
 // * - Character, personnel, deployment and vehicle information
-// * - Equipment, Potentials, Orders and Ship Orders
+// * - Orders/Ship Orders and potentials in combat
 // * - Battlefield unit names and contextual menu help
-// * - Battle results
+// * - Mission name in battle results
 // * - Book Mode lists and selection text
 // * - R&D names and selected infantry weapon/uniform stats
 // * - Reference entries and newspaper articles
 // *
 // * Known issue: The opening narration in a new game is not hooked.
 // ==/UserScript==
-
-'use strict';
 
 const __e = Process.enumerateModules()[0];
 
@@ -30,12 +28,9 @@ const __e = Process.enumerateModules()[0];
 const sendToAgent = trans.send((s) => s);
 
 
-// =============================================================================
-// OUTPUT / BATCHING
-// =============================================================================
+//#region OUTPUT / BATCHING
 // Grouped fields are combined per UI refresh; cursor-driven text is debounced.
 // These delays affect presentation only.
-// =============================================================================
 
 const groupedStates = Object.create(null);
 const latestStates = Object.create(null);
@@ -177,9 +172,9 @@ function emitList(key, text, wait = 180, repeatAfter = 700) {
 }
 
 
-// =============================================================================
-// TEXT HELPERS
-// =============================================================================
+//#endregion
+
+//#region TEXT HELPERS
 
 function readUtf8(ptr) {
     if (!ptr || ptr.isNull())
@@ -223,9 +218,9 @@ function getText(ptr) {
 }
 
 
-// =============================================================================
-// PATTERN HELPERS
-// =============================================================================
+//#endregion
+
+//#region PATTERN HELPERS
 
 function getMatches(name, pattern, expected = 1) {
     const results = Memory.scanSync(__e.base, __e.size, pattern);
@@ -286,12 +281,11 @@ function hookTextCallFromAnchor(name, pattern, callOffset, output) {
 }
 
 
-// =============================================================================
-// STORY DIALOGUE / SPEAKER
-// =============================================================================
+//#endregion
+
+//#region STORY DIALOGUE / SPEAKER
 // Speaker and dialogue share a short grouping queue so a newly rendered name is
 // paired with the following dialogue box.
-// =============================================================================
 
 (function () {
     const results = getMatches(
@@ -321,9 +315,9 @@ hookTextCall(
 );
 
 
-// =============================================================================
-// TUTORIAL / SYSTEM TEXT
-// =============================================================================
+//#endregion
+
+//#region TUTORIAL / SYSTEM TEXT
 
 hookTextCall(
     'tutorial',
@@ -339,12 +333,11 @@ hookTextCall(
 
 
 
-// =============================================================================
-// OPTIONS CONFIRMATION DIALOGS
-// =============================================================================
+//#endregion
+
+//#region OPTIONS CONFIRMATION DIALOGS
 // The prompt has a clean semantic text path. The fixed はい / いいえ labels only
 // appear on a noisy generic conversion path, so reconstruct them with the prompt.
-// =============================================================================
 
 hookTextCallFromAnchor(
     'optionsConfirmPrompt',
@@ -354,12 +347,11 @@ hookTextCallFromAnchor(
 );
 
 
-// =============================================================================
-// KEY / CONTROLLER ASSIGNMENT SELECTED DESCRIPTION
-// =============================================================================
+//#endregion
+
+//#region KEY / CONTROLLER ASSIGNMENT SELECTED DESCRIPTION
 // Ignore the bulk row renderer and emit only the selected bottom description.
 // The routine is cloned elsewhere, so a unique local anchor reaches the call.
-// =============================================================================
 
 (function () {
     const results = getMatches(
@@ -382,13 +374,12 @@ hookTextCallFromAnchor(
 })();
 
 
-// =============================================================================
-// MISSION INFORMATION
-// =============================================================================
+//#endregion
+
+//#region MISSION INFORMATION
 // Both mission-info pages are populated in one refresh and no reliable active-tab
 // discriminator was found. Collect the fields semantically and emit conditions
 // first, followed by mission/place metadata and the explanation.
-// =============================================================================
 
 const missionState = {
     name: '',
@@ -493,12 +484,11 @@ hookTextCall(
 );
 
 
-// =============================================================================
-// MAIN CHARACTER / EQUIPMENT PANEL
-// =============================================================================
+//#endregion
+
+//#region MAIN CHARACTER / EQUIPMENT PANEL
 // Header-only redraws occur while changing subpages, so emit the panel only when
 // at least one equipment/detail field is present.
-// =============================================================================
 
 const characterPanelState = {
     parts: [],
@@ -586,12 +576,11 @@ hookTextCall(
 );
 
 
-// =============================================================================
-// PERSONNEL / PROFILE PANEL
-// =============================================================================
+//#endregion
+
+//#region PERSONNEL / PROFILE PANEL
 // This summary may be preloaded before the detail pane opens. Preserve the
 // game's refresh lifecycle instead of inferring subpage state.
-// =============================================================================
 
 const profilePanelState = {
     name: '',
@@ -697,12 +686,11 @@ hookTextCall(
 );
 
 
-// =============================================================================
-// SQUAD-FORMATION PROFILE POTENTIAL DESCRIPTION
-// =============================================================================
+//#endregion
+
+//#region SQUAD-FORMATION PROFILE POTENTIAL DESCRIPTION
 // This is separate from the normal character-info/briefing Potential path. The
 // call is shared by similar routines, so a unique local anchor reaches it.
-// =============================================================================
 
 hookTextCallFromAnchor(
     'profilePotentialDescription',
@@ -712,13 +700,12 @@ hookTextCallFromAnchor(
 );
 
 
-// =============================================================================
-// DEPLOYMENT UNIT DETAIL
-// =============================================================================
+//#endregion
+
+//#region DEPLOYMENT UNIT DETAIL
 // The header redraws on all three subpages, so emit it only on Info. Two mirrored
 // controller fields at +0x214/+0x218 hold 0/1/2 for Info/Potentials/Equipment;
 // both must agree before the page value is trusted.
-// =============================================================================
 
 const DEPLOY_PAGE_INFO = 0;
 const DEPLOY_PAGE_POTENTIALS = 1;
@@ -849,14 +836,13 @@ hookTextCall(
 
 
 
-// =============================================================================
-// DEPLOYMENT POTENTIAL LIST
-// =============================================================================
+//#endregion
+
+//#region DEPLOYMENT POTENTIAL LIST
 // Potentials and Equipment share an eight-slot renderer. Potentials use the
 // visible order 0|2, 1|3, 4|5, 6|7; Equipment remains vertical. Only a complete
 // eight-Potential render is reconstructed as a grid, otherwise preserve render
 // order vertically.
-// =============================================================================
 
 const deployPotentialState = {
     slots: [],
@@ -975,9 +961,9 @@ function queueDeployPotentialSlot(text, context) {
 })();
 
 
-// =============================================================================
-// TANK / VEHICLE EQUIPMENT PANEL
-// =============================================================================
+//#endregion
+
+//#region TANK / VEHICLE EQUIPMENT PANEL
 
 hookTextCallFromAnchor(
     'tankName',
@@ -1020,12 +1006,11 @@ hookTextCallFromAnchor(
 
 
 
-// =============================================================================
-// BATTLE RESULTS
-// =============================================================================
+//#endregion
+
+//#region BATTLE RESULTS
 // Emit the report title and mission name only. Detailed result labels are omitted
 // because their numeric values are rendered separately.
-// =============================================================================
 
 hookTextCall(
     'resultMissionTitle',
@@ -1034,14 +1019,13 @@ hookTextCall(
 );
 
 
-// =============================================================================
-// ORDERS
-// =============================================================================
+//#endregion
+
+//#region ORDERS
 // The selected description has a reliable hook, but the name path redraws the
 // whole list. Pair descriptions with known names instead of tracking selection.
 // In briefing, page changes alone do not refresh the description; selection does.
 // NFKC normalization makes full-width/ASCII typography equivalent for lookup.
-// =============================================================================
 
 function normalizeOrderDescription(text) {
     let s = text || '';
@@ -1221,12 +1205,11 @@ addOrder(
 );
 
 
-// -----------------------------------------------------------------------------
-// SHIP ORDERS
-// -----------------------------------------------------------------------------
+//#endregion
+
+//#region SHIP ORDERS
 // Ship Order names do not pass through the normal Order-name path, so pair their
 // descriptions the same way. Generic Ship Order menu help keeps its context tag.
-// -----------------------------------------------------------------------------
 
 const shipOrderByDescription = new Map();
 
@@ -1266,9 +1249,9 @@ const shipOrderMenuHelp = new Set([
 ]);
 
 
-// -----------------------------------------------------------------------------
-// COMBAT COMMAND MENU HELP
-// -----------------------------------------------------------------------------
+//#endregion
+
+//#region COMBAT COMMAND MENU HELP
 //
 // These are fixed descriptions for the top-level combat command menu.
 // Exact-match tagging gives the description its visible menu-item context
@@ -1276,7 +1259,6 @@ const shipOrderMenuHelp = new Set([
 //
 // Output example:
 //   【ミッション情報】戦闘の勝利条件、敗北条件、各種情報を確認します。
-// -----------------------------------------------------------------------------
 
 const combatMenuHelpByDescription = new Map([
     [
@@ -1356,13 +1338,12 @@ function emitOrderDescription(text) {
 
 
 
-// =============================================================================
-// NORMAL CHARACTER-INFO POTENTIAL GRID
-// =============================================================================
+//#endregion
+
+//#region NORMAL CHARACTER-INFO POTENTIAL GRID
 // This view is row-major (0|1, 2|3, 4|5, 6|7), unlike deployment. Because locked
 // cells are omitted, only complete eight-entry lists are reconstructed as a grid;
 // shorter lists stay vertical to avoid inventing pairings.
-// =============================================================================
 
 const characterPotentialGridState = {
     items: [],
@@ -1435,14 +1416,13 @@ function emitCharacterPotentialGrid(text, wait = 180, repeatAfter = 700) {
 
 
 
-// -----------------------------------------------------------------------------
-// POST-DEFEAT MENU HELP
-// -----------------------------------------------------------------------------
+//#endregion
+
+//#region POST-DEFEAT MENU HELP
 //
 // Exact mappings for the five visible post-defeat menu commands.
 // This helper is called only from the dedicated post-defeat mouse/controller
 // description callers, so identical wording elsewhere is left untouched.
-// -----------------------------------------------------------------------------
 
 const defeatMenuHelpByDescription = new Map([
     [
@@ -1491,12 +1471,11 @@ function emitDefeatMenuHelp(text) {
 
 
 
-// -----------------------------------------------------------------------------
-// COMBAT POTENTIAL ACTIVATION
-// -----------------------------------------------------------------------------
+//#endregion
+
+//#region COMBAT POTENTIAL ACTIVATION
 // Battle and cut-in Personal Potentials use separate text paths. Strip their
 // local [dt(...)] presentation markup without broadening global text cleanup.
-// -----------------------------------------------------------------------------
 
 function cleanCombatPotentialText(text) {
     if (!text)
@@ -1531,9 +1510,9 @@ function emitPersonalPotentialEffect(text) {
 
 
 
-// =============================================================================
-// R&D SELECTED STAT PANEL
-// =============================================================================
+//#endregion
+
+//#region R&D SELECTED STAT PANEL
 //
 // The selected weapon panel writes its four numeric stats through four nearby
 // formatter calls. R8 contains the value before each call. Each call is
@@ -1546,7 +1525,6 @@ function emitPersonalPotentialEffect(text) {
 // Accuracy remains omitted because its rank glyph does not use these numeric
 // text paths. Tank and ship equipment stats are also omitted because their
 // numeric callers are positional slots whose meanings vary by equipment type.
-// =============================================================================
 
 const rndSelectedStatState = {
     generation: 0,
@@ -1650,27 +1628,22 @@ function noteRndUniformDefense(text) {
 }
 
 
-// =============================================================================
-// COMMON UI SETTEXT DISPATCH
-// =============================================================================
+//#endregion
+
+//#region COMMON UI SETTEXT DISPATCH
 //
 // Resolve the verified semantic callers by pattern, then hook the common
 // text-setter once and dispatch by the resolved return address.
-// =============================================================================
 
 (function () {
     const dispatch = new Map();
     let resolvedCount = 0;
 
     function resolveUniqueCall(name, pattern) {
-        const results = Memory.scanSync(__e.base, __e.size, pattern);
+        const results = getMatches(name, pattern, 1);
 
-        if (results.length !== 1) {
-            console.error(
-                `[VC4:${name}] expected 1 match, found ${results.length}`
-            );
+        if (results.length !== 1)
             return null;
-        }
 
         const address = results[0].address;
 
@@ -1751,10 +1724,15 @@ function noteRndUniformDefense(text) {
 
     function directCallTarget(address) {
         try {
-            if (!address || address.readU8() !== 0xE8)
+            if (!address)
                 return null;
 
-            return address.add(5).add(address.add(1).readS32());
+            const insn = Instruction.parse(address);
+
+            if (insn.mnemonic !== 'call' || insn.operands[0].type !== 'imm')
+                return null;
+
+            return ptr(insn.operands[0].value.toString());
         }
         catch (_) {
             return null;
@@ -1766,23 +1744,16 @@ function noteRndUniformDefense(text) {
 
         for (let i = 0; i < 6; i++) {
             try {
-                const opcode = current.readU8();
+                const insn = Instruction.parse(current);
 
-                if (opcode === 0xE9) {
-                    current = current.add(5).add(current.add(1).readS32());
-                    continue;
-                }
+                if (insn.mnemonic !== 'jmp' || insn.operands[0].type !== 'imm')
+                    break;
 
-                if (opcode === 0xEB) {
-                    current = current.add(2).add(current.add(1).readS8());
-                    continue;
-                }
+                current = ptr(insn.operands[0].value.toString());
             }
             catch (_) {
                 return current;
             }
-
-            break;
         }
 
         return current;
@@ -2227,9 +2198,9 @@ function noteRndUniformDefense(text) {
 })();
 
 
-// -----------------------------------------------------------------------------
-// R&D WEAPON STATS
-// -----------------------------------------------------------------------------
+//#endregion
+
+//#region R&D WEAPON STATS
 
 (function () {
     const sites = [
@@ -2279,11 +2250,10 @@ function noteRndUniformDefense(text) {
 })();
 
 
-// -----------------------------------------------------------------------------
-// CUT-IN PERSONAL POTENTIAL TITLE
-// -----------------------------------------------------------------------------
+//#endregion
+
+//#region CUT-IN PERSONAL POTENTIAL TITLE
 // The title is in RDX at this bounded string-copy call.
-// -----------------------------------------------------------------------------
 
 (function () {
     const results = getMatches(
@@ -2296,21 +2266,7 @@ function noteRndUniformDefense(text) {
 
     Interceptor.attach(results[0].address, {
         onEnter(args) {
-            const p = this.context.rdx;
-
-            if (!p || p.isNull())
-                return;
-
-            let raw = '';
-
-            try {
-                raw = p.readUtf8String() || '';
-            }
-            catch (_) {
-                return;
-            }
-
-            const out = cleanCombatPotentialText(raw);
+            const out = cleanCombatPotentialText(readUtf8(this.context.rdx));
 
             if (!out)
                 return;
@@ -2319,6 +2275,8 @@ function noteRndUniformDefense(text) {
         }
     });
 })();
+
+//#endregion
 
 
 console.log('[VC4] v1.0 stable hooks loaded');
