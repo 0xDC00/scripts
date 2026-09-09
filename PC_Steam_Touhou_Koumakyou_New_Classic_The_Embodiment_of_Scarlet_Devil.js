@@ -32,7 +32,7 @@ function attach(name, pattern, register) {
         // console.warn(hexdump(this.context.r14, {length: 0x20}))
         /**@type {NativePointer}*/
         const metadata = this.context.r14;
-        const mysteryNumber = metadata.add(2).readU16();
+        // const mysteryNumber = metadata.add(2).readU16();
         const messageName = metadata.add(8).readUtf8String();
         // console.warn(mysteryNumber, messageName);
         
