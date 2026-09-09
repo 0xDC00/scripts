@@ -28,7 +28,11 @@ function attach(name, pattern, register) {
 
     Interceptor.attach(address, function (args) {
         const text = this.context[register].readUtf8String();
-
+        // console.warn(JSON.stringify(text));
+        if (!text) {
+            return;
+        }
+        
         // console.warn(hexdump(this.context.r14, {length: 0x20}))
         /**@type {NativePointer}*/
         const metadata = this.context.r14;
@@ -42,6 +46,6 @@ function attach(name, pattern, register) {
             return;
         }
         
-        handler(text.trim());
+        handler(text);
     });
 }
