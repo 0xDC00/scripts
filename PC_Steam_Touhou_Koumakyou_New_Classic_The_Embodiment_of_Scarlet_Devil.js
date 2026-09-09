@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Touhou Koumakyou: New Classic - the Embodiment of Scarlet Devil
+// @name         Touhou Koumakyou: New Classic - the Embodiment of Scarlet Devil / 東方紅魔郷：New Classic　～ the Embodiment of Scarlet Devil.
 // @version      0.1
 // @author       Mansive
 // @description  Steam
