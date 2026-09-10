@@ -1732,7 +1732,7 @@ function noteRndUniformDefense(text) {
             if (insn.mnemonic !== 'call' || insn.operands[0].type !== 'imm')
                 return null;
 
-            return ptr(insn.operands[0].value.toString());
+            return ptr(insn.opStr);
         }
         catch (_) {
             return null;
