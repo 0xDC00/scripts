@@ -102,7 +102,7 @@ function attachSetText() {
     Interceptor.attach(setText, {
         onEnter(args) {
             const param3 = args[2].toInt32();
-            const isDialogue = param3 === 1 && args[3].toInt32() !== 0; // param4==0 means backlog replay, not a live line
+            const isDialogue = param3 === 1 && args[4].toInt32() !== 0; // param5==0 means backlog replay, not a live line
 
             const text = args[1].readUtf16String();
             if (!text) return;
