@@ -1749,7 +1749,7 @@ function noteRndUniformDefense(text) {
                 if (insn.mnemonic !== 'jmp' || insn.operands[0].type !== 'imm')
                     break;
 
-                current = ptr(insn.operands[0].value.toString());
+                current = ptr(insn.opStr);
             }
             catch (_) {
                 return current;
