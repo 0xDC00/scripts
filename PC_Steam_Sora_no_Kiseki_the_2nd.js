@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Sora no Kiseki the 2nd / 空の軌跡 the 2nd / Trails in the Sky 2nd Chapter
-// @version      DEMO
+// @version      1.03.1
 // @author       Tom (tomrock645)
 // @description  Steam
 // * developer   Nihon Falcom
@@ -10,7 +10,7 @@
 // ==/UserScript==
 
 
-console.warn("Know issue: \n- The first quartz's name won't have its name extracted when you open an orbment.");
+console.warn("Known issue: \n- The first quartz's name won't have its name extracted when you open an orbment.");
 
 
 const __e = Process.enumerateModules()[0];
@@ -23,6 +23,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("name1", 'e8 ?? ?? ?? ?? ?? 8b 86 00 01 00 00 ?? 8b 80 70 03 00 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "name1");
     });
@@ -31,6 +33,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("name2", 'e8 ?? ?? ?? ?? ?? 8b 8b e0 00 00 00 ?? 81');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "name2");
     });
@@ -39,6 +43,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("dialogue", 'e8 ?? ?? ?? ?? ?? 01 be');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "dialogue");
     });
@@ -47,6 +53,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("pokerDialogue1", 'e8 ?? ?? ?? ?? ?? 8d 8d 80 07 00 00 ba 08 00 00 00 0f 1f 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "pokerDialogue1");
     });
@@ -55,6 +63,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("pokerDialogue2", 'e8 ?? ?? ?? ?? ?? 8d 8d 80 07 00 00 ba 08 00 00 00 66 66 0f 1f 84');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "pokerDialogue2");
     });
@@ -63,6 +73,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("pokerDialogue3", '90 8b 83 a8 03 00 00 83 f8 0a 0f 85 ?? ?? ?? ?? ?? 8b 8b 08 02 00 00 ?? 8b d4 ?? 8b 41 34 ?? 8b 79 20 ?? 8d 04 80 ?? 03 c0', 0x8e);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         let winType = processText(this.context.r8, "NH");
         processText(this.context.rdx, "main", "pokerDialogue3", winType);
@@ -72,6 +84,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("blackJackDialogue1", 'e8 ?? ?? ?? ?? ?? 8d 8d 80 07 00 00 ba 08 00 00 00 66 90 0f 10 00 0f');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "blackJackDialogue1");
     });
@@ -80,6 +94,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("blackJackDialogue2", 'e8 ?? ?? ?? ?? ?? 8d 8d 80 07 00 00 ba 08 00 00 00 90 0f 10');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "blackJackDialogue2");
     });
@@ -88,6 +104,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("rouletteJackDialogue1", 'e8 ?? ?? ?? ?? ?? 8d 8d 70 03 00 00 ?? b8 08');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "rouletteJackDialogue1");
     });
@@ -96,6 +114,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("choices", 'e8 ?? ?? ?? ?? ?? 8b 57 30 8b');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "choices");
     });
@@ -104,6 +124,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("activeVoice", 'e8 ?? ?? ?? ?? ?? 8b 83 a0 00 00 00 33');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "activeVoice");
     });
@@ -112,6 +134,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("tutorial1", 'e8 ?? ?? ?? ?? ?? 8b 07 ?? 88 24 03 c7 44');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "tutorial1");
     });
@@ -120,6 +144,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("tutorial2", 'e8 ?? ?? ?? ?? 8b 87 e8 02 00 00 0f ba e0 09 72 ?? 66 c7 87 88 06 00 00 01 01 0f ba e8 09 89 87 e8 02 00 00 ?? 8d');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "tutorial2");
     });
@@ -128,6 +154,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("tutorial3", 'e8 ?? ?? ?? ?? 8b 83 e8 02 00 00 0f ba e0 09 72 ?? 66 c7 83 88 06 00 00 01 01 0f ba e8 09 89 83 e8 02 00 00 0f 10 83 f0 00 00 00 0f 11 44 ?? ?? f3 ?? 0f 10 54 ?? 10');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "tutorial3");
     });
@@ -136,6 +164,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("tutorial4", 'e8 ?? ?? ?? ?? 8b 83 e8 02 00 00 0f ba e0 09 72 ?? 66 c7 83 88 06 00 00 01 01 0f ba e8 09 89 83 e8 02 00 00 0f 10 83 f0 00 00 00 0f 11 44 ?? ?? f3 ?? 0f 10 54 ?? 20');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "tutorial4");
     });
@@ -144,6 +174,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("tutorial5", 'e8 ?? ?? ?? ?? 8b 97 e8 02 00 00 0f ba e2 09 72 ?? 66 c7 87 88 06 00 00 01 01 0f ba ea 09 ?? b8');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "tutorial5");
     });
@@ -152,6 +184,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("tutorial6", '75 ?? ?? 8b f4 ?? 89 a6 f8 02 00 00 ?? 8b ce ?? 8b 56 10 e8', 0x13);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "tutorial6");
     });
@@ -160,6 +194,8 @@ let isDebugging = false;
 
 (function () {
     const address = getAddressPattern("helpTips", 'e8 ?? ?? ?? ?? 8b 87 e8 02 00 00 0f ba e0 09 72 ?? 66 c7 87 88 06 00 00 01 01 ?? 8b 5c');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         let helpTipsName = getName(this.context.rdx, "helpTips");
         processText(this.context.rdx, "second", "helpTips", helpTipsName);
@@ -170,6 +206,8 @@ let isDebugging = false;
 let systemMessage = '';
 (function () { 
     const address = getAddressPattern("systemMessage", 'e8 ?? ?? ?? ?? ?? 8b 8b c8 00 00 00 ?? 8b d7');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdi, "second", "systemMessage");
     });
@@ -178,6 +216,8 @@ let systemMessage = '';
 
 (function () { 
     const address = getAddressPattern("pokerRules1", 'e8 ?? ?? ?? ?? eb ?? ?? 8b 53 08 ?? 8d ?? ?? 70 e8 ?? ?? ?? ?? ?? b8 ec 13 00 00 ?? 8b d0 ?? 8d ?? e0 27 00 00 e8 ?? ?? ?? ?? ?? 8d ?? e0 27 00 00 ?? 8b cf e8 ?? ?? ?? ?? ?? 8b 95 08 02 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "pokerRules1");
     });
@@ -186,6 +226,8 @@ let systemMessage = '';
 
 (function () { 
     const address = getAddressPattern("pokerRules2", 'c6 84 05 f0 13 00 00 00 80 7b 10 00 0f 84 ?? ?? ?? ?? ?? 8b 85 58 05 00 00', 0xb0);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "pokerRules2");
     });
@@ -194,6 +236,8 @@ let systemMessage = '';
 
 (function () { 
     const address = getAddressPattern("blackJackRules1", 'e8 ?? ?? ?? ?? eb ?? ?? 8b 53 08 ?? 8d ?? ?? 70 e8 ?? ?? ?? ?? ?? b8 ec 13 00 00 ?? 8b d0 ?? 8d ?? e0 27 00 00 e8 ?? ?? ?? ?? ?? 8d ?? e0 27 00 00 ?? 8b cf e8 ?? ?? ?? ?? ?? 8b 95 88 01 00 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "blackJackRules1");
     });
@@ -202,6 +246,8 @@ let systemMessage = '';
 
 (function () { 
     const address = getAddressPattern("blackJackRules2", '8b c0 c6 84 05 f0 13 00 00 00 80 7b 10 00 0f 84 ?? ?? ?? ?? ?? 8b 85 38 05 00 00', 0xb2);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "blackJackRules2");
     });
@@ -210,6 +256,8 @@ let systemMessage = '';
 
 (function () { 
     const address = getAddressPattern("rouletteRules", 'e8 ?? ?? ?? ?? eb ?? ?? 8b 53 08 ?? 8d ?? ?? 70 e8 ?? ?? ?? ?? ?? b8 ec 13 00 00 ?? 8b d0 ?? 8d ?? f0 13 00 00 e8 ?? ?? ?? ?? ?? 8b 87 18 03 00 00 ?? 8d ?? f0 13 00 00 ?? 3b c1 0f 84 ?? ?? ?? ?? ?? 85 c0 74 ?? ?? 8d ?? f0 13 00 00 ?? 2b c0 66 66 66 0f 1f 84 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "rouletteRules");
     });
@@ -218,6 +266,8 @@ let systemMessage = '';
 
 (function () {
     const address = getAddressPattern("menuDescription1", 'e8 ?? ?? ?? ?? ?? 8b 5c ?? ?? ?? 8b 4c ?? ?? ?? 33');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "menuDescription1");
     });
@@ -226,6 +276,8 @@ let systemMessage = '';
 
 (function () {
     const address = getAddressPattern("menuDescription2", 'e8 ?? ?? ?? ?? ?? 8b cb e8 ?? ?? ?? ?? ?? 8b cb e8 ?? ?? ?? ?? ?? 8b cb e8 ?? ?? ?? ?? ?? 8b 8c ?? ?? ?? ?? ?? ?? 33');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "menuDescription2");
     });
@@ -234,6 +286,8 @@ let systemMessage = '';
 
 (function () {
     const address = getAddressPattern("orbmentSlotDescription", 'e8 ?? ?? ?? ?? 90 ?? 8b ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8d ?? ?? 10');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.r11, "second", "orbmentSlotDescription");
     });
@@ -244,6 +298,8 @@ let inventoryName = '';
 let gotInventoryName = false;
 (function () { 
     const address = getAddressPattern("inventoryName", 'e8 ?? ?? ?? ?? 85 c0 b9 ff ff ff ff 0f 48 c1 89 87 00 08 00 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // The hook gets called a few times when selecting an item. Disregarding subsequent calls.
         if(!gotInventoryName) {
@@ -256,6 +312,8 @@ let gotInventoryName = false;
 
 (function () { 
     const address = getAddressPattern("inventoryDescription", 'e8 ?? ?? ?? ?? 90 ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 50 08 00 00 5f c3 cc cc cc cc cc cc ?? 89');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "inventoryDescription");
     });
@@ -264,6 +322,8 @@ let gotInventoryName = false;
 
 (function () { 
     const address = getAddressPattern("shopInventoryDescription", 'e8 ?? ?? ?? ?? 90 c6 44 ?? 60 00 eb');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "shopInventoryDescription");
     });
@@ -272,6 +332,8 @@ let gotInventoryName = false;
 
 (function () { 
     const address = getAddressPattern("itemGetName", 'e8 ?? ?? ?? ?? 90 ?? 8b d0 ?? 8b cf e8 ?? ?? ?? ?? 90 ?? 8b 9f 28 02 00 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.r8, "main", "itemGetName");
     });
@@ -280,6 +342,8 @@ let gotInventoryName = false;
 
 (function () { 
     const address = getAddressPattern("itemGetDescription", 'e8 ?? ?? ?? ?? ?? 8b 87 18 03 00 00 c6 04 03 00 ?? 8b cf f6 87 e8 02 00 00 04 74 ?? ?? 89 a7 78 03 00 00 ?? 89 a7 30 03 00 00 e8 ?? ?? ?? ?? eb ?? e8 ?? ?? ?? ?? c6 87 88 06 00 00 01 e9');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "itemGetDescription");
     });
@@ -288,6 +352,8 @@ let gotInventoryName = false;
 
 (function () { // In battles
     const address = getAddressPattern("itemDescription", 'e8 ?? ?? ?? ?? 90 ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 50 08 00 00 5f c3 cc cc cc');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "itemDescription");
     });
@@ -296,8 +362,14 @@ let gotInventoryName = false;
 
 (function () { // Craft and arts description in battles
     const address = getAddressPattern("attackDescription", 'e8 ?? ?? ?? ?? 90 ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 60');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
-        processText(this.context.rdx, "second", "attackDescription");
+        // Name hook courtesy of [Raiko]
+        const record = this.context.rsi;
+        const namePtr = record.add(0x98).readPointer();
+        const name = namePtr.readUtf8String();
+        processText(this.context.rdx, "second", "attackDescription", name);
     });
 })();
 
@@ -305,6 +377,8 @@ let gotInventoryName = false;
 let statusName = '';
 (function () { // And art names
     const address = getAddressPattern("statusName", 'e8 ?? ?? ?? ?? ?? 8b f0 ba 00 08 00 00 ?? 8b c8 e8 ?? ?? ?? ?? ?? 8b d8 8b 97 00 08 00 00 03 d0 81 fa 00 08 00 00 72 ?? ?? 8d 0d ?? ?? ?? ?? ?? b8 42 01 00 00 ?? 8d 15 ?? ?? ?? ?? ?? 8b cd e8 ?? ?? ?? ?? eb ?? ?? 8b c3 ?? 8b d6 ?? 8b cf e8 ?? ?? ?? ?? 01 9f 00 08 00 00 e9');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         statusName = getName(this.context.r8, "status");
     });
@@ -313,6 +387,8 @@ let statusName = '';
 
 (function () { // And art descriptions
     const address = getAddressPattern("statusDescription", 'e8 ?? ?? ?? ?? 90 e9 ?? ?? ?? ?? ?? 89 5c');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "statusDescription");
     });
@@ -322,6 +398,8 @@ let statusName = '';
 let statusOverdriveName = '';
 (function () { 
     const address = getAddressPattern("statusOverdriveName", 'e8 ?? ?? ?? ?? ?? 8d ?? b0 07 00 00 b9 08 00 00 00 0f 10 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         statusOverdriveName = getName(this.context.r8, "statusOverdriveName");
     });
@@ -330,6 +408,8 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("statusOverdriveDescription", 'e8 ?? ?? ?? ?? 90 ?? 8d ?? 60 03 00 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "statusOverdriveDescription");
     });
@@ -338,6 +418,8 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("supportAbilityDescription", 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? cc cc cc cc cc cc cc cc cc ?? 53 ?? 83 ec 60 0f 29 74');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         let supportAbilityName = getName(this.context.rdx, "supportAbilityDescription");
         processText(this.context.rdx, "second", "supportAbilityDescription", supportAbilityName);
@@ -347,6 +429,8 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("popUpTips", 'e8 ?? ?? ?? ?? ?? 8b 57 30 ?? 8b 8b a0');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         let tipsDescription = getDescription(this.context.rdx);
         tipsDescription = cleanText(tipsDescription);
@@ -357,6 +441,8 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("loadingTips", 'e8 ?? ?? ?? ?? ?? 8b 57 30 ?? 8b 4f 30 e8');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         let loadingTipsDescription = getDescription(this.context.rdx);
         loadingTipsDescription = cleanText(loadingTipsDescription);
@@ -367,6 +453,8 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("locationName1", 'e8 ?? ?? ?? ?? ?? 8b 4b 60 ?? 85 c9 74 ?? ?? 63 43 54 ?? b8');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "locationName1");
     });
@@ -375,14 +463,18 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("locationName2", 'e8 ?? ?? ?? ?? ?? 8b 83 98 00 00 00 ?? 8b 93 90 00 00 00 8b 88 70');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "locationName2");
     });
 })();
 
 
-(function () { // Courtesy of RaikoHorikawa (rhgroyper)
+(function () { // Courtesy of [Raiko]
     const address = getAddressPattern("cutsceneLocationName", 'e8 ?? ?? ?? ?? 32 c0 ?? 8b df');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "main", "cutsceneLocationName");
     });
@@ -390,7 +482,9 @@ let statusOverdriveName = '';
 
 
 (function () { 
-    const address = getAddressPattern("mapLocationName", 'e8 ?? ?? ?? ?? 90 ?? 8d ?? ?? 20 e8 ?? ?? ?? ?? ?? 8d ?? ?? 20');
+    const address = getAddressPattern("mapLocationName", 'e8 ?? ?? ?? ?? 90 ?? 33 c0 ?? 8d 15 ?? ?? ?? ?? ?? 8d ?? ?? 30 e8');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "mapLocationName");
     });
@@ -399,6 +493,8 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("mapObjective", 'e8 ?? ?? ?? ?? 90 e9 ?? ?? ?? ?? ?? 8b 56 38');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "mapObjective");
     });
@@ -407,6 +503,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("questNameBoard", 'e8 ?? ?? ?? ?? 8b 43 44 83 e8 01');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "questNameBoard");
     });
@@ -415,6 +513,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("questDescriptionBoard", 'e8 ?? ?? ?? ?? ?? bd 00 01 00 00 ?? 8d');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "questDescriptionBoard");
     });
@@ -423,6 +523,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("questNameHandbook", 'e8 ?? ?? ?? ?? 8b 45 44 ?? 8b 5c ?? ?? c7 44 ?? ?? 49');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "questNameHandbook");
     });
@@ -431,6 +533,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("questDescriptionHandbook", 'e8 ?? ?? ?? ?? ?? 8b 8e 00 01 00 00 8b d7 e8');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "questDescriptionHandbook");
     });
@@ -439,6 +543,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("questProgressHandbook", 'e8 ?? ?? ?? ?? 90 8b 5c ?? ?? eb ?? 33 ff eb');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "questProgressHandbook");
     });
@@ -447,6 +553,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("questCompletionNoteHandbook", 'e8 ?? ?? ?? ?? ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 d0 00 00 00 ?? 5f ?? 5e ?? 5d ?? 5c 5f 5e 5d c3 cc cc cc');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "questCompletionNoteHandbook");
     });
@@ -455,6 +563,8 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("book", 'e8 ?? ?? ?? ?? ?? 8b 46 08 ?? 8b 80 a8 00 00 00 ?? 8b 98 28 02 00 00 ?? 8b 80 30 02 00 00 ?? 8d 3c c3');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "book");
     });
@@ -463,6 +573,8 @@ let statusOverdriveName = '';
 
 (function () { // Memo
     const address = getAddressPattern("enemyName1", 'e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "enemyName1");
     });
@@ -471,6 +583,8 @@ let statusOverdriveName = '';
 
 (function () { // In battles
     const address = getAddressPattern("enemyName2", 'e8 ?? ?? ?? ?? ?? 8b 9f 28 02 00 00 ?? 8b 87 30 02 00 00 ?? 8d 34 c3 ?? 3b de 74 ?? 66 0f 1f 84 00 00 00 00 00 ?? 8b 0b ?? 8d 15 ?? ?? ?? ?? ?? b1 01 ?? b8 fe ff ff 7f');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "enemyName2");
     });
@@ -479,6 +593,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("enemyMemo", 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8b 5c ?? ?? ?? 8b 74 ?? ?? ?? 8b');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "enemyMemo");
     });
@@ -487,6 +603,8 @@ let statusOverdriveName = '';
 
 (function () { // In battles
     const address = getAddressPattern("enemyDescription", 'e8 ?? ?? ?? ?? eb ?? ?? 8d 15 ?? ?? ?? ?? ?? 8b ce e8 ?? ?? ?? ?? eb');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "enemyDescription");
     });
@@ -495,6 +613,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("fishName", 'e8 ?? ?? ?? ?? ?? 8b 9f 28 02 00 00 ?? 8b 87 30 02 00 00 ?? 8d 34 c3 ?? 3b de 74 ?? 0f 1f 44 00 00 ?? b1 01 ?? 33 c0');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "fishName");
     });
@@ -503,6 +623,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("fishDescription", 'e8 ?? ?? ?? ?? ?? 8b ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 f0 00 00 00 ?? 5f ?? 5e ?? 5d ?? 5c 5f 5e 5d c3 cc cc cc cc cc ?? 83 ec 28 ?? 89 5c');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "third", "fishDescription");
     });
@@ -511,6 +633,8 @@ let statusOverdriveName = '';
 
 (function () {
     const address = getAddressPattern("achievements", 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? 83 f8 01 0f 85 ?? ?? ?? ?? ?? 8b 81 40 01');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "achievements");
     });
@@ -519,6 +643,8 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("optionDescription", 'e8 ?? ?? ?? ?? ?? bf fe ff ff ff');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "optionDescription");
     });
@@ -527,6 +653,8 @@ let statusOverdriveName = '';
 
 (function () { 
     const address = getAddressPattern("difficultyDescription", 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8d 4b 18 0f 28 ce e8 ?? ?? ?? ?? ?? 8b 43 08 f3 0f 10 4b 20 0f 28 74');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         processText(this.context.rdx, "second", "difficultyDescription");
     });
@@ -610,6 +738,7 @@ function processText(context, handler, name, extraText) {
 
         case "helpTips":
         case "supportAbilityDescription":
+        case "attackDescription":
             text = extraText + '\n' + text;
             break;
 
