@@ -23,6 +23,8 @@ const thirdHandler = trans.send(s => s, '50+');
 let name = '';
 (function () {
     const address = getAddressPattern("name", 'e8 ?? ?? ?? ?? ?? 8b 83 a8 00 00 00 ?? 89 70 10 eb');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: name");
 
@@ -35,6 +37,8 @@ let name = '';
 let previousDialogue = '';
 (function () { // Also tutorial 
     const address =  getAddressPattern("dialogue", 'e8 ?? ?? ?? ?? ?? 89 83 90 00 00 00 ?? 8b d0');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: dialogue");
 
@@ -52,6 +56,8 @@ let previousDialogue = '';
 
 (function () {
     const address = getAddressPattern("choices1", 'e8 ?? ?? ?? ?? ?? 8b 4e 10 ?? 8b d8 e8 ?? ?? ?? ?? 0f');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: choices1");
 
@@ -64,6 +70,8 @@ let previousDialogue = '';
 
 (function () {
     const address = getAddressPattern("choices2", 'ff 15 ?? ?? ?? ?? ?? 8d 4d 97 e8 ?? ?? ?? ?? ?? ff');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: choices2");
 
@@ -77,6 +85,8 @@ let previousDialogue = '';
 let previousMenusDescription = '';
 (function () {
     const address =  getAddressPattern("menuDescription", 'e8 ?? ?? ?? ?? 3d 00 04 00 00 0f 8d ?? ?? ?? ?? ?? 8b');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: menuDescription");
 
@@ -96,6 +106,8 @@ let previousMenusDescription = '';
 let previousStatusDescription = '';
 (function () {
     const address = getAddressPattern("statusDescription", 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? 83 f9 03');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: statusDescription");
 
@@ -116,6 +128,8 @@ let previousStatusDescription = '';
 let previousArtsDescription = '';
 (function () {
     const address = getAddressPattern("artsDescription", '66 66 0f 1f 84 00 00 00 00 00 ?? 0f b6 04 10 88 04 ?? ?? 8d 52 01 84 c0 75 ?? ?? 8b 05', 0xa);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: artsDescription");
 
@@ -137,6 +151,8 @@ let quartzName = '';
 let quartzDescription2 = '';
 (function () {
     const address =  getAddressPattern("quartzName", '66 66 0f 1f 84 00 00 00 00 00 ?? 0f b6 04 10 88 04 ?? ?? 8d 52 01 84 c0 75 ?? 33', 0xa);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: quartzName");
 
@@ -158,6 +174,8 @@ let isQuartzPrinted = false;
 let previousQuartzDescription = '';
 (function () {
     const address =  getAddressPattern("quartzDescription1", 'e8 ?? ?? ?? ?? ?? 0f b7 cf c7 44');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: quartzDescription1");
 
@@ -177,6 +195,8 @@ let previousQuartzDescription = '';
 let previousMasterQuartzName = '';
 (function () {
     const address = getAddressPattern("masterQuartzName", 'e8 ?? ?? ?? ?? ?? 8b 45 40 f3 0f 10 80 70 01 00 00 f3 0f 58 05 ?? ?? ?? ?? f3 ?? 0f 2c e8 f3 0f 10 88 74 01');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: masterQuartzName");
 
@@ -198,6 +218,8 @@ let masterQuartzAbilitiySet = new Set();
 let previousMasterQuartzAbility = '';
 (function () {
     const address = getAddressPattern("masterQuartzAbility", 'e8 ?? ?? ?? ?? ff c7 83 ff 06 8b');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: masterQuartzAbility");
 
@@ -219,6 +241,8 @@ let previousMasterQuartzAbility = '';
 let previousItemDescription = '';
 (function () {
     const address = getAddressPattern("itemDescription", 'e8 ?? ?? ?? ?? ?? 8b ac ?? ?? ?? ?? ?? ?? 8b 05');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: itemDescription");
 
@@ -241,6 +265,8 @@ let previousItemDescription = '';
 
 (function () { // Opening a book/newspaper
     const address =  getAddressPattern("book1", '89 88 90 08 00 00 ?? 8b cd ?? 8b 43 40 8b a8 88 01 00 00 ?? 8b b0 8c 01 00 00 e8 ?? ?? ?? ?? ?? 8b 83 a8 00 00 00 ?? 8b cb 66 c7 40 1c 00 02 e8', 0x7a);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: book1");
 
@@ -253,6 +279,8 @@ let previousItemDescription = '';
 
 (function () { // Flipping a page
     const address =  getAddressPattern("book2", 'e8 ?? ?? ?? ?? ?? 89 85 50 01 00 00 ?? 8b 85 68 01 00 00 ?? 89 60 20 ff ?? ?? ?? ?? ?? ?? 8d');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: book2");
 
@@ -265,6 +293,8 @@ let previousItemDescription = '';
 
 (function () { // Flipping back a page
     const address =  getAddressPattern("book3", 'e8 ?? ?? ?? ?? ?? 89 85 50 01 00 00 ff c3 3b');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: book3");
 
@@ -278,6 +308,8 @@ let previousItemDescription = '';
 let previousQuestName = '';
 (function () { // In the handbook
     const address = getAddressPattern("questName1", 'e8 ?? ?? ?? ?? 8b ?? ?? ?? 8d 45 b0 f3 0f 10 3d');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: questName1");
 
@@ -297,6 +329,8 @@ let previousQuestName = '';
 
 (function () { // In the terminal
     const address =  getAddressPattern("questName2", 'e8 ?? ?? ?? ?? ?? 8b 4f 18 ?? 81 c1 20 8c 79 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: questName2");
 
@@ -320,6 +354,8 @@ let previousQuestDescription = '';
 let previousQuestDescriptionAddress = null;
 (function () {
     const address =  getAddressPattern("questDescription", '33 c0 ?? 0f b6 01 ?? 3a c4 75', 0x2);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: questDescription");
 
@@ -349,6 +385,8 @@ let previousQuestProgressAddress1 = null;
 let previousQuestProgress1 = '';
 (function () {
     const address =  getAddressPattern("questProgress1", '83 f9 64 ?? 8b 80 b8 62 7a 00 8d 41 9c 0f 42 c1', 0x66);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: questProgress1");
 
@@ -388,6 +426,8 @@ let questProgressSet2 = new Set();
 let previousQuestProgressAddress2 = null;
 (function () {
     const address =  getAddressPattern("questProgress2", '8b 40 18 ?? 03 c2 8b 6c 10 04 ?? 03 ea', 0x48);
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: questProgress2");
 
@@ -422,6 +462,8 @@ let previousQuestProgressAddress2 = null;
 
 (function () {
     const address = getAddressPattern("prestory", 'e8 ?? ?? ?? ?? ?? 8b 93 98 00 00 00');
+    if(!address)
+        return;
     Interceptor.attach(address, function (args) {
         // console.warn("in: prestory");
 
