@@ -1,6 +1,7 @@
 // ==UserScript==
 // @name [0100E6900A5A8000] Valkyria Chronicles
 // @version 1.0.0
+// @author Raiko
 // @description Yuzu
 // * SEGA
 // *
