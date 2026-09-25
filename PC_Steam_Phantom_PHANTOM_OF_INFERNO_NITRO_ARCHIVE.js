@@ -40,13 +40,13 @@ const colors = {
     BgWhite: "\x1b[47m",
     BgGray: "\x1b[100m",
 
-    MutedGray: "\x1b[48;2;115;115;115m",
-    MutedRed: "\x1b[48;2;145;95;90m",
-    MutedGreen: "\x1b[48;2;95;125;95m",
-    MutedYellow: "\x1b[48;2;125;115;80m",
-    MutedBlue: "\x1b[48;2;90;110;145m",
-    MutedPurple: "\x1b[48;2;125;95;135m",
-    MutedTeal: "\x1b[48;2;85;120;125m",
+    MutedBgGray: "\x1b[48;2;115;115;115m",
+    MutedBgRed: "\x1b[48;2;145;95;90m",
+    MutedBgGreen: "\x1b[48;2;95;125;95m",
+    MutedBgYellow: "\x1b[48;2;125;115;80m",
+    MutedBgBlue: "\x1b[48;2;90;110;145m",
+    MutedBgPurple: "\x1b[48;2;125;95;135m",
+    MutedBgTeal: "\x1b[48;2;85;120;125m",
 };
 const colorKeys = Object.keys(colors);
 let count = 0;
