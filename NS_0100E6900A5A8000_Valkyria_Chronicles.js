@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name [0100E6900A5A8000] Valkyria Chronicles
 // @version 1.0.0
-// @author Raiko
-// @description Yuzu
+// @Author Raiko
+// @description Eden/Yuzu
 // * SEGA
 // *
 // ==/UserScript==
@@ -10,9 +10,10 @@
 // Build ID: 982FA5077736F0C28055BB7F122DDB7F
 // ARM32 / A32
 //
-// Coverage includes:
-// - Subtitles, speaker nametags and story dialogue
+// Coverage:
 // - Tutorial/System text
+// - Options bottom help text
+// - Subtitles, speaker nametags and story dialogue
 // - Book Mode
 // - Battle/deployment text, Orders, Potentials and victory/defeat conditions
 // - Headquarters Barracks semantic unit/weapon/affinity/Potential/Order text
@@ -21,6 +22,9 @@
 // - Headquarters R&D development/model text + weapon/vehicle/optional-part stats
 // - Headquarters Castlefront Street selected headline + article body
 // - Audience Chamber
+//
+// Known behavior:
+// - The objectives popup may not be extracted the first time it appears in briefing.
 //
 // Direct setHook() addresses (32):
 //   0x23D1DC  story dialogue text window
@@ -60,7 +64,6 @@ globalThis.ARM = true;
 
 const { setHook } = require('./libYuzu.js');
 
-
 const GUEST_BASE = 0x204000;
 
 function getAslrOffset() {
@@ -82,13 +85,17 @@ function getAslrOffset() {
     }
 }
 
-function normalizedLR(regs) {
+function normalizeCodeAddress(raw) {
     const aslr = getAslrOffset();
 
     if (aslr === null)
         return null;
 
-    return ((regs[14].vm >>> 0) - aslr - GUEST_BASE) >>> 0;
+    return ((raw >>> 0) - aslr - GUEST_BASE) >>> 0;
+}
+
+function normalizedLR(regs) {
+    return normalizeCodeAddress(regs[14].vm);
 }
 
 function readNullableU32(host, off) {
@@ -106,7 +113,6 @@ function sendText(text) {
     if (text)
         trans.send(text);
 }
-
 
 //#region SHARED HELPERS
 
@@ -164,6 +170,43 @@ function readCleanShiftJisReg(reg) {
     return readCleanShiftJisPtr(reg.value);
 }
 
+function clearStateTimer(state) {
+    if (state.timer !== null) {
+        clearTimeout(state.timer);
+        state.timer = null;
+    }
+}
+
+function scheduleStateTimer(state, callback, wait) {
+    clearStateTimer(state);
+    state.timer = setTimeout(callback, wait);
+}
+
+function detailSlot(raw, count) {
+    return raw >= 120 && raw < 120 + count ? raw - 120 : -1;
+}
+
+// Shared unit-detail renderer routes used by HQ and battlefield cards.
+const DETAIL_FULL_NAME = 0x3033E0;
+const DETAIL_WEAPON_ROW = 0x3036D0;
+const DETAIL_POT_DESC = 0x304180;
+const DETAIL_ORDER_DESC = 0x304270;
+
+const DETAIL_AFFINITY_CALLERS = new Set([
+    0x3040D4, 0x3040EC, 0x303178, 0x30BB7C,
+]);
+
+const DETAIL_POTENTIAL_NAME_CALLERS = new Map([
+    [0x3047C0, 0], [0x3047D8, 1], [0x30482C, 4], [0x304844, 5],
+    [0x3048B4, 2], [0x3048E8, 3], [0x304900, 4], [0x304918, 5],
+    [0x304950, 6], [0x30913C, 7],
+]);
+
+const DETAIL_ORDER_NAME_CALLERS = new Map([
+    [0x304A4C, 0], [0x304A74, 1], [0x304A9C, 2], [0x304AC4, 3],
+    [0x304AEC, 4], [0x304B14, 5], [0x304B3C, 6], [0x304B64, 7],
+    [0x304B8C, 8], [0x304BB4, 9],
+]);
 
 //#endregion
 
@@ -225,7 +268,6 @@ function storySpeakerNameResolved(regs) {
     return formatTalk(name, pending.text);
 }
 
-
 //#endregion
 
 //#region CINEMATIC SUBTITLES
@@ -247,16 +289,12 @@ function cinematicSubtitle(regs) {
     }
 }
 
-
 //#endregion
 
 //#region TUTORIAL / SYSTEM WINDOWS
-//
-// SystemWin +0x98 -> paginator
-// paginator +0x10 -> current visible page
-//
-// 0x1CA54C fires twice for the same first page. Suppress only that proven
-// duplicate for the same live object + same page.
+
+// SystemWin +0x98 -> paginator +0x10 -> current visible page.
+// Suppress the proven duplicate first-page write per live object/page.
 
 const systemFirstPageSeen = new Map();
 
@@ -318,15 +356,11 @@ function systemNextPage(regs) {
     return info.text;
 }
 
-
 //#endregion
 
 //#region BRIEFING VICTORY / DEFEAT CONDITIONS
-//
-// BIFE builds the condition strings once, then BriefingIFMain reuses them.
-// Cache by the owning BriefingIFMain object and emit on every actual
-// 「勝利条件確認」 open event.
-//
+
+// Cache BIFE condition strings by BriefingIFMain and emit on each real open.
 // Note: The automatic objectives popup may not be captured the first time it
 // appears after briefing dialogue. Reopening it normally captures the text.
 
@@ -472,21 +506,12 @@ function briefingConditionOpen(regs) {
     }
 }
 
-
 //#endregion
 
 //#region IN-BATTLE COMMAND MENU / CONDITIONS
 
-// In-battle command menu + repeatable direct current-battle conditions.
-//
-// 0x1C9EA0 is a shared battle-help caller. Production accepts ONLY the
-// runtime-validated exact descriptions below instead of reviving a generic
-// battle-help dump.
-//
-// Selection identity comes from the exact top-level help text. 0x1C9F40 is the
-// semantic A-activation callback and fires again when the same item is reopened
-// without moving the cursor. Victory/defeat text is reconstructed directly from
-// persistent battle state, so no briefing cache or timing window is required.
+// Exact 0x1C9EA0 help identifies the command; 0x1C9F40 is its A activation.
+// Conditions come from persistent battle state, so reopening the same item repeats.
 
 const COMBAT_CONDITION_HELP = '戦闘の勝利条件、敗北条件を確認します。';
 
@@ -858,19 +883,12 @@ function routeBattleCommandAndSystemHelp(caller, text, regs) {
     return true;
 }
 
-
 //#endregion
 
 //#region DEPLOYMENT SELECTED-UNIT INFO
-//
-// +0xBC page:
-//   0 = infantry basic info (LV / HP / AP)
-//   1 = Potentials
-//   2 = equipment
-//   3 = tank-commander basic info (BHP / LHP / AP; Welkin / Zaka)
-//
-// The selected unit's name is emitted once when recordIndex changes.
-// L/R page changes for the same unit do not repeat the name.
+
+// +0xBC pages: 0 infantry, 1 Potentials, 2 equipment, 3 tank commander.
+// Unit names emit on record changes, not L/R page changes.
 
 const LABEL_LV = 'LV';
 const LABEL_HP = 'HP';
@@ -984,16 +1002,7 @@ function isDeploymentStatValue(text) {
 }
 
 function formatDeploymentBasic(state, includeName) {
-    // Runtime-validated first-page layouts:
-    //
-    // Infantry (mode 0):
-    //   name, class, LV, HP, AP, affinity...
-    //
-    // Tank commanders Welkin / Zaka (mode 3):
-    //   name, class, BHP, LHP, AP, affinity...
-    //
-    // Both layouts use the same text-write callers and ordering.  The
-    // difference is the page mode and the meaning of numeric fields 2/3.
+    // Modes 0/3 share ordering; numeric fields are LV/HP or BHP/LHP.
     if (state.texts.length < 5)
         return null;
 
@@ -1004,10 +1013,7 @@ function formatDeploymentBasic(state, includeName) {
     const ap = state.texts[4];
     const affinities = state.texts.slice(5);
 
-    // A partial redraw can begin at class instead of name.  Without this
-    // guard the fields shift left, producing garbage such as:
-    //   20  LV300 HP900 APテッド
-    // Suppress that redraw and wait for the next complete semantic refresh.
+    // Reject partial redraws whose numeric fields have shifted.
     if (!isDeploymentStatValue(valueA) ||
         !isDeploymentStatValue(valueB) ||
         !isDeploymentStatValue(ap)) {
@@ -1094,15 +1100,12 @@ function endDeploymentRefresh() {
     return lines.join('\n');
 }
 
-
 //#endregion
 
 //#region ORDERS
-//
-// 0x153AF8 caches each resolved Order name silently.
-// 0x154E2C fires with the currently selected Order description.
-// wrapper +0x00 -> Order record
-// record  +0x24 -> signed 8-bit CP cost
+
+// 0x153AF8 caches names; 0x154E2C supplies the selected description.
+// wrapper +0x00 -> record; record +0x24 -> signed 8-bit CP cost.
 
 const orderNameByWrapper = new Map();
 
@@ -1155,24 +1158,12 @@ function selectedOrder(regs) {
     }
 }
 
-
-
 //#endregion
 
 //#region WAR CEMETERY / 戦没者墓地 — TAUGHT ORDER
-//
-// Ordinary Cemetery conversation is handled by the normal story/speaker hooks.
-//
-// Cemetery-specific resolver returns:
-//   0x315E8C -> taught Order name
-//   0x315ED8 -> taught Order description
-//
-// Validated example:
-//   支援狙撃要請
-//   選択した「敵歩兵」１人にダメージを与える。
-//
-// The later learn/confirm window reuses the already-resolved Order name through
-// its ^w20^ substitution token, so it does not need a second text hook.
+
+// 0x315E8C resolves the taught Order name; 0x315ED8 resolves its description.
+// Ordinary Cemetery conversation stays on the normal story/speaker hooks.
 
 let cemeteryOrderName = '';
 
@@ -1197,14 +1188,11 @@ function cemeteryOrderDescription(regs) {
     return `${cemeteryOrderName}\n${description}`;
 }
 
-
 //#endregion
 
 //#region CONTEXT / SHARED DISPATCH
-//
-// 0x1C9440, 0x319958, and 0x319D64 are shared by many systems. The final
-// script keeps exactly one hook at each address and routes by caller + known UI
-// context so independent features cannot overwrite one another.
+
+// Shared renderers keep one hook each and route by caller + known UI context.
 
 const HQ_AREAS = new Set([
     '第７小隊宿舎',
@@ -1295,13 +1283,7 @@ function routeHqDestinationHelp(caller, text) {
     const out = `【${area}】 ${text}`;
     const now = Date.now();
 
-    // Menu construction can render the default selection, then render it again
-    // during the selected-item refresh.  HQ context tracking also changes during
-    // construction, so do not tie this dedupe state to setHqArea().
-    //
-    // Suppress only the same consecutive semantic value for a short window.
-    // A -> B -> A always works because B changes the state, while a later menu
-    // visit can emit the same initial entry again after the window expires.
+    // Collapse only the immediate menu-construction redraw; A -> B -> A remains valid.
     if (
         out === lastHqDestinationHelp &&
         (now - lastHqDestinationHelpTime) < 1000
@@ -1318,7 +1300,6 @@ function routeHqDestinationHelp(caller, text) {
 function noteBattlefieldContext() {
     setHqArea(null);
 }
-
 
 //#endregion
 
@@ -1373,17 +1354,13 @@ const bookEpisodeState = {
 
 const bookSkirmishState = {
     selectedTitle: '',
-    selectedIndex: null,
     selectedTitleTime: 0,
     lastDifficultyDescription: '',
     lastDifficultyTime: 0,
 };
 
 function resetReferenceState(state) {
-    if (state.timer !== null) {
-        clearTimeout(state.timer);
-        state.timer = null;
-    }
+    clearStateTimer(state);
 
     state.name = '';
     state.lines = [];
@@ -1406,7 +1383,6 @@ function resetBookStates() {
     bookEpisodeState.lastConfirmTime = 0;
 
     bookSkirmishState.selectedTitle = '';
-    bookSkirmishState.selectedIndex = null;
     bookSkirmishState.selectedTitleTime = 0;
     bookSkirmishState.lastDifficultyDescription = '';
     bookSkirmishState.lastDifficultyTime = 0;
@@ -1502,10 +1478,7 @@ function routeBookEpisodeText(caller, text) {
         return true;
     }
 
-    // 0x1DCCFC is a generic Yes/No prompt renderer, so gate on the exact
-    // Book-episode prompt.  The separate 0x1DCE88 / 0x1DCEAC writes are just
-    // static label construction ("はい", "いいえ"), not live cursor selection.
-    // Emit one compact semantic block instead of three clipboard events.
+    // Gate the generic Yes/No renderer on the exact Book-episode prompt.
     if (caller === 0x1DCCFC && text === 'エピソードを見ますか？') {
         const out = `${text}\nはい／いいえ`;
         const now = Date.now();
@@ -1526,11 +1499,8 @@ function routeBookEpisodeText(caller, text) {
     return false;
 }
 
-function routeBookSkirmishText(caller, text, regs) {
-    // Selected skirmish/challenge title on the Book Mode skirmish grid.
-    // Runtime-confirmed: r6 is the selected index (0, 1, 2, ...).
-    // There is no separate hover description on this screen; the visible
-    // semantic text is the selected mission title itself.
+function routeBookSkirmishText(caller, text) {
+    // Selected skirmish title; r6 is the selected index.
     if (caller === 0x1EF170) {
         const now = Date.now();
 
@@ -1543,18 +1513,12 @@ function routeBookSkirmishText(caller, text, regs) {
         }
 
         bookSkirmishState.selectedTitle = text;
-        bookSkirmishState.selectedIndex = regs ? (regs[6].vm >>> 0) : null;
         bookSkirmishState.selectedTitleTime = now;
         sendText(text);
         return true;
     }
 
     // EASY / NORMAL / HARD / HARD-EX bottom description.
-    // Confirmed examples:
-    //   戦闘に慣れていないプレイヤー向けです。
-    //   戦闘に慣れてきたプレイヤー向けです。
-    //   戦闘に熟練したプレイヤー向けです。
-    //   戦闘をやりこんだプレイヤーに贈る、チャレンジステージです。
     if (caller === 0x1F543C) {
         const now = Date.now();
 
@@ -1594,13 +1558,6 @@ function flushReferenceState(state) {
     state.lines = [];
 }
 
-function scheduleReferenceFlush(state) {
-    if (state.timer !== null)
-        clearTimeout(state.timer);
-
-    state.timer = setTimeout(() => flushReferenceState(state), 140);
-}
-
 function routeReferenceText(state, caller, nameCaller, detailCaller, text) {
     if (caller === nameCaller) {
         if (state.name && state.lines.length !== 0)
@@ -1621,7 +1578,7 @@ function routeReferenceText(state, caller, nameCaller, detailCaller, text) {
         state.lines.push(text);
     }
 
-    scheduleReferenceFlush(state);
+    scheduleStateTimer(state, () => flushReferenceState(state), 140);
     return true;
 }
 
@@ -1637,7 +1594,6 @@ function routeBookText(caller, text) {
 
     return routeReferenceText(medalRef, caller, 0x1D5730, 0x1D56F8, text);
 }
-
 
 //#endregion
 
@@ -1715,14 +1671,7 @@ function flushCommandRoomState() {
 }
 
 function routeCommandRoomText(caller, text) {
-    // X-button ポテンシャル説明 popup.
-    //
-    // Runtime-confirmed exact caller:
-    //   0x2C5BA8
-    //
-    // The game uses literal "//" as the visible popup line-break marker.
-    // Every hit is a real X-button popup action, so do NOT same-text-dedupe:
-    // pressing X again on the same Potential must emit again.
+    // X Potential popup; every hit is explicit, so same-text repeats are valid.
     if (caller === 0x2C5BA8) {
         sendText(text.replace(/\/\//g, '\n'));
         return;
@@ -1767,7 +1716,7 @@ function commandRoomPotentialDescription(arg, caller, text) {
     // This lower-panel path was behaviorally validated in Command Room and
     // shares the same selected-Potential description helper used by the other
     // unit-detail views.
-    if (arg !== 88 || caller !== 0x304180 || text.length < 8)
+    if (arg !== 88 || caller !== DETAIL_POT_DESC || text.length < 8)
         return;
 
     const now = Date.now();
@@ -1784,13 +1733,9 @@ function commandRoomPotentialDescription(arg, caller, text) {
     sendText(text);
 }
 
-
 //#endregion
 
 //#region TRAINING GROUND / 訓練場
-
-const TRAIN_FULL_NAME = 0x3033E0;
-const TRAIN_POT_DESC = 0x304180;
 
 let trainingLastClass = '';
 let trainingCurrentUnit = '';
@@ -1848,7 +1793,7 @@ function trainingEmitDescription(raw, text) {
 }
 
 function trainingDetailText(regs, caller, arg, text) {
-    if (arg === 2 && caller === TRAIN_FULL_NAME) {
+    if (arg === 2 && caller === DETAIL_FULL_NAME) {
         if (text !== trainingCurrentUnit) {
             trainingCurrentUnit = text;
             trainingResetPotentialForUnit();
@@ -1867,7 +1812,7 @@ function trainingDetailText(regs, caller, arg, text) {
     if (
         trainingDetailKind !== 'potentials' ||
         arg !== 88 ||
-        caller !== TRAIN_POT_DESC
+        caller !== DETAIL_POT_DESC
     ) {
         return;
     }
@@ -1879,11 +1824,12 @@ function trainingDetailText(regs, caller, arg, text) {
         return;
 
     const raw = readNullableU32(parent, 0x1E90);
+    const slot = detailSlot(raw, 8);
 
-    if (raw === null || raw < 120 || raw > 127)
+    if (slot < 0)
         return;
 
-    trainingDescriptions[raw - 120] = text;
+    trainingDescriptions[slot] = text;
 
     // Description preload alone is never a semantic cursor selection.
     if (trainingPending && trainingPendingRaw === raw) {
@@ -1900,8 +1846,9 @@ function trainingSelectionRefresh(regs) {
             return;
 
         const raw = readNullableU32(parent, 0x1E90);
+        const slot = detailSlot(raw, 8);
 
-        if (raw === null || raw < 120 || raw > 127) {
+        if (slot < 0) {
             trainingClearPending();
             return;
         }
@@ -1918,7 +1865,7 @@ function trainingSelectionRefresh(regs) {
         trainingPending = true;
         trainingPendingRaw = raw;
 
-        const text = trainingDescriptions[raw - 120];
+        const text = trainingDescriptions[slot];
         if (text) {
             trainingClearPending();
             trainingEmitDescription(raw, text);
@@ -1936,13 +1883,14 @@ function trainingRightSelectionChanged(regs) {
             return;
 
         const raw = readNullableU32(parent, 0x1E90);
-        if (raw === null || raw < 120 || raw > 127)
+        const slot = detailSlot(raw, 8);
+        if (slot < 0)
             return;
 
         trainingPending = true;
         trainingPendingRaw = raw;
 
-        const text = trainingDescriptions[raw - 120];
+        const text = trainingDescriptions[slot];
         if (text) {
             trainingClearPending();
             trainingEmitDescription(raw, text);
@@ -1950,23 +1898,13 @@ function trainingRightSelectionChanged(regs) {
     } catch (_) {}
 }
 
-
 //#endregion
 
 //#region R&D / 研究開発所
-//
-// 0x2E472C  selected top-level menu bottom help:
-//   兵器開発 / 車輌整備
-//
-// 0x319B60:
-//   ordinary pass -> current/resulting weapon model
-//   r6 == 0x29   -> selected vehicle development / optional-part name
-//
-// 0x319D64 numeric helper:
-//   weapon stat callers -> complete four-line stat block
-//   0x2DB744          -> variable 1..4 vehicle-development effects
-//   0x2DB8CC          -> optional-part effect type/value
 
+// 0x319B60 supplies models/selected vehicle parts; r6 == 0x29 selects part names.
+// 0x319D64 routes weapon stats, vehicle effects (0x2DB744), and optional effects
+// (0x2DB8CC).
 
 const RD_MENU_HELP_CALLER = 0x2E472C;
 
@@ -2112,10 +2050,8 @@ function finishRdVehicleEffectPass() {
 
     rdLastVehicleEffectSignature = signature;
 
-    if (passName)
-        lines.unshift(passName);
-
-    sendText(lines.join('\n'));
+    const stats = lines.join('  ');
+    sendText(passName ? `${passName}\n${stats}` : stats);
 }
 
 function setRdVehicleSelectedName(text) {
@@ -2208,7 +2144,7 @@ function routeRdWeaponStat(caller, value) {
     sendText(
         RD_WEAPON_STAT_ORDER
             .map((stat, i) => `${stat} ${values[i]}`)
-            .join('\n')
+            .join('  ')
     );
 
     return true;
@@ -2287,7 +2223,6 @@ function rdDetailText(caller, arg, text) {
     sendText(text);
 }
 
-
 //#endregion
 
 //#region SHARED MESSAGE RESOLVER / BATTLE START + CASTLEFRONT STREET
@@ -2347,22 +2282,12 @@ function streetLooksLikeBody(text) {
     );
 }
 
-function messageResolverEnter(regs) {
+function messageResolverEnter() {
     const tid = threadId();
-    const aslr = getAslrOffset();
     let caller = null;
 
-    // Runtime validation identified the resolver caller from the hook's actual
-    // return address. Keep that exact method here rather than assuming the LR
-    // register view is equivalent at this internal resolver entry.
     try {
-        if (aslr !== null) {
-            caller = (
-                (this.returnAddress >>> 0) -
-                aslr -
-                GUEST_BASE
-            ) >>> 0;
-        }
+        caller = normalizeCodeAddress(this.returnAddress);
     } catch (_) {}
 
     if (caller === BATTLE_START_RESOLVER_CALLER) {
@@ -2427,47 +2352,9 @@ function messageResolverFailure() {
     messagePendingResolver.delete(threadId());
 }
 
-
 //#endregion
 
 //#region BARRACKS / 第７小隊宿舎
-
-const BARRACKS_FULL_NAME = 0x3033E0;
-const BARRACKS_WEAPON_ROW = 0x3036D0;
-const BARRACKS_POT_DESC = 0x304180;
-
-const BARRACKS_POTENTIAL_NAME_CALLERS = new Map([
-    [0x3047C0, 0],
-    [0x3047D8, 1],
-    [0x30482C, 4],
-    [0x304844, 5],
-    [0x3048B4, 2],
-    [0x3048E8, 3],
-    [0x304900, 4],
-    [0x304918, 5],
-    [0x304950, 6],
-    [0x30913C, 7],
-]);
-
-const BARRACKS_AFFINITY_CALLERS = new Set([
-    0x3040D4,
-    0x3040EC,
-    0x303178,
-    0x30BB7C,
-]);
-
-const BARRACKS_ORDER_NAME_CALLERS = new Map([
-    [0x304A4C, 0],
-    [0x304A74, 1],
-    [0x304A9C, 2],
-    [0x304AC4, 3],
-    [0x304AEC, 4],
-    [0x304B14, 5],
-    [0x304B3C, 6],
-    [0x304B64, 7],
-    [0x304B8C, 8],
-    [0x304BB4, 9],
-]);
 
 const barracksWeapon = {
     currentUnit: '',
@@ -2484,7 +2371,6 @@ const barracksPotential = {
     kind: 'unknown',
     names: new Array(8).fill(null),
     descriptions: new Array(8).fill(null),
-    parent: null,
     pending: false,
     raw: null,
     timer: null,
@@ -2509,12 +2395,9 @@ const barracksOrders = {
 };
 
 function resetBarracksState() {
-    if (barracksWeapon.timer !== null)
-        clearTimeout(barracksWeapon.timer);
-    if (barracksPotential.timer !== null)
-        clearTimeout(barracksPotential.timer);
-    if (barracksAffinity.timer !== null)
-        clearTimeout(barracksAffinity.timer);
+    clearStateTimer(barracksWeapon);
+    clearStateTimer(barracksPotential);
+    clearStateTimer(barracksAffinity);
 
     barracksWeapon.currentUnit = '';
     barracksWeapon.lastUnit = '';
@@ -2528,7 +2411,6 @@ function resetBarracksState() {
     barracksPotential.kind = 'unknown';
     barracksPotential.names = new Array(8).fill(null);
     barracksPotential.descriptions = new Array(8).fill(null);
-    barracksPotential.parent = null;
     barracksPotential.pending = false;
     barracksPotential.raw = null;
     barracksPotential.timer = null;
@@ -2548,18 +2430,6 @@ function resetBarracksState() {
     barracksOrders.lastKey = '';
 }
 
-function barracksCancelWeaponTimer() {
-    if (barracksWeapon.timer !== null) {
-        clearTimeout(barracksWeapon.timer);
-        barracksWeapon.timer = null;
-    }
-}
-
-function barracksScheduleWeaponResolve(wait) {
-    barracksCancelWeaponTimer();
-    barracksWeapon.timer = setTimeout(barracksResolveWeapon, wait);
-}
-
 function barracksResolveWeapon() {
     barracksWeapon.timer = null;
 
@@ -2569,11 +2439,11 @@ function barracksResolveWeapon() {
     const page = readNullableU32(barracksWeapon.parent, 0x3328);
     const raw = readNullableU32(barracksWeapon.parent, 0x1E90);
 
-    if (page !== 0 || raw === null || raw < 120 || raw > 139)
+    const slot = detailSlot(raw, 20);
+    if (page !== 0 || slot < 0)
         return;
 
-    const slot = raw - 120;
-    if (slot < 0 || slot >= barracksWeapon.rows.length)
+    if (slot >= barracksWeapon.rows.length)
         return;
 
     const selected = barracksWeapon.rows[slot];
@@ -2591,17 +2461,7 @@ function barracksClearPotentialPending() {
     barracksPotential.pending = false;
     barracksPotential.raw = null;
 
-    if (barracksPotential.timer !== null) {
-        clearTimeout(barracksPotential.timer);
-        barracksPotential.timer = null;
-    }
-}
-
-function barracksSchedulePotentialResolve(wait) {
-    if (barracksPotential.timer !== null)
-        clearTimeout(barracksPotential.timer);
-
-    barracksPotential.timer = setTimeout(barracksResolvePotential, wait);
+    clearStateTimer(barracksPotential);
 }
 
 function barracksResolvePotential() {
@@ -2616,12 +2476,12 @@ function barracksResolvePotential() {
     }
 
     const raw = barracksPotential.raw;
-    if (raw < 120 || raw > 127) {
+    const slot = detailSlot(raw, 8);
+    if (slot < 0) {
         barracksClearPotentialPending();
         return;
     }
 
-    const slot = raw - 120;
     const name = barracksPotential.names[slot];
     const desc = barracksPotential.descriptions[slot];
 
@@ -2642,20 +2502,12 @@ function barracksResolvePotential() {
     sendText(`${name}\n${desc}`);
 }
 
-function barracksCancelAffinityTimer() {
-    if (barracksAffinity.timer !== null) {
-        clearTimeout(barracksAffinity.timer);
-        barracksAffinity.timer = null;
-    }
-}
-
 function barracksBeginAffinity(unit) {
-    barracksCancelAffinityTimer();
     barracksAffinity.currentUnit = unit;
     barracksAffinity.armed = true;
     barracksAffinity.names = [];
     barracksAffinity.seen.clear();
-    barracksAffinity.timer = setTimeout(barracksFlushAffinity, 180);
+    scheduleStateTimer(barracksAffinity, barracksFlushAffinity, 180);
 }
 
 function barracksQueueAffinity(text) {
@@ -2667,8 +2519,7 @@ function barracksQueueAffinity(text) {
         barracksAffinity.names.push(text);
     }
 
-    barracksCancelAffinityTimer();
-    barracksAffinity.timer = setTimeout(barracksFlushAffinity, 55);
+    scheduleStateTimer(barracksAffinity, barracksFlushAffinity, 55);
 }
 
 function barracksFlushAffinity() {
@@ -2701,17 +2552,12 @@ function barracksFlushAffinity() {
 }
 
 function barracksDetailText(regs, caller, arg, text) {
-    // ------------------------------------------------------------------
-    // Selected unit + selected weapon.
-    // ------------------------------------------------------------------
-    if (arg === 2 && caller === BARRACKS_FULL_NAME) {
-        const changed = text !== barracksWeapon.currentUnit;
-
-        if (changed) {
+    if (arg === 2 && caller === DETAIL_FULL_NAME) {
+        if (text !== barracksWeapon.currentUnit) {
             barracksWeapon.currentUnit = text;
             barracksWeapon.rows = [];
             barracksWeapon.pending = false;
-            barracksCancelWeaponTimer();
+            clearStateTimer(barracksWeapon);
             barracksWeapon.lastKey = '';
         }
 
@@ -2719,23 +2565,7 @@ function barracksDetailText(regs, caller, arg, text) {
             barracksWeapon.lastUnit = text;
             sendText(text);
         }
-    }
-    else if (arg === 46 && caller === BARRACKS_WEAPON_ROW) {
-        if (
-            barracksWeapon.rows.length === 0 ||
-            barracksWeapon.rows[barracksWeapon.rows.length - 1] !== text
-        ) {
-            barracksWeapon.rows.push(text);
-        }
 
-        if (barracksWeapon.pending)
-            barracksScheduleWeaponResolve(45);
-    }
-
-    // ------------------------------------------------------------------
-    // Selected Potential.
-    // ------------------------------------------------------------------
-    if (arg === 2 && caller === BARRACKS_FULL_NAME) {
         if (text !== barracksPotential.currentUnit) {
             barracksPotential.currentUnit = text;
             barracksPotential.names = new Array(8).fill(null);
@@ -2744,6 +2574,24 @@ function barracksDetailText(regs, caller, arg, text) {
             barracksPotential.lastKey = '';
             barracksPotential.lastTime = 0;
         }
+
+        if (text !== barracksAffinity.currentUnit)
+            barracksBeginAffinity(text);
+
+        if (text !== barracksOrders.currentUnit) {
+            barracksOrders.currentUnit = text;
+            barracksOrders.names = new Array(10).fill(null);
+            barracksOrders.lastKey = '';
+        }
+    }
+    else if (arg === 46 && caller === DETAIL_WEAPON_ROW) {
+        const rows = barracksWeapon.rows;
+
+        if (rows.length === 0 || rows[rows.length - 1] !== text)
+            rows.push(text);
+
+        if (barracksWeapon.pending)
+            scheduleStateTimer(barracksWeapon, barracksResolveWeapon, 45);
     }
 
     if (arg === 46)
@@ -2754,7 +2602,7 @@ function barracksDetailText(regs, caller, arg, text) {
         barracksPotential.kind = 'potentials';
 
     if (arg === 86) {
-        const slot = BARRACKS_POTENTIAL_NAME_CALLERS.get(caller);
+        const slot = DETAIL_POTENTIAL_NAME_CALLERS.get(caller);
 
         if (slot !== undefined) {
             barracksPotential.names[slot] = text;
@@ -2763,59 +2611,40 @@ function barracksDetailText(regs, caller, arg, text) {
                 barracksPotential.pending &&
                 barracksPotential.raw === 120 + slot
             ) {
-                barracksSchedulePotentialResolve(10);
+                scheduleStateTimer(barracksPotential, barracksResolvePotential, 10);
             }
         }
     }
-    else if (arg === 88 && caller === BARRACKS_POT_DESC) {
+    else if (arg === 88 && caller === DETAIL_POT_DESC) {
         const parent = regs[4].value;
         const parentGuest = regs[4].vm >>> 0;
 
         if (parent && !parent.isNull() && parentGuest >= 0x10000) {
             const raw = readNullableU32(parent, 0x1E90);
+            const slot = detailSlot(raw, 8);
 
-            if (raw !== null && raw >= 120 && raw <= 127) {
-                barracksPotential.parent = parent;
-                barracksPotential.descriptions[raw - 120] = text;
+            if (slot >= 0) {
+                barracksPotential.descriptions[slot] = text;
 
                 if (
                     barracksPotential.pending &&
                     barracksPotential.raw === raw
                 ) {
-                    barracksSchedulePotentialResolve(10);
+                    scheduleStateTimer(barracksPotential, barracksResolvePotential, 10);
                 }
             }
         }
     }
 
-    // ------------------------------------------------------------------
-    // Affinity metadata belonging to the newly selected LEFT-roster unit.
-    // ------------------------------------------------------------------
-    if (arg === 2 && caller === BARRACKS_FULL_NAME) {
-        if (text !== barracksAffinity.currentUnit)
-            barracksBeginAffinity(text);
-    }
-    else if (arg === 76 && BARRACKS_AFFINITY_CALLERS.has(caller)) {
+    if (arg === 76 && DETAIL_AFFINITY_CALLERS.has(caller))
         barracksQueueAffinity(text);
-    }
-
-    // ------------------------------------------------------------------
-    // Welkin selected Order.
-    // ------------------------------------------------------------------
-    if (arg === 2 && caller === BARRACKS_FULL_NAME) {
-        if (text !== barracksOrders.currentUnit) {
-            barracksOrders.currentUnit = text;
-            barracksOrders.names = new Array(10).fill(null);
-            barracksOrders.lastKey = '';
-        }
-    }
 
     if (arg === 84) {
-        const slot = BARRACKS_ORDER_NAME_CALLERS.get(caller);
+        const slot = DETAIL_ORDER_NAME_CALLERS.get(caller);
         if (slot !== undefined)
             barracksOrders.names[slot] = text;
     }
-    else if (arg === 90 && caller === 0x304270) {
+    else if (arg === 90 && caller === DETAIL_ORDER_DESC) {
         try {
             const parentGuest = regs[4].vm >>> 0;
             const parentHost = regs[4].value;
@@ -2824,10 +2653,10 @@ function barracksDetailText(regs, caller, arg, text) {
                 return;
 
             const raw = parentHost.add(0x1E90).readU32() >>> 0;
-            if (raw < 120 || raw > 129)
+            const slot = detailSlot(raw, 10);
+            if (slot < 0)
                 return;
 
-            const slot = raw - 120;
             const name = barracksOrders.names[slot];
             if (!name)
                 return;
@@ -2851,7 +2680,7 @@ function barracksSelectionRefresh(regs) {
             const page = readNullableU32(parent, 0x3328);
             const raw = readNullableU32(parent, 0x1E90);
 
-            if (page === 0 && raw !== null && raw >= 120 && raw <= 139) {
+            if (page === 0 && detailSlot(raw, 20) >= 0) {
                 const r1 = regs[1].vm >>> 0;
                 const r2 = regs[2].vm >>> 0;
                 const r3 = regs[3].vm >>> 0;
@@ -2859,7 +2688,7 @@ function barracksSelectionRefresh(regs) {
                 if (r1 === 0x202 && r2 === 0x11 && r3 === 0x11) {
                     barracksWeapon.parent = parent;
                     barracksWeapon.pending = true;
-                    barracksScheduleWeaponResolve(20);
+                    scheduleStateTimer(barracksWeapon, barracksResolveWeapon, 20);
                 }
             }
         }
@@ -2871,10 +2700,9 @@ function barracksSelectionRefresh(regs) {
         if (!parent || parent.isNull())
             return;
 
-        barracksPotential.parent = parent;
         const raw = readNullableU32(parent, 0x1E90);
 
-        if (raw === null || raw < 120 || raw > 127) {
+        if (detailSlot(raw, 8) < 0) {
             barracksClearPotentialPending();
             return;
         }
@@ -2887,7 +2715,7 @@ function barracksSelectionRefresh(regs) {
         if (barracksPotential.kind === 'potentials') {
             barracksPotential.pending = true;
             barracksPotential.raw = raw;
-            barracksSchedulePotentialResolve(15);
+            scheduleStateTimer(barracksPotential, barracksResolvePotential, 15);
         }
     } catch (_) {}
 }
@@ -2901,10 +2729,10 @@ function barracksRightSelectionChanged(regs) {
             const page = readNullableU32(parent, 0x3328);
             const raw = readNullableU32(parent, 0x1E90);
 
-            if (page === 0 && raw !== null && raw >= 120 && raw <= 139) {
+            if (page === 0 && detailSlot(raw, 20) >= 0) {
                 barracksWeapon.parent = parent;
                 barracksWeapon.pending = true;
-                barracksScheduleWeaponResolve(15);
+                scheduleStateTimer(barracksWeapon, barracksResolveWeapon, 15);
             }
         }
     } catch (_) {}
@@ -2919,60 +2747,21 @@ function barracksRightSelectionChanged(regs) {
             return;
 
         const raw = readNullableU32(parent, 0x1E90);
-        if (raw === null || raw < 120 || raw > 127)
+        if (detailSlot(raw, 8) < 0)
             return;
 
-        barracksPotential.parent = parent;
         barracksPotential.pending = true;
         barracksPotential.raw = raw;
-        barracksSchedulePotentialResolve(10);
+        scheduleStateTimer(barracksPotential, barracksResolvePotential, 10);
     } catch (_) {}
 }
-
 
 //#endregion
 
 //#region BATTLEFIELD FIELD INFO + POTENTIALS + ORDERS + VEHICLE PARTS
 
-const BATTLE_FIELD_FULL_NAME = 0x3033E0;
-const BATTLE_FIELD_WEAPON_ROW = 0x3036D0;
-const BATTLE_FIELD_POT_DESC = 0x304180;
-const BATTLE_FIELD_ORDER_DESC = 0x304270;
 const BATTLE_FIELD_TANK_EFFECT_LABEL = 0x304378;
 const BATTLE_FIELD_TANK_DIGIT_CALLER = 0x318218;
-
-const BATTLE_FIELD_AFFINITY_CALLERS = new Set([
-    0x3040D4,
-    0x3040EC,
-    0x303178,
-    0x30BB7C,
-]);
-
-const BATTLE_POTENTIAL_NAME_CALLERS = new Map([
-    [0x3047C0, 0],
-    [0x3047D8, 1],
-    [0x30482C, 4],
-    [0x304844, 5],
-    [0x3048B4, 2],
-    [0x3048E8, 3],
-    [0x304900, 4],
-    [0x304918, 5],
-    [0x304950, 6],
-    [0x30913C, 7],
-]);
-
-const BATTLE_FIELD_ORDER_NAME_CALLERS = new Map([
-    [0x304A4C, 0],
-    [0x304A74, 1],
-    [0x304A9C, 2],
-    [0x304AC4, 3],
-    [0x304AEC, 4],
-    [0x304B14, 5],
-    [0x304B3C, 6],
-    [0x304B64, 7],
-    [0x304B8C, 8],
-    [0x304BB4, 9],
-]);
 
 // Static sequence 0x304D70..0x304ED8 contains ten consecutive calls to
 // 0x319958 (arg 84), one per vehicle-part slot. Filled slots were also
@@ -3025,13 +2814,6 @@ let battleTankLastEffectTime = 0;
 let battlePotentialActivationLast = '';
 let battlePotentialActivationLastTime = 0;
 
-function battleFieldCancelAffinityTimer() {
-    if (battleFieldAffinity.timer !== null) {
-        clearTimeout(battleFieldAffinity.timer);
-        battleFieldAffinity.timer = null;
-    }
-}
-
 function battleFieldFlushAffinity() {
     battleFieldAffinity.timer = null;
 
@@ -3062,9 +2844,7 @@ function battleFieldQueueAffinity(text) {
         battleFieldAffinity.names.push(text);
     }
 
-    battleFieldCancelAffinityTimer();
-    battleFieldAffinity.timer =
-        setTimeout(battleFieldFlushAffinity, 55);
+    scheduleStateTimer(battleFieldAffinity, battleFieldFlushAffinity, 55);
 }
 
 function battleTankResetPendingEffect() {
@@ -3162,7 +2942,7 @@ function resetBattlePotentialState() {
     battleFieldLastWeaponKey = '';
     battleFieldLastWeaponTime = 0;
 
-    battleFieldCancelAffinityTimer();
+    clearStateTimer(battleFieldAffinity);
     battleFieldAffinity.names = [];
     battleFieldAffinity.seen.clear();
     battleFieldAffinity.lastKey = '';
@@ -3182,7 +2962,7 @@ function resetBattlePotentialState() {
 
 function battlefieldFieldDetail(regs, caller, arg, text) {
     // Full unit / vehicle name.
-    if (caller === BATTLE_FIELD_FULL_NAME && arg === 2) {
+    if (caller === DETAIL_FULL_NAME && arg === 2) {
         if (text !== battleFieldLastName) {
             battleFieldLastName = text;
             sendText(text);
@@ -3200,7 +2980,7 @@ function battlefieldFieldDetail(regs, caller, arg, text) {
 
     // Weapon/equipment rows useful on the field card. Intentionally excludes
     // class, LV/HP/AP, armor/item and the status/stat page.
-    if (caller === BATTLE_FIELD_WEAPON_ROW && arg === 46) {
+    if (caller === DETAIL_WEAPON_ROW && arg === 46) {
         const key = `${caller}\n${text}`;
         const now = Date.now();
 
@@ -3217,7 +2997,7 @@ function battlefieldFieldDetail(regs, caller, arg, text) {
     }
 
     // Compatibility / affinity names.
-    if (arg === 76 && BATTLE_FIELD_AFFINITY_CALLERS.has(caller)) {
+    if (arg === 76 && DETAIL_AFFINITY_CALLERS.has(caller)) {
         battleFieldQueueAffinity(text);
         return;
     }
@@ -3225,7 +3005,7 @@ function battlefieldFieldDetail(regs, caller, arg, text) {
     // Potential names are cached only so the selected description can be
     // emitted with its semantic title.
     if (arg === 86) {
-        const slot = BATTLE_POTENTIAL_NAME_CALLERS.get(caller);
+        const slot = DETAIL_POTENTIAL_NAME_CALLERS.get(caller);
 
         if (slot !== undefined)
             battlePotentialNames[slot] = text;
@@ -3233,15 +3013,15 @@ function battlefieldFieldDetail(regs, caller, arg, text) {
         return;
     }
 
-    if (arg === 88 && caller === BATTLE_FIELD_POT_DESC) {
+    if (arg === 88 && caller === DETAIL_POT_DESC) {
         try {
             const parent = regs[4].value;
             const raw = readNullableU32(parent, 0x1E90);
+            const slot = detailSlot(raw, 8);
 
-            if (raw === null || raw < 120 || raw > 127)
+            if (slot < 0)
                 return;
 
-            const slot = raw - 120;
             const name = battlePotentialNames[slot];
 
             const out = name
@@ -3269,7 +3049,7 @@ function battlefieldFieldDetail(regs, caller, arg, text) {
     // Welkin field-card Orders.
     if (arg === 84) {
         const orderSlot =
-            BATTLE_FIELD_ORDER_NAME_CALLERS.get(caller);
+            DETAIL_ORDER_NAME_CALLERS.get(caller);
 
         if (orderSlot !== undefined) {
             battleFieldOrders.names[orderSlot] = text;
@@ -3305,7 +3085,7 @@ function battlefieldFieldDetail(regs, caller, arg, text) {
         }
     }
 
-    if (arg === 90 && caller === BATTLE_FIELD_ORDER_DESC) {
+    if (arg === 90 && caller === DETAIL_ORDER_DESC) {
         try {
             const parent = regs[4].value;
 
@@ -3313,11 +3093,11 @@ function battlefieldFieldDetail(regs, caller, arg, text) {
                 return;
 
             const raw = parent.add(0x1E90).readU32() >>> 0;
+            const slot = detailSlot(raw, 10);
 
-            if (raw < 120 || raw > 129)
+            if (slot < 0)
                 return;
 
-            const slot = raw - 120;
             const name = battleFieldOrders.names[slot];
 
             if (!name)
@@ -3416,25 +3196,12 @@ function battlefieldUnitListContext() {
     noteBattlefieldContext();
 }
 
-
 //#endregion
 
 //#region PROGRESSION / UNLOCK NOTIFICATIONS
 
-// Feature/update notification callers through the shared 0x1C9440 setter.
-//
-// Runtime-validated render-pass discriminator:
-//   0x1D7680 -> r7 == 0 first/semantic write, r7 == 1 redraw
-//   0x1DA960 -> r6 == 0 first/semantic write, r6 == 1 redraw
-//
-// New-chapter splash callers:
-//   0x1D3114 -> Japanese chapter title, first/semantic write
-//   0x1D330C -> English subtitle, first/semantic write
-//
-// Intentionally ignored redraw/other paths:
-//   0x1D3210 -> Japanese chapter-title redraw
-//   0x1D33F8 -> English subtitle redraw
-//   0x1D7774 -> ordinary Book Mode chapter/episode text
+// First-pass feature notices use 0x1D7680/0x1DA960; redraws are ignored.
+// 0x1D3114 + 0x1D330C form the JP/EN new-chapter splash pair.
 
 const PROGRESSION_FEATURE_BOOK = 0x1D7680;
 const PROGRESSION_FEATURE_UPDATE = 0x1DA960;
@@ -3443,6 +3210,21 @@ const PROGRESSION_CHAPTER_EN = 0x1D330C;
 
 let progressionChapterJP = null;
 let progressionChapterEN = null;
+
+const OPTIONS_BOTTOM_DESCRIPTION_CALLER = 0x347E9C;
+let optionsBottomLast = '';
+
+function routeOptionsBottomDescription(caller, text) {
+    if (caller !== OPTIONS_BOTTOM_DESCRIPTION_CALLER)
+        return false;
+
+    if (text === optionsBottomLast)
+        return true;
+
+    optionsBottomLast = text;
+    sendText(text);
+    return true;
+}
 
 function routeProgressionText(caller, text, regs) {
     if (caller === PROGRESSION_FEATURE_BOOK) {
@@ -3483,7 +3265,6 @@ function routeProgressionText(caller, text, regs) {
     return false;
 }
 
-
 //#endregion
 
 //#region SHARED COMMON-TEXT / DETAIL DISPATCHERS
@@ -3497,7 +3278,6 @@ function numericDispatcher(regs) {
     if (caller !== null)
         routeRdNumeric(regs, caller);
 }
-
 
 function commonTextDispatcher(regs) {
     // Deployment uses the common setter only while its own refresh state is
@@ -3517,9 +3297,13 @@ function commonTextDispatcher(regs) {
     if (routeBattlefieldTankEffectDigit(caller, text))
         return;
 
-    // Exact validated battle command/System help only. 勝利条件確認 also emits
-    // the direct current-battle condition block once per Agent session.
+    // Exact validated battle command/System help only; condition opens are repeatable.
     if (routeBattleCommandAndSystemHelp(caller, text, regs))
+        return;
+
+    // Options bottom help uses one exact semantic caller for the currently
+    // selected row. State-change dedupe preserves A -> B -> A.
+    if (routeOptionsBottomDescription(caller, text))
         return;
 
     // Progression/unlock messages use unique semantic callers and must be
@@ -3547,7 +3331,7 @@ function commonTextDispatcher(regs) {
 
     // Book skirmish selection/difficulty callers are semantic and should not
     // fall through into whichever HQ context happened to be active previously.
-    if (routeBookSkirmishText(caller, text, regs))
+    if (routeBookSkirmishText(caller, text))
         return;
 
     // Book episode selection / confirmation is semantic and should not fall
@@ -3614,10 +3398,7 @@ function detailTextDispatcher(regs) {
         return;
     }
 
-    // Outside a known HQ detail context this is the battlefield field/detail
-    // card path: name, weapon, compatibility, selected Potential, Welkin Orders
-    // and vehicle/tank parts/effects. Hover/unit-list hooks clear stale HQ
-    // context on entry.
+    // Outside HQ context the shared renderer belongs to the battlefield detail card.
     if (currentHqArea === null)
         battlefieldFieldDetail(regs, caller, arg, text);
 }
