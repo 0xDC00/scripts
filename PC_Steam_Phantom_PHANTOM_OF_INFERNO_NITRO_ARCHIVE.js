@@ -5,7 +5,7 @@
 // @description  Steam
 // * NITRO PLUS, NITRO ORIGIN
 //
-// https://store.steampowered.com/app/4659620/Touhou_Koumakyou_New_Classic__the_Embodiment_of_Scarlet_Devil/
+// https://store.steampowered.com/app/3639590/Phantom_PHANTOM_OF_INFERNO_NITRO_ARCHIVE/
 // ==/UserScript==
 
 const __e = Process.enumerateModules()[0];
