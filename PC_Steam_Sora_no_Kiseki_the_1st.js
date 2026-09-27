@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Sora no Kiseki the 1st / 空の軌跡 the 1st
+// @name         Sora no Kiseki the 1st / 空の軌跡 the 1st / Trails in the Sky 1st Chapter
 // @version      1.07
 // @author       Tom (tomrock645)
 // @description  Steam
@@ -10,1083 +10,636 @@
 // ==/UserScript==
 
 
+// console.warn("Known issues: \n- In the STATUS tab in the main menu, selecting another character will extract the overdrive's, an S-Craft's and a support ability's description of that character.");
+
+
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send((s) => s, '200+');
 const secondHandler = trans.send((s) => s, 200);
 const thirdHandler = trans.send((s) => s, '25+');
 
+let isDebugging = true;
+
 
 (function () {
-    const nameSig = 'e8 ?? ?? ?? ?? 8b 84 ?? ?? ?? ?? ?? ?? 85';
-    var results = Memory.scanSync(__e.base, __e.size, nameSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[namePattern] Hook not found!');
+    const address = getAddressPattern("name", 'e8 ?? ?? ?? ?? 8b 84 ?? ?? ?? ?? ?? ?? 85 f6 89 84');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[namePattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: name");
-
-        const nameAddress = this.context.rdx;
-        let name = nameAddress.readUtf8String();
-        mainHandler(name);
+        processText(this.context.rdx, "main", "name");
     });
 })();
 
 
 (function () {
-    const dialogueSig = 'e8 ?? ?? ?? ?? ?? 01 be';
-    var results = Memory.scanSync(__e.base, __e.size, dialogueSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[dialoguePattern] Hook not found!');
+    const address = getAddressPattern("dialogue", 'e8 ?? ?? ?? ?? ?? 01 be');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[dialoguePattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: dialogue");
-
-        const textAddress = this.context.rdx;
-        let text = textAddress.readUtf8String();
-        text = cleanText(text);
-
-        // Dialogue gets called before name
-        setTimeout(() => {
-            mainHandler(text);
-        }, 50);
-        
-        // console.warn(hexdump(textAddress, { header: false, ansi: false, length: 0x50 }));
+        processText(this.context.rdx, "main", "dialogue");
     });
 })();
 
 
 (function () {
-    const choicesSig = 'e8 ?? ?? ?? ?? ?? 8b 57 30 8b';
-    var results = Memory.scanSync(__e.base, __e.size, choicesSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[choicesPattern] Hook not found!');
+    const address = getAddressPattern("choices", 'e8 ?? ?? ?? ?? ?? 8b 57 30 8b');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[choicesPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: choices");
-
-        const choicesAddress = this.context.rdx;
-        let choices = choicesAddress.readUtf8String();
-        mainHandler(choices);
+        processText(this.context.rdx, "main", "choices");
     });
 })();
 
 
 (function () {
-    const activeVoiceSig = 'e8 ?? ?? ?? ?? ?? 8b 83 a0 00 00 00 33';
-    var results = Memory.scanSync(__e.base, __e.size, activeVoiceSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[activeVoicePattern] Hook not found!');
+    const address = getAddressPattern("terminalChoices", 'e8 ?? ?? ?? ?? 90 ?? 8b c3 ?? 8b 5c ?? ?? ?? 8b 6c ?? ?? ?? 8b 74 ?? ?? ?? 83 c4 40 5f c3');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[activeVoicePattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: activeVoice");
-
-        const activeVoiceAddress = this.context.rdx;
-        let activeVoice = activeVoiceAddress.readUtf8String();
-        activeVoice = cleanText(activeVoice);
-
-        mainHandler(activeVoice);
+        processText(this.context.rdx, "main", "terminalChoices");
     });
 })();
 
 
 (function () {
-    const tutorial1Sig = 'e8 ?? ?? ?? ?? 8b 46 40 ?? 88 3c 30 ?? 8b af 90';
-    var results = Memory.scanSync(__e.base, __e.size, tutorial1Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[tutorial1Pattern] Hook not found!');
+    const address = getAddressPattern("activeVoice", 'e8 ?? ?? ?? ?? ?? 8b 83 a0 00 00 00 33');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[tutorial1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: tutorial1");
-
-        const tutorialAddress = this.context.rdx;
-        let tutorial = tutorialAddress.readUtf8String();
-        tutorial = getDescription(tutorialAddress);
-        tutorial = cleanText(tutorial);
-
-        setTimeout(() => {
-            thirdHandler("\n" + tutorial);
-        }, 20);
+        processText(this.context.rdx, "main", "activeVoice");
     });
 })();
 
 
 (function () {
-    const tutorial2Sig = 'e8 ?? ?? ?? ?? 8b 87 40 03 00 00 0f ba e0 09 72 ?? 66 c7 87 e0 06 00 00 01 01 0f ba e8 09 89 87 40 03 00 00 ?? 8d';
-    var results = Memory.scanSync(__e.base, __e.size, tutorial2Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[tutorial2Pattern] Hook not found!');
+    const address = getAddressPattern("tutorial1", 'e8 ?? ?? ?? ?? 8b 46 40 ?? 88 3c 30 ?? 8b af 90');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[tutorial2Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: tutorial2");
+        // processText(this.context.rdx, "third", "tutorial1");
+        let tutorial1 = getDescription(this.context.rdx);
+        tutorial1 = cleanText(tutorial1);
+        thirdHandler(tutorial1);
+    });
+})();
 
-        const tutorialAddress = this.context.rdx;
-        let tutorial = tutorialAddress.readUtf8String();
-        tutorial = cleanText(tutorial);
 
-        if(tutorial !== '')
-            thirdHandler("\n" + tutorial);
+// (function () {
+//     const address = getAddressPattern("tutorial2", 'e8 ?? ?? ?? ?? 8b 87 40 03 00 00 0f ba e0 09 72 ?? 66 c7 87 e0 06 00 00 01 01 0f ba e8 09 89 87 40 03 00 00 ?? 8d');
+//     if(!address)
+//         return;
+//     Interceptor.attach(address, function (args) {
+//         processText(this.context.rdx, "third", "tutorial2");
+//     });
+// })();
+
+
+(function () {
+    const address = getAddressPattern("tutorial3", 'e8 ?? ?? ?? ?? 8b 83 40 03 00 00 0f ba e0 09 72 ?? 66 c7 83 e0 06 00 00 01 01 0f ba e8 09 89 83 40 03 00 00 0f 10 83 0c 01 00 00 0f 11 44 ?? ?? f3 ?? 0f 10 54 ?? 10');
+    if(!address)
+        return;
+    Interceptor.attach(address, function (args) {
+        processText(this.context.rdx, "third", "tutorial3");
     });
 })();
 
 
 (function () {
-    const tutorial3Sig = 'e8 ?? ?? ?? ?? 8b 83 40 03 00 00 0f ba e0 09 72 ?? 66 c7 83 e0 06 00 00 01 01 0f ba e8 09 89 83 40 03 00 00 0f 10 83 0c 01 00 00 0f 11 44 ?? ?? f3 ?? 0f 10 54 ?? 10';
-    var results = Memory.scanSync(__e.base, __e.size, tutorial3Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[tutorial3Pattern] Hook not found!');
+    const address = getAddressPattern("tutorial4", 'e8 ?? ?? ?? ?? 8b 83 40 03 00 00 0f ba e0 09 72 ?? 66 c7 83 e0 06 00 00 01 01 0f ba e8 09 89 83 40 03 00 00 0f 10 83 0c 01 00 00 0f 11 44 ?? ?? f3 ?? 0f 10 54 ?? 20');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[tutorial3Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: tutorial3");
+        processText(this.context.rdx, "third", "tutorial4");
+    });
+})();
 
-        const tutorialAddress = this.context.rdx;
-        let tutorial = tutorialAddress.readUtf8String();
-        tutorial = cleanText(tutorial);
 
-        thirdHandler(tutorial);
+// (function () {
+//     const address = getAddressPattern("tutorial5", 'e8 ?? ?? ?? ?? 8b 97 40 03');
+//     if(!address)
+//         return;
+//     Interceptor.attach(address, function (args) {
+//         processText(this.context.rdx, "third", "tutorial5");
+//     });
+// })();
+
+
+(function () {
+    const address = getAddressPattern("tutorial6", '8b fd ?? 8b 54 ?? 08', 0xa, );
+    if(!address)
+        return;
+    Interceptor.attach(address, function (args) {
+        processText(this.context.rdx, "third", "tutorial6");
     });
 })();
 
 
 (function () {
-    const tutorial4Sig = 'e8 ?? ?? ?? ?? 8b 83 40 03 00 00 0f ba e0 09 72 ?? 66 c7 83 e0 06 00 00 01 01 0f ba e8 09 89 83 40 03 00 00 0f 10 83 0c 01 00 00 0f 11 44 ?? ?? f3 ?? 0f 10 54 ?? 20';
-    var results = Memory.scanSync(__e.base, __e.size, tutorial4Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[tutorial4Pattern] Hook not found!');
+    const address = getAddressPattern("tutorial7", 'c7 87 50 03 00 00 00 00 00 00 ?? 8b cf ?? 8b 55 10', 0x11);
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[tutorial4Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: tutorial4");
-
-        const tutorialAddress = this.context.rdx;
-        let tutorial = tutorialAddress.readUtf8String();
-        tutorial = cleanText(tutorial);
-
-        thirdHandler(tutorial);
+        processText(this.context.rdx, "third", "tutorial7");
     });
 })();
 
 
 (function () {
-    const tutorial5Sig = 'e8 ?? ?? ?? ?? 8b 97 40 03';
-    var results = Memory.scanSync(__e.base, __e.size, tutorial5Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[tutorial5Pattern] Hook not found!');
+    const address = getAddressPattern("tutorial8", 'e8 ?? ?? ?? ?? 90 ?? 8d ?? ?? 40 e8 ?? ?? ?? ?? 8b');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[tutorial5Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: tutorial5");
-
-        const tutorialAddress = this.context.rdx;
-        let tutorial = tutorialAddress.readUtf8String();
-        tutorial = cleanText(tutorial);
-
-        setTimeout(() => {
-            thirdHandler("\n" + tutorial);
-        }, 20);
+        processText(this.context.rdx, "third", "tutorial8");
     });
 })();
 
 
 (function () { 
-    const systemMessage1Sig = 'e8 ?? ?? ?? ?? ?? 8b 8e 98 00 00 00 ba 1d 80 00 00 ?? 8b 01 ff 50 60 ?? 8b 8e 98 00 00 00 33 d2 e8 ?? ?? ?? ?? ?? 8b 85 d0 00 00 00 ?? 85 c0 75 ?? 0f 57 c9 0f 57 c0 eb ?? f3 0f 10 80 34 03 00 00 f3 0f 10 88 10 01 00 00 ?? 8b 0d';
-    var results = Memory.scanSync(__e.base, __e.size, systemMessage1Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[systemMessage1Pattern] Hook not found!');
+    const address = getAddressPattern("systemMessage1", 'e8 ?? ?? ?? ?? ?? 8b 8e 98 00 00 00 ba 1d 80 00 00 ?? 8b 01 ff 50 60 ?? 8b 8e 98 00 00 00 33 d2 e8 ?? ?? ?? ?? ?? 8b 85 d0 00 00 00 ?? 85 c0 75 ?? 0f 57 c9 0f 57 c0 eb ?? f3 0f 10 80 34 03 00 00 f3 0f 10 88 10 01 00 00 ?? 8b 0d');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[systemMessage1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: systemMessage1");
-
-        const systemMessageAddress = this.context.rdx;
-        let systemMessage = systemMessageAddress.readUtf8String();
-        systemMessage = cleanText(systemMessage);
-
-        mainHandler(systemMessage);
+        processText(this.context.rdx, "main", "systemMessage1");
     });
 })();
 
 
 (function () { 
-    const systemMessage2Sig = 'e8 ?? ?? ?? ?? ?? 8b 8e 98 00 00 00 ba 1d 80 00 00 ?? 8b 01 ff 50 60 ?? 8b 8e 98 00 00 00 33 d2 e8 ?? ?? ?? ?? ?? 8b 85 d0 00 00 00 ?? 85 c0 75 ?? 0f 57 c9 0f 57 c0 eb ?? f3 0f 10 80 34 03 00 00 f3 0f 10 88 10 01 00 00 ?? 8b 05';
-    var results = Memory.scanSync(__e.base, __e.size, systemMessage2Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[systemMessage2Pattern] Hook not found!');
+    const address = getAddressPattern("systemMessage2", 'e8 ?? ?? ?? ?? ?? 8b 8e 98 00 00 00 ba 1d 80 00 00 ?? 8b 01 ff 50 60 ?? 8b 8e 98 00 00 00 33 d2 e8 ?? ?? ?? ?? ?? 8b 85 d0 00 00 00 ?? 85 c0 75 ?? 0f 57 c9 0f 57 c0 eb ?? f3 0f 10 80 34 03 00 00 f3 0f 10 88 10 01 00 00 ?? 8b 05');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[systemMessage2Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: systemMessage2");
+        processText(this.context.rdx, "main", "systemMessage2");
+    });
+})();
 
-        const systemMessageAddress = this.context.rdx;
-        let systemMessage = systemMessageAddress.readUtf8String();
-        systemMessage = cleanText(systemMessage);
 
-        mainHandler(systemMessage);
+let systemMessage3 = '';
+(function () { 
+    const address = getAddressPattern("systemMessage3", 'e8 ?? ?? ?? ?? 90 ?? 8b ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8d ?? ?? c0 08 00 00 ?? 8b ?? ?? ?? 8b ?? ?? ?? 8b e3 ?? 5e');
+    if(!address)
+        return;
+    Interceptor.attach(address, function (args) {
+        processText(this.context.rdx, "main", "systemMessage3");
     });
 })();
 
 
 (function () {
-    const menuDescription1Sig = 'e8 ?? ?? ?? ?? ?? 8b 5c ?? ?? ?? 8b 4c ?? ?? ?? 33';
-    var results = Memory.scanSync(__e.base, __e.size, menuDescription1Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[menuDescription1Pattern] Hook not found!');
+    const address = getAddressPattern("menuDescription1", 'e8 ?? ?? ?? ?? ?? 8b 5c ?? ?? ?? 8b 4c ?? ?? ?? 33');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[menuDescription1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: menuDescription1");
-
-        const menuDescriptionAddress = this.context.rdx;
-        let menuDescription = menuDescriptionAddress.readUtf8String();
-        secondHandler(menuDescription);
+        processText(this.context.rdx, "second", "menuDescription1");
     });
 })();
 
 
 (function () {
-    const menuDescription2Sig = 'e8 ?? ?? ?? ?? ?? 8b cb e8 ?? ?? ?? ?? ?? 8b cb e8 ?? ?? ?? ?? ?? 8b cb e8 ?? ?? ?? ?? ?? 8b 8c ?? ?? ?? ?? ?? ?? 33';
-    var results = Memory.scanSync(__e.base, __e.size, menuDescription2Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[menuDescription2Pattern] Hook not found!');
+    const address = getAddressPattern("menuDescription2", 'e8 ?? ?? ?? ?? ?? 8b cb e8 ?? ?? ?? ?? ?? 8b cb e8 ?? ?? ?? ?? ?? 8b cb e8 ?? ?? ?? ?? ?? 8b 8c ?? ?? ?? ?? ?? ?? 33');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[menuDescription2Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: menuDescription2");
-
-        const menuDescriptionAddress = this.context.rdx;
-        let menuDescription = menuDescriptionAddress.readUtf8String();
-        secondHandler(menuDescription);
+        processText(this.context.rdx, "second", "menuDescription2");
     });
 })();
 
 
 (function () {
-    const orbmentSlotDescriptionSig = 'e8 ?? ?? ?? ?? 90 ?? 8b ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8d ?? ?? 10';
-    var results = Memory.scanSync(__e.base, __e.size, orbmentSlotDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[orbmentSlotDescriptionPattern] Hook not found!');
+    const address = getAddressPattern("orbmentSlotDescription", 'e8 ?? ?? ?? ?? 90 ?? 8b ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8d ?? ?? 10');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[orbmentSlotDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: orbmentSlotDescription");
-
-        const orbmentSlotDescriptionAddress = this.context.r11;
-        let orbmentSlotDescription = orbmentSlotDescriptionAddress.readUtf8String();
-        orbmentSlotDescription = cleanText(orbmentSlotDescription);
-        
-        secondHandler(orbmentSlotDescription);
+        processText(this.context.r11, "second", "orbmentSlotDescription");
     });
 })();
 
 
-// let isAbnormalQuartz = false;
 let inventoryName = '';
 (function () {
-    const inventorySig = 'e8 ?? ?? ?? ?? 90 ?? 83 ff 04 0f 85';
-    var results = Memory.scanSync(__e.base, __e.size, inventorySig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[inventoryPattern] Hook not found!');
+    const address = getAddressPattern("inventory", 'e8 ?? ?? ?? ?? 90 ?? 83 ff 04 0f 85');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[inventoryPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: inventory");
-
-        const inventoryAddress = this.context.rdx;
-        // let inventoryDescription = inventoryAddress.readUtf8String();
-        inventoryName = getName(inventoryAddress);
-        // inventoryDescription = cleanText(inventoryDescription);
-
-        // setTimeout(() => {
-        //     if (inventoryDescription !== '' && itemDescription === '') {
-        //         thirdHandler(inventoryName + "\n" + inventoryDescription);
-                
-        //         if(isQuartz) {
-        //             isAbnormalQuartz = true; // In case a quartz gets extracted from here with a description instead of only being the name
-        //             isQuartz = false;
-        //         }
-        //     }
-
-        //     else if (itemDescription !== '') {
-        //         thirdHandler(inventoryName + "\n" + itemDescription);
-        //         itemDescription = '';
-        //     }
-            
-        //     else 
-        //         thirdHandler(inventoryName);
-        // }, 20);
+        inventoryName = getName(this.context.rdx, "inventory");
     });
 })();
 
 
 (function () { 
-    const inventoryDescriptionSig = '83 a0 bc 00 00 00 fe ?? 8d ?? ?? 30 ?? 8b 8b 10 01';
-    var results = Memory.scanSync(__e.base, __e.size, inventoryDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[inventoryDescriptionPattern] Hook not found!');
+    const address = getAddressPattern("inventoryDescription", '83 a0 bc 00 00 00 fe ?? 8d ?? ?? 30 ?? 8b 8b 10 01', 0x13);
+    if(!address)
         return;
-    }
-
-    const address = results[0].address.add(0x13);
-    console.log('[inventoryDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: inventoryDescription");
-
-        const inventoryDescriptionAddress = this.context.rdx;
-        let inventoryDescription = inventoryDescriptionAddress.readUtf8String();
-        inventoryDescription = cleanText(inventoryDescription);
-
-        secondHandler(inventoryName + '\n' + inventoryDescription);
+        processText(this.context.rdx, "second", "inventoryDescription");
     });
 })();
 
 
 (function () { 
-    const shopInventoryDescriptionSig = 'e8 ?? ?? ?? ?? 90 eb ?? ?? 8b fb ?? 8b';
-    var results = Memory.scanSync(__e.base, __e.size, shopInventoryDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[shopInventoryDescriptionPattern] Hook not found!');
+    const address = getAddressPattern("shopInventoryDescription", 'e8 ?? ?? ?? ?? 90 eb ?? ?? 8b fb ?? 8b');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[shopInventoryDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: shopInventoryDescription");
-
-        const shopInventoryDescriptionAddress = this.context.rdx;
-        let shopInventoryDescription = shopInventoryDescriptionAddress.readUtf8String();
-        shopInventoryDescription = cleanText(shopInventoryDescription);
-
-        secondHandler(inventoryName + '\n' + shopInventoryDescription);
+        processText(this.context.rdx, "second", "shopInventoryDescription");
     });
 })();
 
 
-// let isQuartz = false;
-// let hasFirstQuartzHalf = false;
-// (function () { // First half
-//     const quartzDescription1Sig = 'e8 ?? ?? ?? ?? ?? 8b cf ?? 8b d0 ?? b8 04 08 00 00 e8 ?? ?? ?? ?? c6 ?? ?? ?? ?? ?? 00 ?? 8b 05';
-//     var results = Memory.scanSync(__e.base, __e.size, quartzDescription1Sig);
-//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-//     if (results.length === 0) {
-//         console.error('[quartzDescription1Pattern] Hook not found!');
-//         return;
-//     }
-
-//     const address = results[0].address;
-//     console.log('[quartzDescription1Pattern] Found hook', address);
-//     Interceptor.attach(address, function (args) {
-//         // console.warn("in: quartzDescription1");
-
-//         const quartzDescriptionAddress = this.context.r8;
-//         let quartzDescription1 = quartzDescriptionAddress.readUtf8String();
-//         quartzDescription1 = cleanText(quartzDescription1);
-
-//         isQuartz = true;
-//         hasFirstQuartzHalf = true;
-
-//         setTimeout(() => {
-//             if(isAbnormalQuartz) {
-//                 thirdHandler(quartzDescription1);
-//                 isAbnormalQuartz = false;
-//             }
-
-//             else if (quartzDescription3 === '') {
-//                 thirdHandler(quartzDescription1 + "\n" + quartzDescription2);
-//                 quartzDescription2 = '';
-//             }
-
-//             else {
-//                 thirdHandler(quartzDescription1 + "\n" + quartzDescription3 + " " + quartzDescription2);
-//                 quartzDescription2 = '';
-//                 quartzDescription3 = '';
-//             }
-
-//             isQuartz = false;
-//         }, 30);
-//     });
-// })();
-
-
-// let quartzDescription2 = '';
-// (function () { // Second half 
-//     const quartzDescription2Sig = 'e8 ?? ?? ?? ?? ?? 8b c0 ?? 8d ?? b0 70 04 00 ?? 8d 8d e0';
-//     var results = Memory.scanSync(__e.base, __e.size, quartzDescription2Sig);
-//     console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-//     if (results.length === 0) {
-//         console.error('[quartzDescription2Pattern] Hook not found!');
-//         return;
-//     }
-
-//     const address = results[0].address.add(0x16);
-//     console.log('[quartzDescription2Pattern] Found hook', address);
-//     Interceptor.attach(address, function (args) {
-//         // console.warn("in: quartzDescription2");
-
-//         if(hasFirstQuartzHalf === false) // Sometimes the function is called when it shouldn't
-//             return;
-
-//         const quartzDescriptionAddress = this.context.rdx;
-//         quartzDescription2 = quartzDescriptionAddress.readUtf8String();
-//         quartzDescription2 = cleanText(quartzDescription2);
-
-//         hasFirstQuartzHalf = false;
-//     });
-// })();
-
-
-// let quartzDescription3 = '';
-// (function () { // Second half
-//     const quartzDescription3Sig = '01 b3 00 08 00 00 ?? 8b 4f 10';
-//     var results = Memory.scanSync(__e.base, __e.size, quartzDescription3Sig);
-//     // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-//     if (results.length === 0) {
-//         console.error('[quartzDescription3Pattern] Hook not found!');
-//         return;
-//     }
-
-//     const address = results[0].address.add(0x19);
-//     console.log('[quartzDescription3Pattern] Found hook', address);
-//     Interceptor.attach(address, function (args) {
-//         // console.warn("in: quartzDescription3");
-
-//         const quartzDescriptionAddress = this.context.r9;
-//         quartzDescription3 = quartzDescriptionAddress.readUtf8String();
-//         quartzDescription3 = cleanText(quartzDescription3);
-//     });
-// })();
-
-
 (function () { 
-    const quartzDescriptionSig = '74 ?? ?? 8d ?? ?? 30 e8 ?? ?? ?? ?? 90';
-    var results = Memory.scanSync(__e.base, __e.size, quartzDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[quartzDescriptionPattern] Hook not found!');
+    const address = getAddressPattern("quartzDescription", '74 ?? ?? 8d ?? ?? 30 e8 ?? ?? ?? ?? 90', 0x7);
+    if(!address)
         return;
-    }
-
-    const address = results[0].address.add(0x7);
-    console.log('[quartzDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: quartzDescription");
-
-        const quartzDescriptionAddress = this.context.rdx;
-        let quartzDescription = quartzDescriptionAddress.readUtf8String();
-        quartzDescription = cleanText(quartzDescription);
-
-        secondHandler(inventoryName + '\n' + quartzDescription);
+        processText(this.context.rdx, "second", "quartzDescription");
     });
 })();
 
 
 (function () { // During battle
-    const itemDescriptionSig = 'e8 ?? ?? ?? ?? 90 ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 50 08 00 00 5f c3 cc cc cc cc cc cc cc cc cc cc ?? 8d 05';
-    var results = Memory.scanSync(__e.base, __e.size, itemDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[itemDescriptionPattern] Hook not found!');
+    const address = getAddressPattern("itemDescription", 'e8 ?? ?? ?? ?? 90 ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 50 08 00 00 5f c3 cc cc cc cc cc cc cc cc cc cc ?? 8d 05');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[itemDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: itemDescription");
-
-        const itemDescriptionAddress = this.context.rdx;
-        let itemDescription = itemDescriptionAddress.readUtf8String();
-        itemDescription = cleanText(itemDescription);
-        secondHandler(itemDescription);
+        processText(this.context.rdx, "second", "itemDescription");
     });
 })();
 
 
 (function () {
-    const statusDescription1Sig = '74 ?? ?? 8b 85 a8 00 00 00 ?? 8d';
-    var results = Memory.scanSync(__e.base, __e.size, statusDescription1Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[statusDescription1Pattern] Hook not found!');
+    const address = getAddressPattern("statusDescription", '74 ?? ?? 8b 85 a8 00 00 00 ?? 8d', 0x15);
+    if(!address)
         return;
-    }
-
-    const address = results[0].address.add(0x15);
-    console.log('[statusDescription1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: statusDescription1");
+        let statusName = getName(this.context.r8, "status");
+        let statusDescription = processText(this.context.rdi, "NH", "statusDescription1");
+        processText(this.context.r8, "second", "statusDescription2", statusName, statusDescription);
+    });
+})();
 
-        const statusDescription1Address = this.context.rdi;
-        const statusDescription2Address = this.context.r8;
-        let statusDescription1 = statusDescription1Address.readUtf8String();
-        let statusDescription2 = statusDescription2Address.readUtf8String();
-        let statusName = getName(statusDescription2Address, "status");
 
-        statusDescription1 = cleanText(statusDescription1);
-        statusDescription2 = cleanText(statusDescription2);
+(function () {
+    const address = getAddressPattern("overdriveDescription", 'e8 ?? ?? ?? ?? 90 ?? 8d ?? ?? 40 ?? 8b cb e8 ?? ?? ?? ?? ?? 8b');
+    if(!address)
+        return;
+    Interceptor.attach(address, function (args) {
+        processText(this.context.rdx, "second", "overdriveDescription");
+    });
+})();
 
-        secondHandler(statusName + "\n" + statusDescription1 + "\n" + statusDescription2);
+
+(function () {
+    const address = getAddressPattern("supportAbilityDescription", 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? cc cc cc cc cc cc cc cc cc ?? 89');
+    if(!address)
+        return;
+    Interceptor.attach(address, function (args) {
+        let supportAbilityName = getName(this.context.rdx, "supportAbility");
+        processText(this.context.rdx, "second", "supportAbilityDescription", supportAbilityName);
     });
 })();
 
 
 (function () { 
-    const tipsSig = 'e8 ?? ?? ?? ?? ?? 8b 57 30 ?? 8b 8b a0';
-    var results = Memory.scanSync(__e.base, __e.size, tipsSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[tipsPattern] Hook not found!');
+    const address = getAddressPattern("tips", 'e8 ?? ?? ?? ?? ?? 8b 57 30 ?? 8b 8b a0');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[tipsPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: tips");
-
-        const tipsAddress = this.context.rdx;
-        let tipsName = tipsAddress.readUtf8String();
-        let tipsDescription = getDescription(tipsAddress);
+        let tipsDescription = getDescription(this.context.rdx);
         tipsDescription = cleanText(tipsDescription);
-
-        mainHandler(tipsName + "\n" + tipsDescription);
+        processText(this.context.rdx, "main", "tips", tipsDescription);
     });
 })();
 
 
 (function () { 
-    const handbookTipsSig = 'e8 ?? ?? ?? ?? 8b 87 40 03 00 00 0f ba e0 09 72 ?? 66 c7 87 e0 06 00 00 01 01 0f ba e8 09 89 87 40 03 00 00 ?? 8b 85 a8';
-    var results = Memory.scanSync(__e.base, __e.size, handbookTipsSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[handbookTipsPattern] Hook not found!');
+    const address = getAddressPattern("handbookTips", 'e8 ?? ?? ?? ?? 8b 87 40 03 00 00 0f ba e0 09 72 ?? 66 c7 87 e0 06 00 00 01 01 0f ba e8 09 89 87 40 03 00 00 ?? 8b 85 a8');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[handbookTipsPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: handbookTips");
-
-        const handbookTipsAddress = this.context.rdx;
-        let handbookTipsName = handbookTipsAddress.readUtf8String();
-        let handbookTipsDescription = getDescription(handbookTipsAddress);
+        let handbookTipsDescription = getDescription(this.context.rdx);
         handbookTipsDescription = cleanText(handbookTipsDescription);
-        
-        secondHandler(handbookTipsName + "\n" + handbookTipsDescription);
+        processText(this.context.rdx, "second", "handbookTips", handbookTipsDescription);
     });
 })();
 
 
 (function () { 
-    const loadingTipsSig = 'e8 ?? ?? ?? ?? ?? 8b 57 30 ?? 8b 4d 30 e8';
-    var results = Memory.scanSync(__e.base, __e.size, loadingTipsSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[loadingTipsPattern] Hook not found!');
+    const address = getAddressPattern("loadingTips", 'e8 ?? ?? ?? ?? ?? 8b 57 30 ?? 8b 4d 30 e8');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[loadingTipsPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: loadingTips");
-
-        const loadingTipsAddress = this.context.rdx;
-        let loadingTipsName = loadingTipsAddress.readUtf8String();
-        let loadingTipsDescription = getDescription(loadingTipsAddress);
+        let loadingTipsDescription = getDescription(this.context.rdx);
         loadingTipsDescription = cleanText(loadingTipsDescription);
-
-        secondHandler(loadingTipsName + "\n" + loadingTipsDescription);
+        processText(this.context.rdx, "second", "loadingTips", loadingTipsDescription);
     });
 })();
 
 
 (function () { 
-    const locationName1Sig = 'e8 ?? ?? ?? ?? ?? 8b 4b 60 ?? 85 c9 74 ?? ?? 63 43 54 ?? b8';
-    var results = Memory.scanSync(__e.base, __e.size, locationName1Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[locationName1Pattern] Hook not found!');
+    const address = getAddressPattern("locationName1", 'e8 ?? ?? ?? ?? ?? 8b 4b 60 ?? 85 c9 74 ?? ?? 63 43 54 ?? b8');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[locationName1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: locationName1");
-
-        const locationNameAddress = this.context.rdx;
-        let locationName = locationNameAddress.readUtf8String();
-        secondHandler(locationName);
+        processText(this.context.rdx, "second", "locationName1");
     });
 })();
 
 
 (function () { 
-    const locationName2Sig = 'e8 ?? ?? ?? ?? ?? 8b 83 98 00 00 00 ?? 8b';
-    var results = Memory.scanSync(__e.base, __e.size, locationName2Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[locationName2Pattern] Hook not found!');
+    const address = getAddressPattern("locationName2", 'e8 ?? ?? ?? ?? ?? 8b 83 98 00 00 00 ?? 8b');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[locationName2Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: locationName2");
-
-        const locationNameAddress = this.context.rdx;
-        let locationName = locationNameAddress.readUtf8String();
-        secondHandler(locationName);
+        processText(this.context.rdx, "second", "locationName2");
     });
 })();
 
 
 (function () {
-    const questNameBoardSig = 'e8 ?? ?? ?? ?? 8b 43 44 83 e8 01';
-    var results = Memory.scanSync(__e.base, __e.size, questNameBoardSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[questNameBoardPattern] Hook not found!');
+    const address = getAddressPattern("questNameBoard", 'e8 ?? ?? ?? ?? 8b 43 44 83 e8 01');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[questNameBoardPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: questNameBoard");
-
-        const questNameBoardAddress = this.context.rdx;
-        let questNameBoard = questNameBoardAddress.readUtf8String();
-        thirdHandler(questNameBoard);
+        processText(this.context.rdx, "third", "questNameBoard");
     });
 })();
 
 
 (function () {
-    const questDescriptionBoardSig = 'e8 ?? ?? ?? ?? ?? bd 00 01 00 00';
-    var results = Memory.scanSync(__e.base, __e.size, questDescriptionBoardSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[questDescriptionBoardPattern] Hook not found!');
+    const address = getAddressPattern("questDescriptionBoard", 'e8 ?? ?? ?? ?? ?? bd 00 01 00 00');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[questDescriptionBoardPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: questDescriptionBoard");
-
-        const questDescriptionBoardAddress = this.context.rdx;
-        let questDescriptionBoard = questDescriptionBoardAddress.readUtf8String();
-        thirdHandler("\n" + questDescriptionBoard);
+        processText(this.context.rdx, "third", "questDescriptionBoard");
     });
 })();
 
 
 (function () {
-    const questNameHandbookSig = 'e8 ?? ?? ?? ?? 8b 46 44';
-    var results = Memory.scanSync(__e.base, __e.size, questNameHandbookSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[questNameHandbookPattern] Hook not found!');
+    const address = getAddressPattern("questNameHandbook", 'e8 ?? ?? ?? ?? 8b 46 44');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[questNameHandbookPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: questNameHandbook");
-
-        const questNameHandbookAddress = this.context.rdx;
-        let questNameHandbook = questNameHandbookAddress.readUtf8String();
-        thirdHandler(questNameHandbook);
+        processText(this.context.rdx, "third", "questNameHandbook");
     });
 })();
 
 
 (function () {
-    const questDescriptionHandbookSig = 'e8 ?? ?? ?? ?? ?? 8b 8e f8 00 00 00 8b d5 e8';
-    var results = Memory.scanSync(__e.base, __e.size, questDescriptionHandbookSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[questDescriptionHandbookPattern] Hook not found!');
+    const address = getAddressPattern("questDescriptionHandbook", 'e8 ?? ?? ?? ?? ?? 8b 8e f8 00 00 00 8b d5 e8');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[questDescriptionHandbookPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: questDescriptionHandbook");
-
-        const questDescriptionHandbookAddress = this.context.rdx;
-        let questDescriptionHandbook = questDescriptionHandbookAddress.readUtf8String();
-        thirdHandler("\n" + questDescriptionHandbook + "\n" + "----------------------------");
+        processText(this.context.rdx, "third", "questDescriptionHandbook");
     });
 })();
 
 
 (function () {
-    const questProgressHandbookSig = 'e8 ?? ?? ?? ?? 90 ?? 8b 5c ?? ?? eb ?? 33';
-    var results = Memory.scanSync(__e.base, __e.size, questProgressHandbookSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[questProgressHandbookPattern] Hook not found!');
+    const address = getAddressPattern("questProgressHandbook", 'e8 ?? ?? ?? ?? 90 ?? 8b 5c ?? ?? eb ?? 33');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[questProgressHandbookPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: questProgressHandbook");
-
-        const questProgressHandbookAddress = this.context.rdx;
-        let questProgressHandbook = questProgressHandbookAddress.readUtf8String();
-        thirdHandler("\n" + questProgressHandbook);
+        processText(this.context.rdx, "third", "questProgressHandbook");
     });
 })();
 
 
 (function () {
-    const questCompletionNoteHandbookSig = 'e8 ?? ?? ?? ?? ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 d0 00 00 00 ?? 5f ?? 5e ?? 5d ?? 5c 5f 5e 5d c3 cc';
-    var results = Memory.scanSync(__e.base, __e.size, questCompletionNoteHandbookSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[questCompletionNoteHandbookPattern] Hook not found!');
+    const address = getAddressPattern("questCompletionNoteHandbook", 'e8 ?? ?? ?? ?? ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 d0 00 00 00 ?? 5f ?? 5e ?? 5d ?? 5c 5f 5e 5d c3 cc');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[questCompletionNoteHandbookPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: questCompletionNoteHandbook");
-
-        const questCompletionNoteHandbookAddress = this.context.rdx;
-        let questCompletionNoteHandbook = questCompletionNoteHandbookAddress.readUtf8String();
-        thirdHandler("\n----------------------------\n" + questCompletionNoteHandbook);
+        processText(this.context.rdx, "third", "questCompletionNoteHandbook");
     });
 })();
 
 
 (function () {
-    const bookSig = 'e8 ?? ?? ?? ?? ?? 8b 46 08 ?? 8b 80 a8 00 00 00 ?? 8b 98 58 02';
-    var results = Memory.scanSync(__e.base, __e.size, bookSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[bookPattern] Hook not found!');
+    const address = getAddressPattern("book", 'e8 ?? ?? ?? ?? ?? 8b 46 08 ?? 8b 80 a8 00 00 00 ?? 8b 98 58 02');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[bookPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: book");
-
-        const bookAddress = this.context.rdx;
-        let book = bookAddress.readUtf8String();
-        book = cleanText(book);
-
-        secondHandler(book);
+        processText(this.context.rdx, "second", "book");
     });
 })();
 
 
 (function () { // Memo
-    const enemyName1Sig = 'e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b';
-    var results = Memory.scanSync(__e.base, __e.size, enemyName1Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[enemyName1Pattern] Hook not found!');
+    const address = getAddressPattern("enemyName1", 'e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b ce e8 ?? ?? ?? ?? ?? 8b d7 ?? 8b');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[enemyName1Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: enemyName1");
-
-        const enemyNameAddress = this.context.rdx;
-        let enemyName = enemyNameAddress.readUtf8String();
-        thirdHandler(enemyName + "\n");
+        processText(this.context.rdx, "third", "enemyName1");
     });
 })(); 
 
 
 (function () { // In battles
-    const enemyName2Sig = 'e8 ?? ?? ?? ?? ?? 8b d0 ?? 8b cf e8 ?? ?? ?? ?? ?? 8b 9d';
-    var results = Memory.scanSync(__e.base, __e.size, enemyName2Sig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[enemyName2Pattern] Hook not found!');
+    const address = getAddressPattern("enemyName2", 'e8 ?? ?? ?? ?? ?? 8b d0 ?? 8b cf e8 ?? ?? ?? ?? ?? 8b 9d', 0xb);
+    if(!address)
         return;
-    }
-
-    const address = results[0].address.add(0xb);
-    console.log('[enemyName2Pattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: enemyName2");
-
-        const enemyNameAddress = this.context.rdx;
-        let enemyName = enemyNameAddress.readUtf8String();
-        thirdHandler(enemyName + "\n");
+        processText(this.context.rdx, "third", "enemyName2");
     });
 })();
 
 
 (function () {
-    const enemyMemoSig = 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8b 5c ?? ?? ?? 8b 74 ?? ?? ?? 8b';
-    var results = Memory.scanSync(__e.base, __e.size, enemyMemoSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[enemyMemoPattern] Hook not found!');
+    const address = getAddressPattern("enemyMemo", 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8b 5c ?? ?? ?? 8b 74 ?? ?? ?? 8b');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[enemyMemoPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: enemyMemo");
-
-        const enemyMemoAddress = this.context.rdx;
-        let enemyMemo = enemyMemoAddress.readUtf8String();
-        enemyMemo = cleanText(enemyMemo);
-
-        thirdHandler(enemyMemo);
+        processText(this.context.rdx, "third", "enemyMemo");
     });
 })(); 
 
 
 (function () {
-    const enemyDescriptionSig = 'e8 ?? ?? ?? ?? eb ?? ?? 8d 15 ?? ?? ?? ?? ?? 8b cf e8 ?? ?? ?? ?? eb ?? 83';
-    var results = Memory.scanSync(__e.base, __e.size, enemyDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[enemyDescriptionPattern] Hook not found!');
+    const address = getAddressPattern("enemyDescription", 'e8 ?? ?? ?? ?? eb ?? ?? 8d 15 ?? ?? ?? ?? ?? 8b cf e8 ?? ?? ?? ?? eb ?? 83');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[enemyDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: enemyDescription");
-
-        const enemyDescriptionAddress = this.context.rdx;
-        let enemyDescription = enemyDescriptionAddress.readUtf8String();
-        enemyDescription = cleanText(enemyDescription);
-
-        thirdHandler(enemyDescription);
+        processText(this.context.rdx, "third", "enemyDescription");
     });
 })();
 
 
 (function () {
-    const achievementsSig = 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? 83 f8 01 0f 85 ?? ?? ?? ?? ?? 8b 81 40 01';
-    var results = Memory.scanSync(__e.base, __e.size, achievementsSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[achievementsPattern] Hook not found!');
+    const address = getAddressPattern("achievements", 'e8 ?? ?? ?? ?? e9 ?? ?? ?? ?? 83 f8 01 0f 85 ?? ?? ?? ?? ?? 8b 81 40 01');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[achievementsPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: achievements");
-
-        const achievementsAddress = this.context.rdx;
-        let achievementsDescription = achievementsAddress.readUtf8String();
-        let achievementsName = getName(achievementsAddress);
-        achievementsDescription = cleanText(achievementsDescription);
-
-        secondHandler(achievementsName + "\n" + achievementsDescription);
+        let achievementsName = getName(this.context.rdx, "achievements");
+        processText(this.context.rdx, "second", "achievements", achievementsName);
     });
 })();
 
 
 (function () { 
-    const optionDescriptionSig = 'e8 ?? ?? ?? ?? ?? bf fe ff ff ff';
-    var results = Memory.scanSync(__e.base, __e.size, optionDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[optionDescriptionPattern] Hook not found!');
+    const address = getAddressPattern("optionDescription", 'e8 ?? ?? ?? ?? ?? bf fe ff ff ff');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[optionDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: optionDescription");
-
-        const optionDescriptionAddress = this.context.rdx;
-        let optionDescription = optionDescriptionAddress.readUtf8String();
-        optionDescription = cleanText(optionDescription);
-
-        secondHandler(optionDescription);
+        processText(this.context.rdx, "second", "optionDescription");
     });
 })();
 
 
 (function () { 
-    const difficultyDescriptionSig = 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8d 4b';
-    var results = Memory.scanSync(__e.base, __e.size, difficultyDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[difficultyDescriptionPattern] Hook not found!');
+    const address = getAddressPattern("difficultyDescription", 'e8 ?? ?? ?? ?? ?? 8b 7c ?? ?? ?? 8d 4b');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[difficultyDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: difficultyDescription");
-
-        const difficultyDescriptionAddress = this.context.rdx;
-        let difficultyDescription = difficultyDescriptionAddress.readUtf8String();
-        difficultyDescription = cleanText(difficultyDescription);
-
-        secondHandler(difficultyDescription);
+        processText(this.context.rdx, "second", "difficultyDescription");
     });
 })();
 
 
 (function () { // Craft and arts description in battle
-    const attackDescriptionSig = 'e8 ?? ?? ?? ?? 90 ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 50 08 00 00 5f c3 cc cc cc cc cc cc cc cc cc cc cc cc cc';
-    var results = Memory.scanSync(__e.base, __e.size, attackDescriptionSig);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
-    if (results.length === 0) {
-        console.error('[attackDescriptionPattern] Hook not found!');
+    const address = getAddressPattern("attackDescription", 'e8 ?? ?? ?? ?? 90 ?? 8b 8c ?? ?? ?? ?? ?? ?? 33 cc e8 ?? ?? ?? ?? ?? 8b 9c ?? ?? ?? ?? ?? ?? 81 c4 50 08 00 00 5f c3 cc cc cc cc cc cc cc cc cc cc cc cc cc');
+    if(!address)
         return;
-    }
-
-    const address = results[0].address;
-    console.log('[attackDescriptionPattern] Found hook', address);
     Interceptor.attach(address, function (args) {
-        // console.warn("in: attackDescription");
-
-        const attackDescriptionAddress = this.context.rdx;
-        let attackDescription = attackDescriptionAddress.readUtf8String();
-        attackDescription = cleanText(attackDescription);
-
-        secondHandler(attackDescription);
+        processText(this.context.rdx, "second", "attackDescription");
     });
 })();
 
 
+function getAddressPattern(name, pattern, offset = 0) {
+    const results = Memory.scanSync(__e.base, __e.size, pattern);
+    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
+
+    if (results.length === 0) {
+        console.error(`[${name}] Hook not found!`);
+        return null;
+    }
+
+    if (results.length > 1) 
+        console.warn(`[${name}] has ${results.length} results`);
+
+    let address = results[0].address.add(offset);
+    console.log(`[${name}] Found hook ${address}`);
+    return address;
+}
+
+
+let currentItemDescription = '';
+function processText(context, handler, name, extraText1, extraText2) {
+    if(isDebugging)
+        console.warn(`Processing ${name}'s text`);
+
+    const address = context;
+    let text = '';
+
+    if (name === "dialogue") { 
+        // Dialogue gets called before name. 
+        text = address.readUtf8String();
+        text = cleanText(text);
+
+        setTimeout(() => {
+            if (text.length === 0 || systemMessage3.includes(text))
+                    return;
+
+            mainHandler(text);
+        }, 20);
+        return;
+    }
+
+    else if (name === "tutorial7") {
+        text = address.readUtf8String();
+        setTimeout(() => {
+            text = cleanText(text);
+            thirdHandler(text);
+        }, 20);
+        return;
+    }
+
+    else 
+        text = address.readUtf8String();
+    
+    text = cleanText(text);
+
+    switch(name) {
+        case "inventoryDescription":
+        case "shopInventoryDescription":
+        case "quartzDescription":
+        case "itemDescription":
+            text = inventoryName + '\n' + text;
+            break;
+
+        case "statusDescription2":
+            text = extraText1 + '\n' + extraText2 + '\n' + text;
+            break;
+
+        case "tips":
+        case "handbookTips":
+        case "loadingTips":
+            text = text + '\n' + extraText1;
+            break;
+
+        case "questDescriptionBoard":
+        case "questProgressHandbook":
+            text = '\n' + text; 
+            break;
+
+        case "questDescriptionHandbook":
+            text = "\n" + text + "\n" + "----------------------------";
+            break;
+
+        case "questCompletionNoteHandbook":
+            text = "\n----------------------------\n" + text;
+            break;
+
+        case "enemyName1":
+        case "enemyName2":
+        case "tutorial4":
+        case "tutorial8": 
+            text = text + '\n';
+            break;
+
+        case "achievements":
+        case "supportAbilityDescription":
+            text = extraText1 + '\n' + text;
+            break;
+
+        default:
+            break;
+    }
+
+    if (text.length === 0)
+        return;
+
+    if(name === "systemMessage3")
+        systemMessage3 = text;
+
+    switch(handler) {
+        case "main":
+            mainHandler(text);
+            break;
+    
+        case "second":
+            secondHandler(text);
+            break;
+
+        case "third":
+            thirdHandler(text);
+            break;
+    
+        case "NH": // No Handler
+            return text;
+
+        default: 
+            return;
+    }
+}
+
+
 const decoder = new TextDecoder('utf-8');
 function getName(address, hookName) {
+    if(isDebugging)
+        console.warn(`Getting ${hookName}'s text`);
+
     let bytes = [];
 
     if (hookName === "status") {
@@ -1110,7 +663,7 @@ function getName(address, hookName) {
     }
     
     else  { 
-        // Read bytes backwards to get the item name
+        // Read bytes backwards to get the name
         address = address.sub(2);
 
         while (address.readU8()) {
@@ -1131,7 +684,10 @@ function getName(address, hookName) {
 }
 
 
-function getDescription(address, hookName) {
+function getDescription(address) {
+    if(isDebugging)
+        console.warn(`Getting description text`);
+    
     let bytes = [];
     let nullCount = 0;
 
@@ -1162,5 +718,6 @@ function cleanText(text) {
         .replace(/<[^<>]*>/g, '')
         .replace(/%[a-zA-Z0-9]*(?:\.[0-9]+)?[a-zA-Z]/g, ' ')
         .replace(/[a-z][0-9]+/g, '')
+        .replace(/^\s*$/gm, '')
         .trim();
 }
