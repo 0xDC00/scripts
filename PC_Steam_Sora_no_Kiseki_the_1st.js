@@ -10,15 +10,12 @@
 // ==/UserScript==
 
 
-// console.warn("Known issues: \n- In the STATUS tab in the main menu, selecting another character will extract the overdrive's, an S-Craft's and a support ability's description of that character.");
-
-
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send((s) => s, '200+');
 const secondHandler = trans.send((s) => s, 200);
 const thirdHandler = trans.send((s) => s, '25+');
 
-let isDebugging = true;
+let isDebugging = false;
 
 
 (function () {
@@ -508,8 +505,6 @@ let inventoryName = '';
 
 function getAddressPattern(name, pattern, offset = 0) {
     const results = Memory.scanSync(__e.base, __e.size, pattern);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
     if (results.length === 0) {
         console.error(`[${name}] Hook not found!`);
         return null;
