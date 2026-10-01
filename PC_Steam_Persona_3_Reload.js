@@ -22,15 +22,19 @@ var timerChoice;
 
 let patterns = {
     // Main text (dialogue, help text content, system prompt content, dictionnary etc..)
+    // 43 0F B6 14 08 85 D2 0F 84 FD 00 00 00 48 8D 3D D1 CD 16 04 90 41 FF C0 44 89 45 B7 81 FA FE 00 00 00 0F 85 A9 00 00 00 49 63 C8
     // mainText: "89 ?? ?? 43 0F B6 14 08",
-    mainText: "43 0FB6 14 08 85 D2", // moved forward one instruction
+    mainText1: "43 0F B6 14 08 85 D2", // moved forward one instruction
+    mainText2: "43 0F B6 14 08 85 D2 0F 84 FD", // hone into correct match
 
     // Secondary text (Title, Names, Headings)
     // secondaryText: "8B 15 ???????? 81 EA ???????? 48 89 ?? 24 ?? b9",
     secondaryText: "48 89 83 90 00 00 00 48 8B 0E", // moved forward after call in latest
 
     // Choice text (and variants)
-    choiceText: "48 89 43 20 48 89 D9",
+    choiceText1: "48 89 43 20 48 89 D9",
+    // 48 89 43 20 48 8B CB 8B 05 3A F6 17 04 89 43 10 8B 84 24 98 00 00 00 89 43 44 89 73 30 66 C7 43 38 01 01 C7 43 3C FF FF FF FF C7 83 80 00 00 00 FF FF FF FF E8 D6 0E 01 00
+    choiceText2: "48 89 43 20 48 8B CB 8B",
 
     // Used for inserting text
     difficulty1: "48 8d ?? ?? ?? ?? ?? 48 8b 3c c7", // lea
@@ -111,7 +115,7 @@ function getDifficultySearchFallbackAddress() {
 
 let difficultySearchAddress = getDifficultySearchAddress();
 if (difficultySearchAddress === null) {
-    console.log("Trying fallback...");
+    console.log("[DifficultyPattern] trying fallback...");
 
     difficultySearchAddress = getDifficultySearchFallbackAddress();
     if (difficultySearchAddress === null) {
@@ -127,12 +131,19 @@ console.log('[DifficultyAddress] @ ' + difficultyAddress);
 
 
 (function () {
-    const dialogSig = patterns.mainText;
-    const results = Memory.scanSync(__e.base, __e.size, dialogSig);
+    const dialogSig2 = patterns.mainText2;
+    let results = Memory.scanSync(__e.base, __e.size, dialogSig2);
     if (results.length === 0) {
-        console.error('[MainTextPattern] no result!');
-        return;
+        console.log('[MainTextPattern] trying fallback...')
+
+        const dialogSig1 = patterns.mainText1;
+        results = Memory.scanSync(__e.base, __e.size, dialogSig1);
+        if (results.length === 0) {
+            console.error('[MainTextPattern] no result!');
+            return;
+        }
     }
+
     let hookAddress = results[results.length - 1].address
     console.log('[MainTextAddress] @ ' + hookAddress);
 
@@ -185,12 +196,19 @@ console.log('[DifficultyAddress] @ ' + difficultyAddress);
 
 
 (function () {
-    const choiceSig = patterns.choiceText;
-    const results = Memory.scanSync(__e.base, __e.size, choiceSig);
+    const choiceSig1 = patterns.choiceText1;
+    let results = Memory.scanSync(__e.base, __e.size, choiceSig1);
     if (results.length === 0) {
-        console.error('[ChoiceTextPattern] no result!');
-        return;
+        console.log('[ChoiceTextPattern] trying fallback...')
+
+        const choiceSig2 = patterns.choiceText2;
+        results = Memory.scanSync(__e.base, __e.size, choiceSig2);
+        if (results.length === 0) {
+            console.error('[ChoiceTextPattern] no result!');
+            return;
+        }
     }
+
     let hookAddress = results[results.length - 1].address
     console.log('[ChoiceTextAddress] @ ' + hookAddress);
 

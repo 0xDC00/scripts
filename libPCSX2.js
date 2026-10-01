@@ -1,5 +1,5 @@
 // @name         PCSX2 JIT Hooker
-// @version      2.2.0 -> 2.6.2
+// @version      2.2.0 -> 2.7.494
 // @author       logantgt, Mansive, based on work from [DC] and koukdw
 // @description  windows, linux, mac (x64), android (arm64)
 
@@ -18,7 +18,7 @@ const __e =
         : Process.mainModule ?? Process.enumerateModules()[0];
 
 console.warn("[Compatibility]");
-console.warn("PCSX2 2.2.0 -> 2.6.2");
+console.warn("PCSX2 2.2.0 -> 2.7.494");
 console.warn("ARMSX2 1.0.8+");
 console.log("[Mirror] Download: https://github.com/koukdw/emulators/releases");
 
@@ -51,6 +51,9 @@ function scanRanges({ ranges, pattern, protection }) {
         try {
             rangeMatches = Memory.scanSync(range.base, range.size, pattern);
         } catch (err) {
+            if (err.message.includes("invalid match pattern")) {
+                throw err;
+            }
             continue;
         }
 
@@ -236,8 +239,9 @@ function setupAddressesThroughPattern() {
     });
     addresses.iopRecRecompile = getFunctionAddress({
         name: "iopRecRecompile",
-        pattern: "81 F9 30160000 0F 84 8A000000 81 FE 90080000",
+        pattern: "81 F? 30160000 0F 84 8A000000 81 FE 90080000",
         //       "81 F9 30160000 0F 84 8A000000 81 FE 90080000" v2.2.0
+        //       "81 FE 30160000 0F 84 8A000000 81 FE 90080000" v2.7.494
     });
     addresses.recAddBreakpoint = getFunctionAddress({
         name: "recAddBreakpoint",
@@ -252,8 +256,9 @@ function setupAddressesThroughPattern() {
         // could get from DynarecCheckBreakpoint instead
         const cpuRegsLoad = getPatternAddress({
             name: "cpuRegsLoad",
-            pattern: "48 8D 15 ???????? 89 84 8A F0030000",
-            //       "48 8D 15 4F607A02 89 84 8A F0030000" v2.2.0
+            pattern: "48 8D 15 ???????? 89 84 8A 20020000",
+            //       "48 8D 15 64607A02 89 84 8A 20020000" v2.2.0
+            //       "48 8D 15 44AA9402 89 84 8A 20020000" v2.7.494
         });
         const ins = Instruction.parse(cpuRegsLoad); // lea rdx,[pcsx2-qt._cpuRegistersPack]
 
@@ -278,9 +283,10 @@ function setupAddressesThroughPattern() {
 
     addresses.dynarecCheckBreakpoint = getFunctionAddress({
         name: "dynarecCheckBreakpoint",
-        pattern: "8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000",
-        //       "8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000 E8 06030D00 8D 4F 02" v2.2.0
-        //       "8B 40 14 3D 18040000 74 25 3D 20040000 74 1E A9 00040000 74 17 8D 56 04 B9 01000000 E8 46F30C00 8D 4F 02" v2.6.0
+        pattern: "83 C6 04 B9 01000000 89 F2 E8 ???????? 48 85 C0",
+        //       "83 C6 04 B9 01000000 89 F2 E8 74140D00 48 85 C0" v2.2.0
+        //       "83 C6 04 B9 01000000 89 F2 E8 183E0D00 48 85 C0" v2.7.494
+        lookbackSize: 0x200,
     });
     addresses.psxDynarecCheckBreakpoint = getFunctionAddress({
         name: "psxDynarecCheckBreakpoint",
