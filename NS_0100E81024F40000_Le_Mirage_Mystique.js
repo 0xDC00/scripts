@@ -4,7 +4,7 @@
 // @author       GO123
 // @description 
 // * LicoBiTs
-// *BROCCOLI Co., Ltd.
+// * BROCCOLI Co., Ltd.
 // * Unity
 // ==/UserScript==
 const gameVer = '1.0.1';
