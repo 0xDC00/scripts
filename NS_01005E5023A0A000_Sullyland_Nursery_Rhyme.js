@@ -4,7 +4,7 @@
 // @author       GO123
 // @description  
 // * Otomate
-// * 	Design Factory Co., Ltd. & Otomate &Idea Factory Co., Ltd.
+// * Design Factory Co., Ltd. & Otomate & Idea Factory Co., Ltd.
 // ==/UserScript==
 const gameVer = "1.0.0";
 
