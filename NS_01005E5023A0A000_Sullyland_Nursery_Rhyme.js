@@ -26,7 +26,7 @@ function handler(regs, index, offset, hookname) {
   const address = regs[index].value;
 
   console.log("onEnter: " + hookname);
-  console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
+ // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
   let s = address.add(offset).readUtf8String()
 
