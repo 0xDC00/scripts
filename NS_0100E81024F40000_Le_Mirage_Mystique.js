@@ -14,16 +14,18 @@ const mainHandler = trans.send(handler, '200++');
 
 setHook({
     '1.0.1': {
-        [0x81d053fc - 0x80004000]: mainHandler, // text
-        [0x81bd66c0 - 0x80004000]: mainHandler, //dictionary
+        [0x81d053fc - 0x80004000]: mainHandler.bind_(null, 0, "text"),
+        [0x81bd66c0- 0x80004000]: mainHandler.bind_(null, 0,"dictionary"),
 
 
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
-function handler(regs) {
-    const address = regs[0].value;
-    console.log('onEnter');
+function handler(regs, index, hookname) {
+  const address = regs[index].value;
+
+  console.log("onEnter: " + hookname);
+  //console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
     /* processString */
     const len = address.add(0x10).readU32() * 2;
