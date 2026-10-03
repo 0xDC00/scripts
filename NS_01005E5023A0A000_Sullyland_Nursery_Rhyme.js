@@ -31,7 +31,7 @@ function handler(regs, index, offset, hookname) {
  // console.log(hexdump(address, { header: false, ansi: false, length: 0x50 }));
 
   let s = address.add(offset).readUtf8String()
-  s = " " + s.replaceAll(/#Type\[\d+\]|#Color\[\d+\]|#Ruby|#n/g, '');
+  s = s.replaceAll(/#Type\[\d+\]|#Color\[\d+\]|#Ruby|#n/g, '');
 
   return s;
 }
