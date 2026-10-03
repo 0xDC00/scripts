@@ -15,9 +15,7 @@ const mainHandler = trans.send(handler, '200++');
 setHook({
     '1.0.1': {
         [0x81d053fc - 0x80004000]: mainHandler.bind_(null, 0, "text"),
-        [0x81bd66c0- 0x80004000]: mainHandler.bind_(null, 0,"dictionary"),
-
-
+        [0x81bd66c0 - 0x80004000]: mainHandler.bind_(null, 0, "dictionary"),
     }
 }[globalThis.gameVer = globalThis.gameVer ?? gameVer]);
 
