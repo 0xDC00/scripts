@@ -24,7 +24,7 @@ setHook(
       [0x80056db8 - 0x80004000]: spaceHandler.bind_(null, 1, 0, "choices"),
       [0x80066610 - 0x80004000]: movieHandler.bind_(null, 1, 0, "movie1"),
       [0x800667a0 - 0x80004000]: movieHandler.bind_(null, 1, 0, "movie2"),
-	    [0x80038b8c - 0x80004000]: mainHandler.bind_(null, 0, 0, "chat"),
+	  [0x80038b8c - 0x80004000]: mainHandler.bind_(null, 0, 0, "chat"),
     },
   }[(globalThis.gameVer = globalThis.gameVer ?? gameVer)]
 );
