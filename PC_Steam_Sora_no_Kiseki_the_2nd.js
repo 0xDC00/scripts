@@ -123,6 +123,16 @@ let isDebugging = false;
 
 
 (function () {
+    const address = getAddressPattern("terminalChoices", 'e8 ?? ?? ?? ?? 90 ?? 8b c3 ?? 8b 5c ?? ?? ?? 8b 6c ?? ?? ?? 8b 74 ?? ?? ?? 83 c4 40 5f c3');
+    if(!address)
+        return;
+    Interceptor.attach(address, function (args) {
+        processText(this.context.rdx, "main", "terminalChoices");
+    });
+})();
+
+
+(function () {
     const address = getAddressPattern("activeVoice", 'e8 ?? ?? ?? ?? ?? 8b 83 a0 00 00 00 33');
     if(!address)
         return;
@@ -663,8 +673,6 @@ let statusOverdriveName = '';
 
 function getAddressPattern(name, pattern, offset = 0) {
     const results = Memory.scanSync(__e.base, __e.size, pattern);
-    // console.warn('\nMemory.scanSync() result: \n' + JSON.stringify(results));
-
     if (results.length === 0) {
         console.error(`[${name}] Hook not found!`);
         return null;
