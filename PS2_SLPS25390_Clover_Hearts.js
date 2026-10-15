@@ -25,8 +25,10 @@ function handler(args) {
           s = this.context.a0(asPsxPtr).readCustomString(enc);
         }
         
-        // Replace newlines
-        s = s.replace(/\^+/g, ' ')
+        // Filter out null and newlines
+        s = s
+		.split('($')[0]
+		.replace(/\^+/g, ' ')
 
         return s;        
 }
