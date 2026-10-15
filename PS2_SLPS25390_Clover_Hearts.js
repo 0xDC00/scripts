@@ -16,13 +16,14 @@ setHookEE({
 
 function handler(args) {
         let s = "";
+		const buf = this.context.a0(asPsxPtr);
 
         // Read string at right position
-        if(new Uint8Array(this.context.a0(asPsxPtr).readByteArray(1))[0] == 0x2C) {
-          s = this.context.a0(asPsxPtr).add(1).readCustomString(enc);
+        if(new Uint8Array(buf.readByteArray(1))[0] == 0x2C) {
+          s = buf.add(1).readCustomString(enc);
         }
         else {
-          s = this.context.a0(asPsxPtr).readCustomString(enc);
+          s = buf.readCustomString(enc);
         }
         
         // Filter out null and newlines
