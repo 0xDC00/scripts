@@ -2,22 +2,132 @@
 // @name         Sen no Kiseki III / Trails of Cold Steel III 
 // @version      1.06
 // @author       Tom (tomrock645) | readString() function based on Koukdw's version
+// @modified     Kventin Dorvard
 // @description  Steam, GOG
 // * developer   Nihon Falcom
-// * publisher   XSEED Games
+// * publisher   NIS America
 //
 // https://store.steampowered.com/app/991270/The_Legend_of_Heroes_Trails_of_Cold_Steel_III/
 // https://www.gog.com/en/game/the_legend_of_heroes_trails_of_cold_steel_iii
 // ==/UserScript==
 
 
-console.warn("Known issues:\n- When a character has at least two textboxes worth of dialogue they might all be extracted at the same time.");
+console.warn("Dialogue textbox timing uses an experimental display hook; verify it in-game.");
 console.warn("- There will be an extraction when you open the instructor handbook or open the 'help' section from the system menu.");
 
 const __e = Process.enumerateModules()[0];
 const mainHandler = trans.send((s) => s, '200+');
 const secondHandler = trans.send((s) => s, 200);
 const thirdHandler = trans.send((s) => s, '50+');
+
+let dialogueDisplayReady = false;
+let pendingDialogue = null;
+
+// Battle notebook monster descriptions; candidate verified by caller trace.
+(function () {
+    try {
+        // Call at +455689: R9 holds the description returned by the earlier lookup.
+        const signature = 'e8 ?? ?? ?? ?? 0f 10 45 b0 48 8d 45 90 49 8b 8d 90 02 00 00 f3 0f 10 75 c4 41 0f 28 fd';
+        const results = Memory.scanSync(__e.base, __e.size, signature);
+        if (results.length !== 1) {
+            console.warn('[notebookMonsterDescription] Expected one hook, found ' + results.length);
+            return;
+        }
+        const address = results[0].address;
+        const handler = trans.send((s) => s, 200);
+        let previous = '';
+        let lastSeen = 0;
+        let warned = false;
+        Interceptor.attach(address, function () {
+            try {
+                const pointer = this.context.r9;
+                if (pointer.isNull()) return;
+                const text = cleanText(pointer.readUtf8String()).trim();
+                if (!text) return;
+                const now = Date.now();
+                // Rendering repeats every frame. Allow re-extraction after a gap.
+                const repeat = text === previous && now - lastSeen < 1000;
+                lastSeen = now;
+                if (repeat) return;
+                previous = text;
+                handler(text);
+            } catch (error) {
+                if (!warned) {
+                    warned = true;
+                    console.warn('[notebookMonsterDescription] Could not read R9: ' + error);
+                }
+            }
+        });
+        console.log('[notebookMonsterDescription] Found hook', address);
+    } catch (error) {
+        console.warn('[notebookMonsterDescription] Hook disabled: ' + error);
+    }
+})();
+
+// Candidate monster-description call site; verify scope in-game.
+(function () {
+    try {
+        // Signature starts at +20260E; the call at +20261C receives text in R9.
+        const signature = '0f 28 cc 89 4c 24 20 48 8b 0d ?? ?? ?? ?? e8 ?? ?? ?? ?? f3 44 0f 10 1d ?? ?? ?? ?? 41 bf 04 00 00 00';
+        const results = Memory.scanSync(__e.base, __e.size, signature);
+        if (results.length !== 1) {
+            console.warn('[monsterDescription] Expected one hook, found ' + results.length);
+            return;
+        }
+        const address = results[0].address.add(14);
+        const handler = trans.send((s) => s, 200);
+        let previous = '';
+        let lastSeen = 0;
+        let warned = false;
+        Interceptor.attach(address, function () {
+            try {
+                const pointer = this.context.r9;
+                if (pointer.isNull()) return;
+                const text = cleanText(pointer.readUtf8String()).trim();
+                if (!text) return;
+                const now = Date.now();
+                // Rendering repeats every frame. Allow re-extraction after a gap.
+                const repeat = text === previous && now - lastSeen < 1000;
+                lastSeen = now;
+                if (repeat) return;
+                previous = text;
+                handler(text);
+            } catch (error) {
+                if (!warned) {
+                    warned = true;
+                    console.warn('[monsterDescription] Could not read R9: ' + error);
+                }
+            }
+        });
+        console.log('[monsterDescription] Found hook', address);
+    } catch (error) {
+        console.warn('[monsterDescription] Hook disabled: ' + error);
+    }
+})();
+
+(function () {
+    // Observed at ed8_3_PC_JP.exe+301E76. RSI points into the displayed textbox.
+    const signature = '0f b6 0e 80 f9 20 0f 83 ?? ?? ?? ?? 0f b6 c1 48 ff c6 83 f8 16';
+    const results = Memory.scanSync(__e.base, __e.size, signature);
+    if (results.length !== 1) {
+        console.warn('[dialogueDisplay] Expected one hook, found ' + results.length + '; using whole-dialogue extraction.');
+        return;
+    }
+
+    Interceptor.attach(results[0].address, function () {
+        const dialogue = pendingDialogue;
+        if (!dialogue) return;
+        const address = this.context.rsi;
+        for (const page of dialogue.pages) {
+            if (page.sent || address.compare(page.start) < 0 || address.compare(page.end) >= 0) continue;
+            page.sent = true;
+            mainHandler(dialogue.name + "\n" + page.text);
+            return;
+        }
+    });
+    dialogueDisplayReady = true;
+    console.log('[dialogueDisplay] Found hook', results[0].address);
+})();
 
 
 (function () {
@@ -33,16 +143,24 @@ const thirdHandler = trans.send((s) => s, '50+');
     const address = results[0].address;
     console.log('[dialoguePattern] Found hook', address);
     Interceptor.attach(address, function (args) {
+        //console.log("DIALOGUE HOOK");
         // console.warn("in: dialogue");
 
         const nameAddress = this.context.rdx;
         const textAddress = this.context.r8;
+        //console.log("Dialogue buffer:", textAddress);
 
         let name = nameAddress.readUtf8String();
-        let text = readString(textAddress);
+        pendingDialogue = null;
+        const pages = dialogueDisplayReady ? [] : null;
+        let text = readString(textAddress, pages);
 
         // console.warn(hexdump(textAddress, { header: false, ansi: false, length: 0x100 }));
-        mainHandler(name + "\n" + text);
+        if (dialogueDisplayReady) {
+            pendingDialogue = { name, pages };
+        } else {
+            mainHandler(name + "\n" + text);
+        }
     });
 })();
 
@@ -542,9 +660,17 @@ let characterDetailsSet = new Set();
 
 const encoder = new TextEncoder('utf-8');
 const decoder = new TextDecoder('utf-8');
-function readString(address) {
+function readString(address, pages = null) {
     let character = '';
     let sentence = "";
+    let pageStart = address;
+    let pageOffset = 0;
+
+    function finishPage(end) {
+        if (!pages) return;
+        const text = cleanText(sentence.slice(pageOffset)).trim();
+        if (text) pages.push({ start: pageStart, end, text, sent: false });
+    }
 
     while (character = address.readU8()) {
         if (character < 0x80 && address.add(1).readU8() === 0x01) { // Sometimes a random character would be extracted instead of the item name when obtaining something
@@ -567,12 +693,18 @@ function readString(address) {
                     continue;
 
                 case 0x02: // Next bubble
+                    finishPage(address);
                     address = address.add(1);
+                    pageStart = address;
+                    pageOffset = sentence.length;
                     continue;
 
                 case 0x03: // End of bubble
+                    finishPage(address);
                     address = address.add(1);
                     sentence += "\n\n";
+                    pageStart = address;
+                    pageOffset = sentence.length;
                     continue;
 
                 case 0x04: // Item logo?
@@ -609,6 +741,7 @@ function readString(address) {
             }
         }
     }
+    finishPage(address);
     sentence = cleanText(sentence);
     return sentence;
 }
